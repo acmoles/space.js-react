@@ -1,9 +1,12 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { EventEmitter, UI, average, delayedCall, median, ticker } from '@lib/index.js';
+import { EventEmitter, average, delayedCall, median } from '@lib/index.js';
 
 import { Example } from '@/components';
 import { useClassName } from '@/hooks';
+import { UI } from '@/space/index.js';
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
 class Utils {
     // https://stackoverflow.com/questions/36098913/convert-seconds-to-days-hours-minutes-and-seconds/52387803#52387803
@@ -29,22 +32,22 @@ class Utils {
     }
 }
 
+// ─── Socket ────────────────────────────────────────────────────────────────────
+// Framework-agnostic WebSocket wrapper. Emits 'details', 'array' and 'status'.
+
 class Socket extends EventEmitter {
     constructor(server) {
         super();
 
         this.server = server;
-
         this.connected = false;
+        this.destroyed = false;
 
-        // Latency average
         this.latencyArray = [];
 
-        // Load average
         this.ghostArray = [];
         this.array = [];
 
-        // Median downsample
         this.chunkSize = 10;
 
         this.connect();
@@ -62,8 +65,6 @@ class Socket extends EventEmitter {
         this.socket.removeEventListener('message', this.onMessage);
     }
 
-    // Event handlers
-
     onOpen = () => {
         this.connected = true;
 
@@ -71,7 +72,7 @@ class Socket extends EventEmitter {
         const message = {
             subscription: {
                 name: 'status',
-                time: 86400 // Past day in seconds
+                time: 86400
             }
         };
 
@@ -83,7 +84,9 @@ class Socket extends EventEmitter {
         console.log('close');
         this.connected = false;
 
-        delayedCall(250, this.connect);
+        if (!this.destroyed) {
+            delayedCall(250, this.connect);
+        }
     };
 
     onMessage = ({ data }) => {
@@ -95,15 +98,13 @@ class Socket extends EventEmitter {
                 this.send({ event, message });
                 break;
             case 'details': {
-                const { details, serverUptime/* , latency */ } = message;
+                const { details, serverUptime } = message;
 
                 const {
-                    // packageVersion,
                     projectDomain,
                     networkName,
                     networkOrg,
                     serverVersion,
-                    // restartTime,
                     memTotal,
                     memFree,
                     swapTotal,
@@ -117,26 +118,20 @@ class Socket extends EventEmitter {
                 const serverUptimeFormatted = Utils.formatSeconds(serverUptime);
 
                 const memUsed = memTotal - memFree;
-
                 let memUsedFormatted = memUsed / 1024 / 1024 / 1024;
                 memUsedFormatted = `${Math.round((memUsedFormatted + Number.EPSILON) * 100) / 100} GiB`;
-
                 let memTotalFormatted = memTotal / 1024 / 1024 / 1024;
                 memTotalFormatted = `${Math.round((memTotalFormatted + Number.EPSILON) * 100) / 100} GiB`;
-
                 let memUsedPercentage = (memUsed / memTotal) * 100;
                 memUsedPercentage = Math.round((memUsedPercentage + Number.EPSILON) * 100) / 100;
 
                 const swapUsed = swapTotal - swapFree;
-
                 let swapUsedFormatted = swapUsed / 1024 / 1024 / 1024;
                 swapUsedFormatted = `${Math.round((swapUsedFormatted + Number.EPSILON) * 100) / 100} GiB`;
-
                 let swapTotalFormatted = swapTotal / 1024 / 1024 / 1024;
                 swapTotalFormatted = `${Math.round((swapTotalFormatted + Number.EPSILON) * 100) / 100} GiB`;
 
                 let swapUsedPercentage;
-
                 if (swapUsed) {
                     swapUsedPercentage = (swapUsed / swapTotal) * 100;
                     swapUsedPercentage = Math.round((swapUsedPercentage + Number.EPSILON) * 100) / 100;
@@ -146,20 +141,17 @@ class Socket extends EventEmitter {
                 }
 
                 const storageUsed = storageTotal - storageAvailable;
-
                 let storageUsedFormatted;
                 let storageTotalFormatted;
 
                 if (storageTotal < 1e9) {
                     storageUsedFormatted = storageUsed / 1024 / 1024;
                     storageUsedFormatted = `${Math.round((storageUsedFormatted + Number.EPSILON) * 100) / 100} MB`;
-
                     storageTotalFormatted = storageTotal / 1024 / 1024;
                     storageTotalFormatted = `${Math.round((storageTotalFormatted + Number.EPSILON) * 100) / 100} MB`;
                 } else {
                     storageUsedFormatted = storageUsed / 1024 / 1024 / 1024;
                     storageUsedFormatted = `${Math.round((storageUsedFormatted + Number.EPSILON) * 100) / 100} GB`;
-
                     storageTotalFormatted = storageTotal / 1024 / 1024 / 1024;
                     storageTotalFormatted = `${Math.round((storageTotalFormatted + Number.EPSILON) * 100) / 100} GB`;
                 }
@@ -192,18 +184,13 @@ class Socket extends EventEmitter {
 
                 let data = status;
 
-                // Initial data dump
                 if (data.length > 3) {
-                    // Separate last status update as new update
                     const last = data.pop();
 
-                    // Last 240 status updates for load average graph (120 + 120, ghost + array)
-                    data = data.slice(-240).map(data => data[1] * 100); // percentage
+                    data = data.slice(-240).map(d => d[1] * 100);
 
-                    // Last 20 status updates for realtime graph (10 + 10, ghost + array)
                     const realtimeArray = data.slice(-20);
 
-                    // Median downsample
                     const array = [];
                     const chunkSize = this.chunkSize;
 
@@ -211,24 +198,19 @@ class Socket extends EventEmitter {
                         array.push(median(data.slice(i, i + chunkSize)));
                     }
 
-                    // Last 240 status updates downsampled to 24 (12 + 12, ghost + array)
                     this.array = array.splice(-12, 12);
-
                     if (this.array.length < 12) {
                         this.array = Utils.backfill(this.array, 12, this.array[0] || 0);
                     }
 
                     this.ghostArray = array.splice(-12, 12);
-
                     if (this.ghostArray.length < 12) {
                         this.ghostArray = Utils.backfill(this.ghostArray, 12, this.ghostArray[0] || 0);
                     }
 
-                    // Re-add realtime data to the end of each array
                     this.ghostArray.push(...realtimeArray.slice(0, 10));
                     this.array.push(...realtimeArray.slice(-10));
 
-                    // Cleanup
                     array.length = 0;
 
                     this.emit('array', {
@@ -243,16 +225,15 @@ class Socket extends EventEmitter {
                     this.latencyArray.push(latency);
                 }
 
-                const currentTime = data[0]; // seconds
+                const currentTime = data[0];
                 const serverUptimeFormatted = Utils.formatSeconds(serverUptime);
 
                 let latencyAvg;
-
                 if (this.latencyArray.length) {
                     latencyAvg = Math.round(average(this.latencyArray));
                 }
 
-                let loadAvg = data[1] * 100; // percentage
+                let loadAvg = data[1] * 100;
                 loadAvg = Math.round(loadAvg);
 
                 const numClients = data[2];
@@ -270,8 +251,6 @@ class Socket extends EventEmitter {
         }
     };
 
-    // Public methods
-
     send = data => {
         if (!this.connected) {
             return;
@@ -281,337 +260,108 @@ class Socket extends EventEmitter {
     };
 
     connect = () => {
+        if (this.destroyed) {
+            return;
+        }
+
         if (this.socket) {
             this.close();
         }
 
         this.socket = new WebSocket(this.server, ['permessage-deflate']);
-
         this.addListeners();
     };
 
     close = () => {
         this.removeListeners();
-
         this.socket.close();
+    };
+
+    destroy = () => {
+        this.destroyed = true;
+        this.close();
     };
 }
 
-export default function DetailsServerStatusExample({ title }) {
-    const ref = useRef(null);
+// ─── Component ────────────────────────────────────────────────────────────────
 
+export default function DetailsServerStatusExample({ title }) {
+    // `scroll` class on <html> lets the body scroll (mirrors body { position: unset })
     useClassName('scroll');
 
-    useEffect(() => {
-        const container = ref.current;
+    const uiRef = useRef(null);
 
-        // Median downsample
-        const chunkSize = 10;
+    // Server data state. null = not yet connected; object = initial details received.
+    // Live status updates (uptime, latency, load, clients) are stored in refs so
+    // the graph/meter callbacks can read the latest values each frame without
+    // triggering a full re-render. Text values that need to appear in the Details
+    // content are stored separately and merged into the details data on each
+    // status update.
+    const [serverDetails, setServerDetails] = useState(null);
+    const liveRef = useRef({
+        serverUptime: '',
+        latency: 0,
+        latencyAvg: 0,
+        latencyAvgText: '0ms (avg)',
+        loadAvg: 0,
+        loadAvgText: '0% (1min avg)',
+        numClients: '',
+        ghostArray: [],
+        array: []
+    });
+
+    useEffect(() => {
+        const socket = new Socket('wss://hello-websockets-server-status.cyberspace.app');
+        let chunkSize = 10;
         let realtimeCounter = 0;
 
-        // Load average graph
-        let ghostArray = [];
-        let array = [];
-
-        let ui = null;
-
-        const socket = new Socket('wss://hello-websockets-server-status.cyberspace.app');
-
-        const onServerDetails = ({
-            projectDomain,
-            networkName,
-            networkOrg,
-            serverVersion,
-            serverUptime,
-            memUsed,
-            memTotal,
-            memUsedPercentage,
-            swapUsed,
-            swapTotal,
-            swapUsedPercentage,
-            storageUsed,
-            storageTotal,
-            storageUsedPercentage,
-            processorName,
-            numProcessingUnits
-        }) => {
-            if (!ui) {
-                ui = new UI({
-                    details: {
-                        title: 'server-status'.replace(/[\s.-]+/g, '_'),
-                        content: [
-                            {
-                                content: '<p>A simple status API endpoint built on Express, like the Apache status page.</p>',
-                                links: [
-                                    {
-                                        title: 'Source code',
-                                        link: 'https://github.com/pschroen/hello-websockets-server-status'
-                                    }
-                                ],
-                                width: '100%'
-                            },
-                            {
-                                group: [
-                                    {
-                                        title: 'Server version',
-                                        content: serverVersion,
-                                        width: 110
-                                    },
-                                    {
-                                        title: 'Uptime',
-                                        content: serverUptime,
-                                        width: 200
-                                    },
-                                    {
-                                        title: 'Latency',
-                                        meter: {
-                                            suffix: 'ms',
-                                            range: 150,
-                                            value: 0,
-                                            width: 70,
-                                            noRange: true
-                                        },
-                                        width: 70
-                                    }
-                                ]
-                            },
-                            {
-                                group: [
-                                    {
-                                        title: 'Network',
-                                        content: `${projectDomain}<br>${networkName}<br>${networkOrg}`,
-                                        width: 330
-                                    },
-                                    {
-                                        title: 'Clients',
-                                        content: '',
-                                        width: 70
-                                    }
-                                ]
-                            },
-                            {
-                                group: [
-                                    {
-                                        title: 'Latency',
-                                        content: '0ms (avg)',
-                                        width: 200,
-                                        meter: {
-                                            range: 300,
-                                            value: 0,
-                                            width: 200,
-                                            ghost: true,
-                                            noText: true
-                                        }
-                                    },
-                                    {
-                                        title: '',
-                                        graph: {
-                                            suffix: 'ms',
-                                            resolution: 160,
-                                            range: 300,
-                                            width: 200,
-                                            height: 48,
-                                            ghost: true,
-                                            noMarker: true
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                group: [
-                                    {
-                                        title: 'Processor',
-                                        content: processorName,
-                                        width: 330
-                                    },
-                                    {
-                                        title: 'vCPUs',
-                                        content: numProcessingUnits,
-                                        width: 70
-                                    }
-                                ]
-                            },
-                            {
-                                group: [
-                                    {
-                                        title: 'Load',
-                                        content: '0% (1min avg)',
-                                        width: 200,
-                                        meter: {
-                                            range: 400,
-                                            value: 0,
-                                            width: 200,
-                                            ghost: true,
-                                            noText: true
-                                        }
-                                    },
-                                    {
-                                        title: '',
-                                        graph: {
-                                            suffix: '%',
-                                            resolution: 22,
-                                            lookupPrecision: [100, 0],
-                                            segments: [12, 10],
-                                            ratio: [0.9, 0.1],
-                                            range: 400,
-                                            width: 200,
-                                            height: 48,
-                                            noMarker: true
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                group: [
-                                    {
-                                        title: 'Mem',
-                                        content: `${memUsed} / ${memTotal} (${memUsedPercentage}%)`,
-                                        width: 200,
-                                        meter: {
-                                            range: 100,
-                                            value: memUsedPercentage,
-                                            width: 200,
-                                            noText: true
-                                        }
-                                    },
-                                    {
-                                        title: 'Swap',
-                                        content: `${swapUsed} / ${swapTotal} (${swapUsedPercentage}%)`,
-                                        width: 200,
-                                        meter: {
-                                            range: 100,
-                                            value: swapUsedPercentage,
-                                            width: 200,
-                                            noText: true
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                group: [
-                                    {
-                                        title: 'Storage',
-                                        content: `${storageUsed} / ${storageTotal} (${storageUsedPercentage}%)`,
-                                        width: 200,
-                                        meter: {
-                                            range: 100,
-                                            value: storageUsedPercentage,
-                                            width: 200,
-                                            noText: true
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                });
-                ui.css({ position: 'static' });
-                ui.toggleDetails(true);
-                ui.animateIn();
-                container.appendChild(ui.element);
-
-                ui.detailsUptime = ui.details.content[2].children[1];
-                ui.detailsLatencyMeter = ui.details.content[3].children[1];
-
-                ui.detailsNumClients = ui.details.content[5].children[1];
-
-                ui.detailsLatencyAvg = ui.details.content[6].children[1];
-                ui.detailsLatencyAvgMeter = ui.details.content[6].children[2];
-                ui.detailsLatencyGraph = ui.details.content[7].children[1];
-
-                ui.detailsLoadAvg = ui.details.content[10].children[1];
-                ui.detailsLoadAvgMeter = ui.details.content[10].children[2];
-                ui.detailsLoadAvgGraph = ui.details.content[11].children[1];
-
-                ui.detailsMem = ui.details.content[12].children[1];
-                ui.detailsMemMeter = ui.details.content[12].children[2];
-
-                ui.detailsSwap = ui.details.content[13].children[1];
-                ui.detailsSwapMeter = ui.details.content[13].children[2];
-
-                ui.detailsStorage = ui.details.content[14].children[1];
-                ui.detailsStorageMeter = ui.details.content[14].children[2];
-
-                ticker.add(onUpdate);
-                ticker.start();
-            } else {
-                ui.detailsMem.html(`${memUsed} / ${memTotal} (${memUsedPercentage}%)`);
-                ui.detailsMemMeter.update(memUsedPercentage);
-
-                ui.detailsSwap.html(`${swapUsed} / ${swapTotal} (${swapUsedPercentage}%)`);
-                ui.detailsSwapMeter.update(swapUsedPercentage);
-
-                ui.detailsStorage.html(`${storageUsed} / ${storageTotal} (${storageUsedPercentage}%)`);
-                ui.detailsStorageMeter.update(storageUsedPercentage);
-            }
+        const onServerDetails = details => {
+            setServerDetails(details);
         };
 
-        const onServerArray = ({ ghostArray: ga, array: a }) => {
-            ghostArray = ga;
-            array = a;
-
-            ui.detailsLoadAvgGraph.setGhostArray(ghostArray);
-            ui.detailsLoadAvgGraph.setArray(array);
+        const onServerArray = ({ ghostArray, array }) => {
+            liveRef.current.ghostArray = ghostArray;
+            liveRef.current.array = array;
         };
 
         const onServerStatus = ({ serverUptime, latency, latencyAvg, loadAvg, numClients }) => {
-            if (serverUptime !== undefined) {
-                ui.detailsUptime.html(serverUptime);
-            }
+            const live = liveRef.current;
 
-            if (latency !== undefined) {
-                ui.detailsLatencyMeter.update(latency);
-                ui.detailsLatencyGraph.update(latency);
-            }
-
+            if (serverUptime !== undefined) live.serverUptime = serverUptime;
+            if (latency !== undefined) live.latency = latency;
             if (latencyAvg !== undefined) {
-                ui.detailsLatencyAvg.html(`${latencyAvg}ms (avg)`);
-                ui.detailsLatencyAvgMeter.update(latencyAvg);
+                live.latencyAvg = latencyAvg;
+                live.latencyAvgText = `${latencyAvg}ms (avg)`;
             }
+            if (loadAvg !== undefined) {
+                live.loadAvg = loadAvg;
+                live.loadAvgText = `${loadAvg}% (1min avg)`;
 
-            if (array && loadAvg !== undefined) {
-                ui.detailsLoadAvg.html(`${loadAvg}% (1min avg)`);
-                ui.detailsLoadAvgMeter.update(loadAvg);
+                if (live.array.length) {
+                    const realtimeGhostArray = live.ghostArray.slice(-10);
+                    const realtimeArray = live.array.slice(-10);
+                    const realtimeGhost = realtimeArray.shift();
+                    realtimeArray.push(loadAvg);
+                    realtimeGhostArray.shift();
+                    realtimeGhostArray.push(realtimeGhost);
+                    live.ghostArray.splice(-10, 10, ...realtimeGhostArray);
+                    live.array.splice(-10, 10, ...realtimeArray);
 
-                const realtimeGhostArray = ghostArray.slice(-10);
-                const realtimeArray = array.slice(-10);
-                const realtimeGhost = realtimeArray.shift();
-                realtimeArray.push(loadAvg);
-                realtimeGhostArray.shift();
-                realtimeGhostArray.push(realtimeGhost);
-                ui.detailsLoadAvgGraph.ghostArray.splice(-10, 10, ...realtimeGhostArray);
-                ui.detailsLoadAvgGraph.array.splice(-10, 10, ...realtimeArray);
-                ui.detailsLoadAvgGraph.needsUpdate = true;
-
-                if (++realtimeCounter === chunkSize) {
-                    // Median downsample
-                    const value = median(realtimeArray);
-
-                    const ga = ghostArray.slice(0, 12);
-                    const a = array.slice(0, 12);
-                    const ghost = a.shift();
-                    a.push(value);
-                    ga.shift();
-                    ga.push(ghost);
-                    ui.detailsLoadAvgGraph.ghostArray.splice(0, 12, ...ga);
-                    ui.detailsLoadAvgGraph.array.splice(0, 12, ...a);
-                    ui.detailsLoadAvgGraph.graphNeedsUpdate = true;
-
-                    realtimeCounter = 0;
+                    if (++realtimeCounter === chunkSize) {
+                        const value = median(realtimeArray);
+                        const ga = live.ghostArray.slice(0, 12);
+                        const a = live.array.slice(0, 12);
+                        const ghost = a.shift();
+                        a.push(value);
+                        ga.shift();
+                        ga.push(ghost);
+                        live.ghostArray.splice(0, 12, ...ga);
+                        live.array.splice(0, 12, ...a);
+                        realtimeCounter = 0;
+                    }
                 }
-
-                ui.detailsLoadAvgGraph.update();
             }
-
-            if (numClients !== undefined) {
-                ui.detailsNumClients.html(numClients);
-            }
-        };
-
-        const onUpdate = () => {
-            ui.update();
-            ui.detailsLatencyGraph.update();
-            ui.detailsLoadAvgGraph.update();
+            if (numClients !== undefined) live.numClients = numClients;
         };
 
         socket.on('details', onServerDetails);
@@ -619,13 +369,166 @@ export default function DetailsServerStatusExample({ title }) {
         socket.on('status', onServerStatus);
 
         return () => {
-            ticker.remove(onUpdate);
-            socket.close();
-            if (ui) {
-                ui.destroy();
-            }
+            socket.destroy();
         };
     }, []);
 
-    return <Example title={title} ref={ref} />;
+    // Open details panel when UI first mounts (mirrors ui.toggleDetails(true))
+    const prevDetailsRef = useRef(null);
+    useEffect(() => {
+        if (serverDetails && serverDetails !== prevDetailsRef.current) {
+            prevDetailsRef.current = serverDetails;
+            uiRef.current?.animateIn();
+            uiRef.current?.toggleDetails(true);
+        }
+    }, [serverDetails]);
+
+    if (!serverDetails) {
+        // Not yet connected — render empty page matching the original failure state
+        return <Example title={title} />;
+    }
+
+    const {
+        projectDomain,
+        networkName,
+        networkOrg,
+        serverVersion,
+        serverUptime,
+        memUsed,
+        memTotal,
+        memUsedPercentage,
+        swapUsed,
+        swapTotal,
+        swapUsedPercentage,
+        storageUsed,
+        storageTotal,
+        storageUsedPercentage,
+        processorName,
+        numProcessingUnits
+    } = serverDetails;
+
+    const live = liveRef.current;
+
+    const details = {
+        title: 'server-status'.replace(/[\s.-]+/g, '_'),
+        content: [
+            {
+                content: '<p>A simple status API endpoint built on Express, like the Apache status page.</p>',
+                links: [
+                    {
+                        title: 'Source code',
+                        link: 'https://github.com/pschroen/hello-websockets-server-status'
+                    }
+                ],
+                width: '100%'
+            },
+            {
+                group: [
+                    { title: 'Server version', content: serverVersion, width: 110 },
+                    { title: 'Uptime', content: live.serverUptime || serverUptime, width: 200 },
+                    {
+                        title: 'Latency',
+                        meter: { suffix: 'ms', range: 150, value: live.latency, width: 70, noRange: true },
+                        width: 70
+                    }
+                ]
+            },
+            {
+                group: [
+                    {
+                        title: 'Network',
+                        content: `${projectDomain}<br>${networkName}<br>${networkOrg}`,
+                        width: 330
+                    },
+                    { title: 'Clients', content: `${live.numClients}`, width: 70 }
+                ]
+            },
+            {
+                group: [
+                    {
+                        title: 'Latency',
+                        content: live.latencyAvgText,
+                        width: 200,
+                        meter: { range: 300, value: live.latencyAvg, width: 200, ghost: true, noText: true }
+                    },
+                    {
+                        title: '',
+                        graph: {
+                            suffix: 'ms',
+                            resolution: 160,
+                            range: 300,
+                            width: 200,
+                            height: 48,
+                            ghost: true,
+                            noMarker: true,
+                            callback: () => live.latency
+                        }
+                    }
+                ]
+            },
+            {
+                group: [
+                    { title: 'Processor', content: processorName, width: 330 },
+                    { title: 'vCPUs', content: numProcessingUnits, width: 70 }
+                ]
+            },
+            {
+                group: [
+                    {
+                        title: 'Load',
+                        content: live.loadAvgText,
+                        width: 200,
+                        meter: { range: 400, value: live.loadAvg, width: 200, ghost: true, noText: true }
+                    },
+                    {
+                        title: '',
+                        graph: {
+                            suffix: '%',
+                            resolution: 22,
+                            lookupPrecision: [100, 0],
+                            segments: [12, 10],
+                            ratio: [0.9, 0.1],
+                            range: 400,
+                            width: 200,
+                            height: 48,
+                            noMarker: true,
+                            value: [...live.ghostArray, ...live.array]
+                        }
+                    }
+                ]
+            },
+            {
+                group: [
+                    {
+                        title: 'Mem',
+                        content: `${memUsed} / ${memTotal} (${memUsedPercentage}%)`,
+                        width: 200,
+                        meter: { range: 100, value: memUsedPercentage, width: 200, noText: true }
+                    },
+                    {
+                        title: 'Swap',
+                        content: `${swapUsed} / ${swapTotal} (${swapUsedPercentage}%)`,
+                        width: 200,
+                        meter: { range: 100, value: swapUsedPercentage, width: 200, noText: true }
+                    }
+                ]
+            },
+            {
+                group: [
+                    {
+                        title: 'Storage',
+                        content: `${storageUsed} / ${storageTotal} (${storageUsedPercentage}%)`,
+                        width: 200,
+                        meter: { range: 100, value: storageUsedPercentage, width: 200, noText: true }
+                    }
+                ]
+            }
+        ]
+    };
+
+    return (
+        <Example title={title}>
+            <UI details={details} ref={uiRef} />
+        </Example>
+    );
 }

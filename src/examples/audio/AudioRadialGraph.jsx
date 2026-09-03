@@ -38,6 +38,9 @@ export default function AudioRadialGraphExample({ title }) {
         return v ? JSON.parse(v) : true;
     });
 
+    // Stable callback ref so AudioButton's onUpdate stays referentially stable
+    const onAudioRef = useRef(null);
+
     // Mutable audio-analysis state — all in one ref so the ticker closure
     // always sees fresh values without causing re-renders.
     const audioState = useRef({
@@ -164,6 +167,8 @@ export default function AudioRadialGraphExample({ title }) {
             as.soundState = sound;
         }
 
+        onAudioRef.current = onAudio;
+
         function preventZoom(e) {
             e.preventDefault();
         }
@@ -173,7 +178,8 @@ export default function AudioRadialGraphExample({ title }) {
 
             const { peakInterval, highsRange, midsRange, lowsRange, segmentPositions,
                 chunkSize, arrayLength, multiplier } = as;
-            let { lastTime, highs, mids, lows } = as;
+            const { lastTime } = as;
+            let { highs, mids, lows } = as;
 
             if (time - lastTime > peakInterval) {
                 as.lastTime = time;
@@ -348,8 +354,6 @@ export default function AudioRadialGraphExample({ title }) {
         document.addEventListener('click', onClick);
         document.addEventListener('dblclick', preventZoom);
 
-        uiRef.current?.audioButton?.events?.on?.('update', onAudio);
-
         ticker.add(onUpdate);
         ticker.start();
 
@@ -359,12 +363,11 @@ export default function AudioRadialGraphExample({ title }) {
 
         return () => {
             alive = false;
+            onAudioRef.current = null;
 
             document.removeEventListener('visibilitychange', onVisibility);
             document.removeEventListener('click', onClick);
             document.removeEventListener('dblclick', preventZoom);
-
-            uiRef.current?.audioButton?.events?.off?.('update', onAudio);
 
             ticker.remove(onUpdate);
 
@@ -405,16 +408,7 @@ export default function AudioRadialGraphExample({ title }) {
             <UI
                 ref={uiRef}
                 fps
-                audioButton={{ sound: initialSound, info: AUDIO_BUTTON_INFO }}
-                onAudio={sound => {
-                    const s = audioState.current;
-
-                    if (sound) {
-                        s.soundState = true;
-                    } else {
-                        s.soundState = false;
-                    }
-                }}
+                audioButton={{ sound: initialSound, info: AUDIO_BUTTON_INFO, onUpdate: sound => onAudioRef.current?.(sound) }}
             />
         </Example>
     );

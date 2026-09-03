@@ -1,4 +1,4 @@
-import { useCallback, useImperativeHandle, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 
 import { useAnimation } from '../../motion/index.js';
 import { PanelContext } from './PanelContext.js';
@@ -30,7 +30,7 @@ function getCSSVar(name) {
  *   onChange={e => console.log(e)}
  * />
  */
-export function Panel({ items = [], onChange, ref }) {
+export function Panel({ items = [], onChange, autoAnimateIn = false, ref }) {
     const [rootRef, root] = useAnimation({ display: 'none' });
 
     // Per-item imperative handles
@@ -64,6 +64,13 @@ export function Panel({ items = [], onChange, ref }) {
     const handleChange = useCallback(e => {
         if (onChange) onChange(e);
     }, [onChange]);
+
+    // Automatically animate in (fast / no tween) after mount for nested panels.
+    useEffect(() => {
+        if (!autoAnimateIn) return;
+        root.set({ display: '' });
+        itemRefs.current.forEach((item, i) => item?.animateIn(i * 15, true));
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useImperativeHandle(ref, () => ({
         animateIn(fast) {
