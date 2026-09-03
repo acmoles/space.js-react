@@ -8,7 +8,15 @@ export default [
   js.configs.recommended,
   reactHooks.configs.flat['recommended-latest'],
   {
-    files: ['**/*.js', '**/*.jsx'],
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node
+      }
+    }
+  },
+  {
+    files: ['**/*.js', '**/*.jsx', '**/*.mjs'],
     ignores: [
       'eslint.config.js',
       'vite.config.js',

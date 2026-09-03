@@ -1,7 +1,7 @@
 {
   "name": "@alienkitty/space.js-react",
   "version": "1.2.0",
-  "description": "Minimal monospace UI library — React/Vite examples",
+  "description": "Minimal monospace UI library \u2014 React/Vite examples",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -14,7 +14,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "parity": "node scripts/parity.mjs"
   },
   "repository": {
     "type": "git",
