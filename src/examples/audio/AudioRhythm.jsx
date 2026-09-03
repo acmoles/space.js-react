@@ -1,61 +1,47 @@
 import { useEffect, useRef } from 'react';
 
-import { BufferLoader, Interface, Panel, PanelItem, UI, WebAudio, headsTails } from '@lib/index.js';
+import { BufferLoader, WebAudio, headsTails } from '@lib/index.js';
 
 import { Example } from '@/components';
 import { useClassName } from '@/hooks';
+import { Info } from '@/space/components/nav/index.js';
+import { Panel } from '@/space/components/panels/index.js';
+import { UI } from '@/space/components/ui/UI.jsx';
 
-class Panels extends Interface {
-    constructor() {
-        super('.panels');
-
-        this.init();
-    }
-
-    init() {
-        this.css({
-            minHeight: '100%',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '55px 0 125px'
-        });
-
-        this.container = new Interface('.container');
-        this.container.css({
-            position: 'relative',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 20
-        });
-        this.add(this.container);
-    }
-
-    // Public methods
-
-    animateIn = () => {
-        this.container.children.forEach(panel => panel.animateIn());
-    };
-}
+import './AudioRhythm.css';
 
 export default function AudioRhythmExample({ title }) {
     useClassName('scroll');
 
-    const ref = useRef(null);
+    const uiRef = useRef(null);
+    const instructionsRef = useRef(null);
+
+    const track1Ref = useRef(null);
+    const track2Ref = useRef(null);
+    const track3Ref = useRef(null);
+    const track4Ref = useRef(null);
+    const track5Ref = useRef(null);
+    const track6Ref = useRef(null);
+    const track7Ref = useRef(null);
+
+    // Panel items are stable — defined once as module-level constants below.
+    // The callbacks mutate audio state held in the effect closure via stateRef.
+    const stateRef = useRef({
+        drone: null,
+        bells: null,
+        accent1: null,
+        accent2: null,
+        kick: null,
+        snare: null,
+        hihat: null,
+        context: null,
+        lastTime: 0
+    });
 
     useEffect(() => {
-        const container = ref.current;
         let alive = true;
         let removeListeners = null;
-
-        const panels = new Panels();
-        const ui = new UI({
-            instructions: {
-                content: `${navigator.maxTouchPoints ? 'Tap' : 'Click'} for sound`
-            }
-        });
+        const st = stateRef.current;
 
         const loader = new BufferLoader();
         loader.setPath('/assets/sounds/');
@@ -75,31 +61,30 @@ export default function AudioRhythmExample({ title }) {
             WebAudio.init({ sampleRate: 48000 });
             WebAudio.load(loader.files);
 
-            const context = WebAudio.context;
-            let lastTime = 0;
+            st.context = WebAudio.context;
 
-            const drone = WebAudio.get('metal_monk_loop');
-            drone.gain.set(1);
-            drone.loop = true;
-            drone.play();
+            st.drone = WebAudio.get('metal_monk_loop');
+            st.drone.gain.set(1);
+            st.drone.loop = true;
+            st.drone.play();
 
-            const bells = WebAudio.get('ethereal_bells');
-            bells.gain.set(0.5);
+            st.bells = WebAudio.get('ethereal_bells');
+            st.bells.gain.set(0.5);
 
-            const accent1 = WebAudio.get('accent_transition_1');
-            accent1.gain.set(0.1);
+            st.accent1 = WebAudio.get('accent_transition_1');
+            st.accent1.gain.set(0.1);
 
-            const accent2 = WebAudio.get('accent_transition_2');
-            accent2.gain.set(0.05);
+            st.accent2 = WebAudio.get('accent_transition_2');
+            st.accent2.gain.set(0.05);
 
-            const kick = WebAudio.get('kick');
-            kick.gain.set(1);
+            st.kick = WebAudio.get('kick');
+            st.kick.gain.set(1);
 
-            const snare = WebAudio.get('snare');
-            snare.gain.set(1);
+            st.snare = WebAudio.get('snare');
+            st.snare.gain.set(1);
 
-            const hihat = WebAudio.get('hihat');
-            hihat.gain.set(1);
+            st.hihat = WebAudio.get('hihat');
+            st.hihat.gain.set(1);
 
             function onVisibility() {
                 if (document.hidden) {
@@ -110,52 +95,37 @@ export default function AudioRhythmExample({ title }) {
             }
 
             function onPointerDown() {
-                // this.ui.instructions.animateOut();
-
-                // Based on https://www.html5rocks.com/en/tutorials/webaudio/intro/ by smus
-
-                const tempo = 70; // Beats per minute
+                const tempo = 70;
                 const eighthNoteTime = (60 / tempo) / 2;
                 const barLength = 8 * eighthNoteTime;
 
-                // Snap to bar length
-                let startTime = Math.ceil(context.currentTime / barLength) * barLength;
+                let startTime = Math.ceil(st.context.currentTime / barLength) * barLength;
+                const lastLength = st.lastTime + 4 * barLength;
 
-                // Next 4 bars
-                const lastLength = lastTime + 4 * barLength;
-
-                if (lastTime !== 0 && startTime < lastLength) {
+                if (st.lastTime !== 0 && startTime < lastLength) {
                     startTime = lastLength;
                 }
 
-                lastTime = startTime;
+                st.lastTime = startTime;
 
-                // Play the bells on the first eighth note
-                bells.play(startTime + eighthNoteTime);
+                st.bells.play(startTime + eighthNoteTime);
 
-                // Play the accents on bar 2, beat 4
                 if (headsTails()) {
-                    accent1.play(startTime + barLength + 6 * eighthNoteTime);
+                    st.accent1.play(startTime + barLength + 6 * eighthNoteTime);
                 } else {
-                    accent2.play(startTime + barLength + 6 * eighthNoteTime);
+                    st.accent2.play(startTime + barLength + 6 * eighthNoteTime);
                 }
 
-                // Play 4 bars
                 for (let bar = 0; bar < 4; bar++) {
-                    // We'll start playing the rhythm one eighth note from "now"
                     const time = startTime + bar * barLength + eighthNoteTime;
 
-                    // Play the bass (kick) drum on beats 1, 3
-                    kick.play(time);
-                    kick.play(time + 4 * eighthNoteTime);
+                    st.kick.play(time);
+                    st.kick.play(time + 4 * eighthNoteTime);
+                    st.snare.play(time + 2 * eighthNoteTime);
+                    st.snare.play(time + 6 * eighthNoteTime);
 
-                    // Play the snare drum on beats 2, 4
-                    snare.play(time + 2 * eighthNoteTime);
-                    snare.play(time + 6 * eighthNoteTime);
-
-                    // Play the hi-hat every eighth note
                     for (let i = 0; i < 8; i++) {
-                        hihat.play(time + i * eighthNoteTime);
+                        st.hihat.play(time + i * eighthNoteTime);
                     }
                 }
             }
@@ -163,315 +133,13 @@ export default function AudioRhythmExample({ title }) {
             document.addEventListener('visibilitychange', onVisibility);
             document.addEventListener('pointerdown', onPointerDown);
 
-            ui.instructions.animateIn();
-
-            // Panels
-            const track1 = new Panel();
-            panels.container.add(track1);
-
-            [
-                { name: 'Drone' },
-                { type: 'divider' },
-                {
-                    type: 'slider',
-                    name: 'Volume',
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    value: drone.gain.value,
-                    callback: value => {
-                        drone.gain.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Pan',
-                    min: -1,
-                    max: 1,
-                    step: 0.01,
-                    value: drone.stereoPan.value,
-                    callback: value => {
-                        drone.stereoPan.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Rate',
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    value: drone.playbackRate.value,
-                    callback: value => {
-                        drone.playbackRate.value = value;
-                    }
-                }
-            ].forEach(data => {
-                track1.add(new PanelItem(data));
+            // Animate panels in
+            [track1Ref, track2Ref, track3Ref, track4Ref, track5Ref, track6Ref, track7Ref].forEach(r => {
+                r.current?.animateIn();
             });
 
-            const track2 = new Panel();
-            panels.container.add(track2);
-
-            [
-                { name: 'Bells' },
-                { type: 'divider' },
-                {
-                    type: 'slider',
-                    name: 'Volume',
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    value: bells.gain.value,
-                    callback: value => {
-                        bells.gain.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Pan',
-                    min: -1,
-                    max: 1,
-                    step: 0.01,
-                    value: bells.stereoPan.value,
-                    callback: value => {
-                        bells.stereoPan.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Rate',
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    value: bells.playbackRate.value,
-                    callback: value => {
-                        bells.playbackRate.value = value;
-                    }
-                }
-            ].forEach(data => {
-                track2.add(new PanelItem(data));
-            });
-
-            const track3 = new Panel();
-            panels.container.add(track3);
-
-            [
-                { name: 'Accent1' },
-                { type: 'divider' },
-                {
-                    type: 'slider',
-                    name: 'Volume',
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    value: accent1.gain.value,
-                    callback: value => {
-                        accent1.gain.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Pan',
-                    min: -1,
-                    max: 1,
-                    step: 0.01,
-                    value: accent1.stereoPan.value,
-                    callback: value => {
-                        accent1.stereoPan.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Rate',
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    value: accent1.playbackRate.value,
-                    callback: value => {
-                        accent1.playbackRate.value = value;
-                    }
-                }
-            ].forEach(data => {
-                track3.add(new PanelItem(data));
-            });
-
-            const track4 = new Panel();
-            panels.container.add(track4);
-
-            [
-                { name: 'Accent2' },
-                { type: 'divider' },
-                {
-                    type: 'slider',
-                    name: 'Volume',
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    value: accent2.gain.value,
-                    callback: value => {
-                        accent2.gain.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Pan',
-                    min: -1,
-                    max: 1,
-                    step: 0.01,
-                    value: accent2.stereoPan.value,
-                    callback: value => {
-                        accent2.stereoPan.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Rate',
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    value: accent2.playbackRate.value,
-                    callback: value => {
-                        accent2.playbackRate.value = value;
-                    }
-                }
-            ].forEach(data => {
-                track4.add(new PanelItem(data));
-            });
-
-            const track5 = new Panel();
-            panels.container.add(track5);
-
-            [
-                { name: 'Kick' },
-                { type: 'divider' },
-                {
-                    type: 'slider',
-                    name: 'Volume',
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    value: kick.gain.value,
-                    callback: value => {
-                        kick.gain.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Pan',
-                    min: -1,
-                    max: 1,
-                    step: 0.01,
-                    value: kick.stereoPan.value,
-                    callback: value => {
-                        kick.stereoPan.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Rate',
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    value: kick.playbackRate.value,
-                    callback: value => {
-                        kick.playbackRate.value = value;
-                    }
-                }
-            ].forEach(data => {
-                track5.add(new PanelItem(data));
-            });
-
-            const track6 = new Panel();
-            panels.container.add(track6);
-
-            [
-                { name: 'Snare' },
-                { type: 'divider' },
-                {
-                    type: 'slider',
-                    name: 'Volume',
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    value: snare.gain.value,
-                    callback: value => {
-                        snare.gain.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Pan',
-                    min: -1,
-                    max: 1,
-                    step: 0.01,
-                    value: snare.stereoPan.value,
-                    callback: value => {
-                        snare.stereoPan.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Rate',
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    value: snare.playbackRate.value,
-                    callback: value => {
-                        snare.playbackRate.value = value;
-                    }
-                }
-            ].forEach(data => {
-                track6.add(new PanelItem(data));
-            });
-
-            const track7 = new Panel();
-            panels.container.add(track7);
-
-            [
-                { name: 'Hihat' },
-                { type: 'divider' },
-                {
-                    type: 'slider',
-                    name: 'Volume',
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    value: hihat.gain.value,
-                    callback: value => {
-                        hihat.gain.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Pan',
-                    min: -1,
-                    max: 1,
-                    step: 0.01,
-                    value: hihat.stereoPan.value,
-                    callback: value => {
-                        hihat.stereoPan.value = value;
-                    }
-                },
-                {
-                    type: 'slider',
-                    name: 'Rate',
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    value: hihat.playbackRate.value,
-                    callback: value => {
-                        hihat.playbackRate.value = value;
-                    }
-                }
-            ].forEach(data => {
-                track7.add(new PanelItem(data));
-            });
-
-            container.appendChild(panels.element);
-            container.appendChild(ui.element);
-
-            panels.animateIn();
-            ui.animateIn();
+            instructionsRef.current?.animateIn();
+            uiRef.current?.animateIn();
 
             removeListeners = () => {
                 document.removeEventListener('visibilitychange', onVisibility);
@@ -486,14 +154,98 @@ export default function AudioRhythmExample({ title }) {
                 removeListeners();
             }
 
-            panels.destroy();
-            ui.destroy();
-
             if (WebAudio.context) {
                 WebAudio.destroy();
             }
         };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return <Example title={title} ref={ref} />;
+    const st = stateRef.current;
+
+    return (
+        <Example title={title}>
+            <div className="audio-rhythm-panels">
+                <div className="audio-rhythm-container">
+                    <Panel
+                        ref={track1Ref}
+                        items={[
+                            { name: 'Drone' },
+                            { type: 'divider' },
+                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 1, callback: v => { if (st.drone) st.drone.gain.value = v; } },
+                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.drone) st.drone.stereoPan.value = v; } },
+                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.drone) st.drone.playbackRate.value = v; } }
+                        ]}
+                    />
+                    <Panel
+                        ref={track2Ref}
+                        items={[
+                            { name: 'Bells' },
+                            { type: 'divider' },
+                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 0.5, callback: v => { if (st.bells) st.bells.gain.value = v; } },
+                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.bells) st.bells.stereoPan.value = v; } },
+                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.bells) st.bells.playbackRate.value = v; } }
+                        ]}
+                    />
+                    <Panel
+                        ref={track3Ref}
+                        items={[
+                            { name: 'Accent1' },
+                            { type: 'divider' },
+                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 0.1, callback: v => { if (st.accent1) st.accent1.gain.value = v; } },
+                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.accent1) st.accent1.stereoPan.value = v; } },
+                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.accent1) st.accent1.playbackRate.value = v; } }
+                        ]}
+                    />
+                    <Panel
+                        ref={track4Ref}
+                        items={[
+                            { name: 'Accent2' },
+                            { type: 'divider' },
+                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 0.05, callback: v => { if (st.accent2) st.accent2.gain.value = v; } },
+                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.accent2) st.accent2.stereoPan.value = v; } },
+                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.accent2) st.accent2.playbackRate.value = v; } }
+                        ]}
+                    />
+                    <Panel
+                        ref={track5Ref}
+                        items={[
+                            { name: 'Kick' },
+                            { type: 'divider' },
+                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 1, callback: v => { if (st.kick) st.kick.gain.value = v; } },
+                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.kick) st.kick.stereoPan.value = v; } },
+                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.kick) st.kick.playbackRate.value = v; } }
+                        ]}
+                    />
+                    <Panel
+                        ref={track6Ref}
+                        items={[
+                            { name: 'Snare' },
+                            { type: 'divider' },
+                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 1, callback: v => { if (st.snare) st.snare.gain.value = v; } },
+                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.snare) st.snare.stereoPan.value = v; } },
+                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.snare) st.snare.playbackRate.value = v; } }
+                        ]}
+                    />
+                    <Panel
+                        ref={track7Ref}
+                        items={[
+                            { name: 'Hihat' },
+                            { type: 'divider' },
+                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 1, callback: v => { if (st.hihat) st.hihat.gain.value = v; } },
+                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.hihat) st.hihat.stereoPan.value = v; } },
+                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.hihat) st.hihat.playbackRate.value = v; } }
+                        ]}
+                    />
+                </div>
+            </div>
+            <Info
+                ref={instructionsRef}
+                bottom
+                content={`${navigator.maxTouchPoints ? 'Tap' : 'Click'} for sound`}
+            />
+            <UI ref={uiRef} />
+        </Example>
+    );
 }
+
+

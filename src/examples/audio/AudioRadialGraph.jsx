@@ -171,8 +171,9 @@ export default function AudioRadialGraphExample({ title }) {
         function onUpdate(time) {
             if (!alive) return;
 
-            const { peakInterval, highsRange, midsRange, lowsRange, segmentPositions } = as;
-            let { lastTime, highs, mids, lows, chunkSize, arrayLength, multiplier } = as;
+            const { peakInterval, highsRange, midsRange, lowsRange, segmentPositions,
+                chunkSize, arrayLength, multiplier } = as;
+            let { lastTime, highs, mids, lows } = as;
 
             if (time - lastTime > peakInterval) {
                 as.lastTime = time;

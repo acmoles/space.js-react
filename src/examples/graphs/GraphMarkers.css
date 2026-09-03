@@ -10,7 +10,7 @@
     gap: 55px 150px;
 }
 
-.graph-markers .ui > .info {
+.graph-markers .info.info--bottom {
     background-color: var(--bg-color);
     border-radius: 4px;
 }
