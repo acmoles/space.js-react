@@ -20,6 +20,9 @@ import { clearTween, tween } from '@lib/tween/Tween.js';
  * });
  *
  * motion.animate({ radius: 18 }, 500, 'easeOutCubic');
+ *
+ * The `delay`, `complete` and `update` arguments mirror the library's `tween`
+ * function, so an optional `update` callback runs on every animated frame.
  */
 export function useMotion(initial) {
     const [handle] = useState(() => {
@@ -34,8 +37,9 @@ export function useMotion(initial) {
                 return handle;
             },
 
-            animate(props, duration, ease, delay = 0, complete) {
+            animate(props, duration, ease, delay = 0, complete, update) {
                 if (typeof delay !== 'number') {
+                    update = complete;
                     complete = delay;
                     delay = 0;
                 }
@@ -47,7 +51,7 @@ export function useMotion(initial) {
                         }
 
                         resolve();
-                    });
+                    }, update);
                 });
             }
         };
