@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 
 import { Color } from '@lib/math/Color.js';
 import { Easing } from '@lib/tween/Easing.js';
@@ -49,7 +49,7 @@ export function PanelMeter({
     children,
     ref
 }) {
-    const fmt = format || (v => `${v}${suffix}`);
+    const fmt = useMemo(() => format || (v => `${v}${suffix}`), [format, suffix]);
     const height = noText ? 20 : 40;
 
     const rangeRef = useRef(initialRange);
@@ -129,7 +129,7 @@ export function PanelMeter({
         ctx.moveTo(0, y);
         ctx.lineTo(val * rangeWidthRef.current, y);
         ctx.stroke();
-    }, [noGradient]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [noGradient]);
 
     const drawGraph = useCallback(() => {
         const ctx = ctxRef.current;
@@ -150,7 +150,7 @@ export function PanelMeter({
 
         if (ghostRef.current !== undefined) drawPath(y, ghostRef.current, true);
         if (valueRef.current !== undefined) drawPath(y, valueRef.current, false);
-    }, [drawPath]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [drawPath]);
 
     const updateValue = useCallback(v => {
         if (v === undefined) return;
@@ -166,15 +166,12 @@ export function PanelMeter({
         needsUpdateRef.current = true;
     }, [fmt, precision]);
 
-    // FPS state
-    const fpsStateRef = useRef(null);
-    if (!callback && initialValue === undefined) {
-        fpsStateRef.current = fpsStateRef.current || {
-            last: performance.now(), time: 0, delta: 0,
-            count: 0, prev: 0, fps: 0,
-            refreshRate120: 1000 / 90, refreshRate240: 1000 / 180
-        };
-    }
+    // FPS state — initialise lazily only when in FPS mode (no callback and no value)
+    const fpsMode = !callback && initialValue === undefined;
+    const fpsStateRef = useRef(fpsMode ? {
+        last: 0, time: 0, delta: 0, count: 0, prev: 0, fps: 0,
+        refreshRate120: 1000 / 90, refreshRate240: 1000 / 180
+    } : null);
 
     useTicker(useCallback(() => {
         if (!animatedInRef.current) return;
@@ -204,7 +201,7 @@ export function PanelMeter({
             drawGraph();
             needsUpdateRef.current = false;
         }
-    }, [drawGraph, setRange, updateValue, callback])); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [drawGraph, setRange, updateValue, callback]));
 
     useImperativeHandle(ref, () => ({
         enable() {

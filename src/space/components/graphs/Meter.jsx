@@ -266,7 +266,7 @@ export function Meter({
             ctx.lineTo(valueRef.current * rangeWidthRef.current * p.xMultiplier, y);
             ctx.stroke();
         }
-    }, [width, noText, noGradient]);
+    }, [width, noText, noGradient, motion.values]);
 
     // ─── Ticker ───────────────────────────────────────────────────────────────
 

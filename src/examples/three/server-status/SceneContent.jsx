@@ -8,7 +8,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useFrame, useStore, useThree } from '@react-three/fiber';
-import { BoxGeometry, Color, Group, HemisphereLight, MathUtils, Mesh, MeshNormalMaterial } from 'three';
+import { MathUtils } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
     Interface,
@@ -17,7 +17,7 @@ import {
     RadialGraphContainer,
     RadialGraphSegmentsCanvas,
     Stage,
-    UI,
+    UI, // TODO(rev2): swap for the declarative <UI> composite once it lands
     clearTween,
     delayedCall,
     lerpCameras,
@@ -596,6 +596,10 @@ export function SceneContent({ containerRef, createSource, isDebug }) {
 
     const ctrlRef = useRef({});
 
+    // R3F-managed scene objects — refs are populated before the setup effect runs.
+    const meshRef = useRef(null);
+    const groupRef = useRef(null);
+
     // Resize: update camera aspects and view offset whenever canvas size changes.
     useEffect(() => {
         const ctrl = ctrlRef.current;
@@ -616,25 +620,12 @@ export function SceneContent({ containerRef, createSource, isDebug }) {
         const ctrl = {};
         ctrlRef.current = ctrl;
 
-        // --- Scene ---
-        scene.background = new Color(0x060606);
-
-        // --- Lights ---
-        const light = new HemisphereLight(0xffffff, 0x888888, 3);
-        scene.add(light);
-
-        // --- Scene view (SceneView) ---
-        const geometry = new BoxGeometry();
-        geometry.computeTangents();
-        const material = new MeshNormalMaterial();
-        const mesh = new Mesh(geometry, material);
-        const view = new Group();
-        view.add(mesh);
-        view.mesh = mesh;
-        scene.add(view);
+        // Background, lights, and mesh are declared in JSX below.
+        // Wire the R3F-managed group/mesh into ctrl.view so helpers can
+        // attach Point3D, graph objects, etc. onto the Three.js objects.
+        const view = groupRef.current;
+        view.mesh = meshRef.current;
         ctrl.view = view;
-        ctrl.geometry = geometry;
-        ctrl.material = material;
 
         // --- Cameras ---
         const mapCamera = worldCamera.clone();
@@ -785,7 +776,7 @@ export function SceneContent({ containerRef, createSource, isDebug }) {
             // during normal route navigation).
             ctrlRef.current = {};
 
-            const { camera: wc, gl: renderer, scene: sc } = store.getState();
+            const { camera: wc, gl: renderer } = store.getState();
 
             clearTween(cameraCtrl);
             clearTween(cameraCtrl._timeout);
@@ -804,11 +795,9 @@ export function SceneContent({ containerRef, createSource, isDebug }) {
             mapControls.dispose();
             poiControls.dispose();
 
-            geometry.dispose();
-            material.dispose();
-
-            sc.remove(view);
-            sc.remove(light);
+            // geometry and material are owned by the JSX mesh — R3F disposes them.
+            // The group/light are also removed by JSX unmount; only reset the
+            // camera view-offset and Point3D state that outlive the JSX tree.
 
             // Destroy all registered Point3D instances and remove DOM/event listeners
             Point3D.destroy();
@@ -817,7 +806,6 @@ export function SceneContent({ containerRef, createSource, isDebug }) {
             trackers.destroy?.();
             ctrl.ui?.destroy?.();
 
-            sc.background = null;
             wc.clearViewOffset?.();
         };
     }, [store, containerRef, createSource, isDebug]);
@@ -856,6 +844,19 @@ export function SceneContent({ containerRef, createSource, isDebug }) {
         }
     });
 
-    // Everything is managed imperatively; no JSX output.
-    return null;
+    // Declarative scene graph: background, light, and the rotating box.
+    // Camera/controls/UI remain imperative above (they depend on @lib internals
+    // that do not yet have declarative React equivalents).
+    return (
+        <>
+            <color attach="background" args={[0x060606]} />
+            <hemisphereLight args={[0xffffff, 0x888888, 3]} />
+            <group ref={groupRef}>
+                <mesh ref={meshRef}>
+                    <boxGeometry onUpdate={self => self.computeTangents()} />
+                    <meshNormalMaterial />
+                </mesh>
+            </group>
+        </>
+    );
 }

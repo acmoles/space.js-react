@@ -110,9 +110,10 @@ export function RadialGraphSegmentsCanvas({
     const hoverLabelRef = useRef(null);
     const segmentLabelRefs = useRef([]);
 
-    const [, dispatchMarker] = useReducer(c => c + 1, 0);
+    const [markerList, setMarkerList] = useState([]);
     const markerListRef = useRef([]);
     const markerDataRef = useRef({});
+    const handleMarkerPointerDownRef = useRef(null);
 
     const sRef = useRef({
         context: null,
@@ -382,8 +383,6 @@ export function RadialGraphSegmentsCanvas({
                 labelEl.style.left = `${s.middle + labelRadius * Math.cos(midAngle)}px`;
                 labelEl.style.top = `${s.middle + labelRadius * Math.sin(midAngle)}px`;
             }
-
-            startSeg += segments[i];
         }
 
         // Paths
@@ -452,7 +451,7 @@ export function RadialGraphSegmentsCanvas({
 
             let si = 0;
             let startAng = 0;
-            let sliceAng = 0;
+            let sliceAng;
             let endAng = 0;
             let startPos = 0;
             let endPos = 0;
@@ -776,7 +775,7 @@ export function RadialGraphSegmentsCanvas({
 
         markerDataRef.current[id] = { angle, multiplier: 0, el: null };
         markerListRef.current = [...markerListRef.current, { id, name, noDrag }];
-        dispatchMarker();
+        setMarkerList([...markerListRef.current]);
 
         const md = markerDataRef.current[id];
         const s = sRef.current;
@@ -816,74 +815,7 @@ export function RadialGraphSegmentsCanvas({
 
         delete markerDataRef.current[id];
         markerListRef.current = markerListRef.current.filter(m => m.id !== id);
-        dispatchMarker();
-    }
-
-    function handleMarkerPointerDown(id, e) {
-        const md = markerDataRef.current[id];
-
-        if (!md) {
-            return;
-        }
-
-        const s = sRef.current;
-        const lastTime = performance.now();
-        const lastMouse = { x: e.clientX, y: e.clientY };
-        let delta = { x: 0, y: 0 };
-
-        const onMove = ev => {
-            delta = { x: ev.clientX - lastMouse.x, y: ev.clientY - lastMouse.y };
-            const dLen = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
-
-            if (dLen) {
-                s.isDragging = true;
-                s.isDraggingAway = Math.sqrt(s.offset.x * s.offset.x + s.offset.y * s.offset.y) > s.middle + 50;
-
-                if (s.isDragging && s.isDraggingAway) {
-                    if (s.hoveredIn) {
-                        hoverOut();
-                    }
-
-                    if (md.el && s.bounds) {
-                        md.el.style.left = `${s.mouse.x - s.bounds.left}px`;
-                        md.el.style.top = `${s.mouse.y - s.bounds.top + s.mobileOffset}px`;
-                    }
-                } else {
-                    md.angle = s.mouseAngle;
-                }
-            }
-        };
-
-        const onUp = () => {
-            window.removeEventListener('pointermove', onMove);
-            window.removeEventListener('pointerup', onUp);
-
-            const wasDraggingAway = s.isDraggingAway;
-            s.isDragging = false;
-            s.isDraggingAway = false;
-
-            if (wasDraggingAway) {
-                removeMarkerInternal(id);
-                return;
-            }
-
-            if (performance.now() - lastTime > 250) {
-                return;
-            }
-
-            const dLen = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
-
-            if (dLen > 50) {
-                return;
-            }
-
-            if (onMarkerClick) {
-                onMarkerClick({ id, target: rootRef.current });
-            }
-        };
-
-        window.addEventListener('pointermove', onMove);
-        window.addEventListener('pointerup', onUp);
+        setMarkerList([...markerListRef.current]);
     }
 
     useTicker(() => {
@@ -993,7 +925,7 @@ export function RadialGraphSegmentsCanvas({
 
                 markerListRef.current = [];
                 markerDataRef.current = {};
-                dispatchMarker();
+                setMarkerList([]);
 
                 for (const d of ms) {
                     addMarkerInternal(d, fast);
@@ -1211,6 +1143,75 @@ export function RadialGraphSegmentsCanvas({
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    useEffect(() => {
+        handleMarkerPointerDownRef.current = (id, e) => {
+            const md = markerDataRef.current[id];
+
+            if (!md) {
+                return;
+            }
+
+            const s = sRef.current;
+            const lastTime = performance.now();
+            const lastMouse = { x: e.clientX, y: e.clientY };
+            let delta = { x: 0, y: 0 };
+
+            const onMove = ev => {
+                delta = { x: ev.clientX - lastMouse.x, y: ev.clientY - lastMouse.y };
+                const dLen = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+
+                if (dLen) {
+                    s.isDragging = true;
+                    s.isDraggingAway = Math.sqrt(s.offset.x * s.offset.x + s.offset.y * s.offset.y) > s.middle + 50;
+
+                    if (s.isDragging && s.isDraggingAway) {
+                        if (s.hoveredIn) {
+                            hoverOut();
+                        }
+
+                        if (md.el && s.bounds) {
+                            md.el.style.left = `${s.mouse.x - s.bounds.left}px`;
+                            md.el.style.top = `${s.mouse.y - s.bounds.top + s.mobileOffset}px`;
+                        }
+                    } else {
+                        md.angle = s.mouseAngle;
+                    }
+                }
+            };
+
+            const onUp = () => {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+
+                const wasDraggingAway = s.isDraggingAway;
+                s.isDragging = false;
+                s.isDraggingAway = false;
+
+                if (wasDraggingAway) {
+                    removeMarkerInternal(id);
+                    return;
+                }
+
+                if (performance.now() - lastTime > 250) {
+                    return;
+                }
+
+                const dLen = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+
+                if (dLen > 50) {
+                    return;
+                }
+
+                if (onMarkerClick) {
+                    onMarkerClick({ id, target: rootRef.current });
+                }
+            };
+
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        };
+    });
+
     return (
         <div ref={rootRef} className="radial-graph-segments-canvas">
             {!noHover && (
@@ -1228,7 +1229,7 @@ export function RadialGraphSegmentsCanvas({
                 </span>
             ))}
             <span ref={hoverLabelRef} className="label hover-label" />
-            {markerListRef.current.map(m => (
+            {markerList.map(m => (
                 <div
                     key={m.id}
                     className={m.noDrag ? 'marker' : 'marker draggable'}
@@ -1237,7 +1238,7 @@ export function RadialGraphSegmentsCanvas({
                             markerDataRef.current[m.id].el = el;
                         }
                     }}
-                    onPointerDown={!m.noDrag ? e => handleMarkerPointerDown(m.id, e) : undefined}
+                    onPointerDown={!m.noDrag ? e => handleMarkerPointerDownRef.current?.(m.id, e) : undefined}
                 >
                     {m.name}
                 </div>

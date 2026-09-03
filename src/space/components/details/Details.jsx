@@ -4,7 +4,7 @@ import { useAnimation } from '../../motion/index.js';
 import { useResize } from '../../hooks/index.js';
 import { DetailsLink } from './DetailsLink.jsx';
 import { DetailsTitle } from './DetailsTitle.jsx';
-import { DividerLine } from './DividerLine.jsx';
+import { DividerLine } from '../nav/DividerLine.jsx';
 
 import './Details.css';
 

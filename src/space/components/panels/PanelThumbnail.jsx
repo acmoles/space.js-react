@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
 import { loadFiles } from '@lib/loaders/FileUtils.js';
 import { useAnimation } from '../motion/index.js';
@@ -27,6 +27,28 @@ function imageToCanvas(image) {
     return canvas;
 }
 
+function normalizeValue(v) {
+    if (!v) return null;
+    if ((v instanceof Image && !v.src.startsWith('data:')) || v instanceof ImageBitmap) return imageToCanvas(v);
+    if (v && v.nodeName) {
+        if (v instanceof HTMLCanvasElement) {
+            const c = document.createElement('canvas');
+            c.width = v.width; c.height = v.height;
+            c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+            return c;
+        }
+        return v.cloneNode();
+    }
+    return v;
+}
+
+function computeImgSrc(v) {
+    if (!v) return null;
+    if (v.nodeName === 'CANVAS') return { type: 'canvas', canvas: v };
+    if (v instanceof Image) return { type: 'img', src: v.src };
+    return null;
+}
+
 /**
  * A panel thumbnail slot that accepts images via click-to-browse or drag-and-drop.
  * Multi-thumbnail drag reordering is accepted via `children` so that the actual
@@ -47,7 +69,6 @@ function imageToCanvas(image) {
  * <PanelThumbnail name="tex" data={{}} onChange={e => console.log(e.value)} />
  */
 export function PanelThumbnail({
-    name: _name,
     data: initialData,
     value: initialValue,
     onChange,
@@ -58,11 +79,14 @@ export function PanelThumbnail({
     const diagonal = panelWidth * 1.414;
     const lineOffset = -(diagonal - panelWidth) / 2 + 1;
 
-    const [imgSrc, setImgSrc] = useState(null);
+    // Compute initial value once (handles canvas cloning, ImageBitmap → canvas, etc.)
+    const initialNormalized = useMemo(() => normalizeValue(initialValue), []); // eslint-disable-line react-hooks/exhaustive-deps
+    const [imgSrc, setImgSrc] = useState(() => computeImgSrc(initialNormalized));
+
     const [showContent, setShowContent] = useState(true);
 
     const dataRef = useRef(initialData || {});
-    const valueRef = useRef(null);
+    const valueRef = useRef(initialNormalized);
     const onChangeRef = useRef(onChange);
     const fileInputRef = useRef(null);
     const containerRef = useRef(null);
@@ -120,11 +144,6 @@ export function PanelThumbnail({
             setShowContent(show);
         }
     }), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // Mount: set initial value
-    useEffect(() => {
-        if (initialValue !== undefined) applyValue(initialValue);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const loadFilesAndUpdate = async files => {
         const data = await loadFiles(files);

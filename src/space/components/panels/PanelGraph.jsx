@@ -231,7 +231,7 @@ export function PanelGraph({
         }
 
         void colorRange; // used in createGradient
-    }, [height, noGradient]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [height, noGradient]);
 
     const drawGraph = useCallback(() => {
         const ctx = ctxRef.current;
@@ -378,7 +378,7 @@ export function PanelGraph({
             drawGraph();
             needsUpdateRef.current = false;
         }
-    }, [drawGraph, setRange, precision, noHover, lookupPrecision, callback])); // eslint-disable-line react-hooks/exhaustive-deps -- enabled check below
+    }, [drawGraph, setRange, precision, noHover, lookupPrecision, callback]));
 
     // NOTE: useTicker above runs unconditionally; enable/disable is handled by animatedIn flag
     // The original only attaches the ticker when enabled, so we mirror that by only drawing when animatedIn
@@ -494,7 +494,7 @@ export function PanelGraph({
             }
             drawGraph();
         }
-    }), [setRange, drawGraph, precision, resolution, noHover, lookupPrecision, callback]); // eslint-disable-line react-hooks/exhaustive-deps
+    }), [setRange, drawGraph, precision, resolution, noHover, lookupPrecision, callback]);
 
     useEffect(() => () => {
         clearTween(hoverTween.current);

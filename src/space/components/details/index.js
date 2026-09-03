@@ -5,5 +5,4 @@ export { DetailsButton } from './DetailsButton.jsx';
 export { DetailsInfo } from './DetailsInfo.jsx';
 export { DetailsLink } from './DetailsLink.jsx';
 export { DetailsTitle } from './DetailsTitle.jsx';
-export { DividerLine } from './DividerLine.jsx';
 export { MuteButton } from './MuteButton.jsx';

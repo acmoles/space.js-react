@@ -1,27 +1,8 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { clearTween, tween } from '@lib/tween/Tween.js';
-
-import { useAnimation } from '../../motion/index.js';
-import { useTicker } from '../../motion/index.js';
+import { useAnimation, useMotion, drawLine, useTicker } from '../../motion/index.js';
 
 import './Progress.css';
-
-/**
- * Applies the SVG dash-array progress to a circle element.
- * Equivalent to Interface.drawLine() for SVG circles.
- */
-function applyCircleProgress(circleEl, progress, circumference, dashOffset) {
-    if (!circleEl) {
-        return;
-    }
-
-    const dash = circumference * progress;
-    const gap = circumference - dash;
-
-    circleEl.style.strokeDasharray = `${dash},${gap}`;
-    circleEl.style.strokeDashoffset = dashOffset;
-}
 
 /**
  * An SVG arc progress indicator that tweens smoothly from 0 to 1.
@@ -41,13 +22,10 @@ export function Progress({
     ref
 }) {
     const radius = size * 0.4;
-    const circumference = 2 * Math.PI * radius;
-    // start=0, offset=-0.25 → dashOffset = -circumference*(0+(-0.25)) = circumference*0.25
-    const dashOffset = circumference * 0.25;
 
     const [rootRef, root] = useAnimation();
     const circleRef = useRef(null);
-    const propsRef = useRef({ progress: 0 });
+    const motion = useMotion({ progress: 0 });
     const needsUpdateRef = useRef(false);
     const onCompleteRef = useRef(onComplete);
 
@@ -57,31 +35,30 @@ export function Progress({
 
     // Animate to new progress value whenever the prop changes
     useEffect(() => {
-        clearTween(propsRef.current);
+        motion.stop();
 
         needsUpdateRef.current = true;
 
-        tween(propsRef.current, { progress: progressProp }, 500, 'easeOutCubic', () => {
+        motion.animate({ progress: progressProp }, 500, 'easeOutCubic', () => {
             needsUpdateRef.current = false;
 
-            if (propsRef.current.progress >= 1 && onCompleteRef.current) {
+            if (motion.values.progress >= 1 && onCompleteRef.current) {
                 onCompleteRef.current();
             }
         });
-    }, [progressProp]);
+    }, [motion, progressProp]);
 
     useTicker(() => {
         if (needsUpdateRef.current) {
-            applyCircleProgress(circleRef.current, propsRef.current.progress, circumference, dashOffset);
+            // start=0, offset=-0.25 → starts arc at 12 o'clock
+            drawLine(circleRef.current, motion.values.progress, 0, -0.25);
         }
     });
 
     // Draw initial state after mount
     useEffect(() => {
-        applyCircleProgress(circleRef.current, 0, circumference, dashOffset);
+        drawLine(circleRef.current, 0, 0, -0.25);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    useEffect(() => () => clearTween(propsRef.current), []);
 
     useImperativeHandle(ref, () => ({
         animateIn: () => root.stop().set({ scale: 1, opacity: 0 }).animate({ opacity: 1 }, 400, 'easeOutCubic'),

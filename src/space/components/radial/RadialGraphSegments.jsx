@@ -415,7 +415,6 @@ export function RadialGraphSegments({
                 labelEl.style.left = `${s.middle + labelRadius * Math.cos(midAngle)}px`;
                 labelEl.style.top = `${s.middle + labelRadius * Math.sin(midAngle)}px`;
             }
-
         }
 
         // Paths

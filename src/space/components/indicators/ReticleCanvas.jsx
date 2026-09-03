@@ -1,7 +1,8 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { clearTween, tween } from '@lib/tween/Tween.js';
 import { TwoPI } from '@lib/utils/Utils.js';
+
+import { useMotion } from '../../motion/index.js';
 
 /**
  * Headless canvas drawing helper for a circular reticle, used within a
@@ -24,7 +25,7 @@ export function ReticleCanvas({ context, ref }) {
     const contextRef = useRef(context);
     const positionRef = useRef({ x: 0, y: 0 });
     const animatedInRef = useRef(false);
-    const propsRef = useRef({ scale: 1, alpha: 0 });
+    const motion = useMotion({ scale: 1, alpha: 0 });
     const themeRef = useRef({ lineWidth: 1.5, strokeStyle: '' });
 
     useEffect(() => {

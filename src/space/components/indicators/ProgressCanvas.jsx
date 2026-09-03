@@ -1,10 +1,8 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { clearTween, tween } from '@lib/tween/Tween.js';
 import { degToRad } from '@lib/utils/Utils.js';
 
-import { useAnimation } from '../../motion/index.js';
-import { useTicker } from '../../motion/index.js';
+import { useAnimation, useMotion, useTicker } from '../../motion/index.js';
 
 // Fixed DPR of 2 — identical to the original ProgressCanvas
 const CANVAS_DPR = 2;
@@ -34,7 +32,7 @@ export function ProgressCanvas({
     const [rootRef, root] = useAnimation();
     const canvasRef = useRef(null);
     const ctxRef = useRef(null);
-    const propsRef = useRef({ progress: 0 });
+    const motion = useMotion({ progress: 0 });
     const needsUpdateRef = useRef(false);
     const onCompleteRef = useRef(onComplete);
 
@@ -72,18 +70,18 @@ export function ProgressCanvas({
 
     // Animate to new progress value whenever the prop changes
     useEffect(() => {
-        clearTween(propsRef.current);
+        motion.stop();
 
         needsUpdateRef.current = true;
 
-        tween(propsRef.current, { progress: progressProp }, 500, 'easeOutCubic', () => {
+        motion.animate({ progress: progressProp }, 500, 'easeOutCubic', () => {
             needsUpdateRef.current = false;
 
-            if (propsRef.current.progress >= 1 && onCompleteRef.current) {
+            if (motion.values.progress >= 1 && onCompleteRef.current) {
                 onCompleteRef.current();
             }
         });
-    }, [progressProp]);
+    }, [motion, progressProp]);
 
     useTicker(() => {
         if (!needsUpdateRef.current || !ctxRef.current) {
@@ -95,11 +93,9 @@ export function ProgressCanvas({
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.beginPath();
-        ctx.arc(cx, cy, radius, startAngle, startAngle + degToRad(360 * propsRef.current.progress));
+        ctx.arc(cx, cy, radius, startAngle, startAngle + degToRad(360 * motion.values.progress));
         ctx.stroke();
     });
-
-    useEffect(() => () => clearTween(propsRef.current), []);
 
     useImperativeHandle(ref, () => ({
         animateIn: () => root.stop().set({ scale: 1, opacity: 0 }).animate({ opacity: 1 }, 400, 'easeOutCubic'),

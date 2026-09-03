@@ -1,12 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { WebAudio } from '@lib/index.js';
 
 import { Example } from '@/components';
 
+/**
+ * Initialises a streaming audio source and plays it on pointer-down, matching
+ * the original test_stream.html.
+ */
 export default function TestStreamExample({ title }) {
-    const ref = useRef(null);
-
     useEffect(() => {
         WebAudio.init({ sampleRate: 48000 });
         WebAudio.load({ cyberspace: 'https://icecast.cyberspace.app/dive.ogg' });
@@ -26,5 +28,5 @@ export default function TestStreamExample({ title }) {
         };
     }, []);
 
-    return <Example title={title} ref={ref} />;
+    return <Example title={title} />;
 }
