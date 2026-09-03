@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 
 import './NavLink.css';
 

@@ -1,0 +1,16 @@
+.info {
+    position: absolute;
+}
+
+.info .primary {
+    font-variant-numeric: tabular-nums;
+    line-height: var(--ui-title-line-height);
+    letter-spacing: var(--ui-number-letter-spacing);
+    white-space: nowrap;
+}
+
+.info .secondary {
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    color: var(--ui-secondary-color);
+}

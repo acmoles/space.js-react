@@ -1,0 +1,32 @@
+.info {
+    position: absolute;
+}
+
+.info .container {
+    position: relative;
+    cursor: move;
+}
+
+.info .container .name {
+    line-height: var(--ui-title-line-height);
+    white-space: nowrap;
+}
+
+.info .container .type {
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    color: var(--ui-secondary-color);
+    padding-bottom: 3px;
+}
+
+.info .numbers {
+    position: absolute;
+    left: -28px;
+    top: 0;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding-top: 3px;
+}

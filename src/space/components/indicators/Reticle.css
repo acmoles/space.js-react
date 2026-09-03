@@ -1,0 +1,23 @@
+.reticle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.reticle .center {
+    position: absolute;
+    box-sizing: border-box;
+    left: 50%;
+    top: 50%;
+    border: 1px solid var(--ui-color);
+    border-radius: 50%;
+}
+
+@media (min-resolution: 1.5dppx) {
+    .reticle .center {
+        border-width: 1.5px;
+    }
+}

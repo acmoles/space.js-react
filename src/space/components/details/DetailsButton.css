@@ -1,0 +1,34 @@
+.button {
+    position: relative;
+    width: 60px; /* SIZE + 40 */
+    height: 40px; /* SIZE + 20 */
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.button .canvas {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+}
+
+.button .number-container {
+    position: absolute;
+    left: 34px;
+    top: 12px;
+    width: max-content;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--ui-title-letter-spacing);
+}
+
+.button .number-container .number {
+    float: left;
+}
+
+.button .number-container .total {
+    float: left;
+    margin-left: 1px;
+    color: var(--ui-secondary-color);
+}

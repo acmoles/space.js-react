@@ -1,144 +1,50 @@
-import { useEffect, useRef } from 'react';
-
-import { Interface, clearTween, ticker, tween } from '@lib/index.js';
+import { useRef } from 'react';
 
 import { Example } from '@/components';
+import { drawLine, useEventListener, useMotion, useTicker } from '@/space';
 
-class Progress extends Interface {
-    constructor() {
-        super(null, 'svg');
+import './Tween.css';
 
-        const size = 90;
+const SIZE = 90;
+const RADIUS = SIZE * 0.4;
 
-        this.width = size;
-        this.height = size;
-        this.x = size / 2;
-        this.y = size / 2;
-        this.r = size * 0.4;
-        this.radius = this.r;
-        this.progress = 0;
-        this.needsUpdate = false;
+/**
+ * A progress ring that squashes while the pointer is down and springs back on
+ * release, drawn by animating the radius and the stroke dash of a circle.
+ */
+function Progress() {
+    const circle = useRef(null);
+    const motion = useMotion({ radius: RADIUS, progress: 1 });
 
-        this.initSVG();
-
-        this.addListeners();
-    }
-
-    initSVG() {
-        this.attr({
-            width: this.width,
-            height: this.height
-        });
-
-        this.circle = new Interface(null, 'svg', 'circle');
-        this.circle.attr({
-            cx: this.x,
-            cy: this.y,
-            r: this.r
-        });
-        this.circle.css({
-            fill: 'none',
-            stroke: 'var(--ui-color)',
-            strokeWidth: 1.5
-        });
-        this.circle.start = 0;
-        this.circle.offset = -0.25;
-        this.add(this.circle);
-    }
-
-    addListeners() {
-        window.addEventListener('pointerdown', this.onPointerDown);
-        window.addEventListener('pointerup', this.onPointerUp);
-        ticker.add(this.onUpdate);
-    }
-
-    removeListeners() {
-        window.removeEventListener('pointerdown', this.onPointerDown);
-        window.removeEventListener('pointerup', this.onPointerUp);
-        ticker.remove(this.onUpdate);
-    }
-
-    // Event handlers
-
-    onPointerDown = () => {
-        clearTween(this);
-
-        this.needsUpdate = true;
-
-        tween(this, { radius: this.r * 0.5 }, 500, 'easeOutCubic', () => {
-            this.needsUpdate = false;
-        });
-    };
-
-    onPointerUp = () => {
-        clearTween(this);
-
-        this.needsUpdate = true;
-
-        tween(this, { radius: this.r, spring: 1.2, damping: 0.4 }, 1000, 'easeOutElastic', () => {
-            this.needsUpdate = false;
-        });
-    };
-
-    onUpdate = () => {
-        if (this.needsUpdate) {
-            this.update();
+    useTicker(() => {
+        if (!circle.current) {
+            return;
         }
-    };
 
-    onProgress = ({ progress }) => {
-        clearTween(this);
+        circle.current.setAttribute('r', motion.values.radius);
 
-        this.needsUpdate = true;
+        drawLine(circle.current, motion.values.progress, 0, -0.25);
+    });
 
-        tween(this, { progress }, 500, 'easeOutCubic', () => {
-            this.needsUpdate = false;
-        });
-    };
+    useEventListener(window, 'pointerdown', () => {
+        motion.stop().animate({ radius: RADIUS * 0.5 }, 500, 'easeOutCubic');
+    });
 
-    // Public methods
+    useEventListener(window, 'pointerup', () => {
+        motion.stop().animate({ radius: RADIUS, spring: 1.2, damping: 0.4 }, 1000, 'easeOutElastic');
+    });
 
-    update = () => {
-        this.circle.attr({ r: this.radius });
-        this.circle.drawLine(this.progress);
-    };
-
-    destroy = () => {
-        this.removeListeners();
-
-        clearTween(this);
-
-        return super.destroy();
-    };
+    return (
+        <svg className="progress" width={SIZE} height={SIZE}>
+            <circle ref={circle} cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} />
+        </svg>
+    );
 }
 
 export default function TweenExample({ title }) {
-    const ref = useRef(null);
-
-    useEffect(() => {
-        const container = ref.current;
-
-        const view = new Progress();
-        view.css({
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            marginLeft: -view.width / 2,
-            marginTop: -view.height / 2,
-            cursor: 'pointer',
-            webkitUserSelect: 'none',
-            userSelect: 'none'
-        });
-        container.appendChild(view.element);
-
-        view.onProgress({ progress: 1 });
-
-        ticker.start();
-
-        return () => {
-            view.destroy();
-        };
-    }, []);
-
-    return <Example title={title} ref={ref} center />;
+    return (
+        <Example title={title}>
+            <Progress />
+        </Example>
+    );
 }

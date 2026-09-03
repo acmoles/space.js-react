@@ -1,0 +1,8 @@
+.panel-item > .container {
+    box-sizing: border-box;
+}
+
+.panel-item > .container > .content {
+    text-transform: uppercase;
+    white-space: nowrap;
+}

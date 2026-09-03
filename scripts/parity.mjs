@@ -92,7 +92,7 @@ async function main() {
         run('git', ['worktree', 'add', '--detach', WORKTREE, REV]);
     }
 
-    run('npx', ['vite', 'build', '--outDir', '/tmp/parity-dist', '--emptyOutDir'], { stdio: 'inherit' });
+    execFileSync('npx', ['vite', 'build', '--outDir', '/tmp/parity-dist', '--emptyOutDir'], { cwd: root, stdio: 'inherit' });
 
     const referenceServer = serve(WORKTREE, REFERENCE_PORT);
     const currentServer = serve('/tmp/parity-dist', CURRENT_PORT);

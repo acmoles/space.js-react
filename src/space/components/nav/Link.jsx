@@ -1,6 +1,6 @@
 import { useImperativeHandle } from 'react';
 
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 
 import './Link.css';
 

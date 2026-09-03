@@ -1,146 +1,63 @@
-import { useEffect, useRef } from 'react';
-
-import { Interface, Magnetic, clearTween, ticker, tween } from '@lib/index.js';
+import { useEffect, useRef, useState } from 'react';
 
 import { Example } from '@/components';
+import { drawLine, useMagnetic, useMotion, useTicker } from '@/space';
 
-class Progress extends Interface {
-    constructor() {
-        super(null, 'svg');
+import './Magnetic.css';
 
-        const size = 90;
+const SIZE = 90;
+const RADIUS = SIZE * 0.4;
 
-        this.width = size;
-        this.height = size;
-        this.x = size / 2;
-        this.y = size / 2;
-        this.radius = size * 0.4;
-        this.progress = 0;
-        this.needsUpdate = false;
+/**
+ * A progress ring that is drawn in on mount, follows the pointer while it is
+ * nearby, and animates out when clicked.
+ */
+function Progress({ onComplete }) {
+    const circle = useRef(null);
+    const [clicked, setClicked] = useState(false);
 
-        this.initSVG();
+    const motion = useMotion({ progress: 0 });
+    const [magneticRef, magnetic] = useMagnetic({ enabled: !clicked });
 
-        this.addListeners();
-    }
+    useTicker(() => {
+        drawLine(circle.current, motion.values.progress, 0, -0.25);
+    });
 
-    initSVG() {
-        this.attr({
-            width: this.width,
-            height: this.height
-        });
+    useEffect(() => {
+        motion.animate({ progress: 1 }, 500, 'easeOutCubic');
+    }, [motion]);
 
-        this.circle = new Interface(null, 'svg', 'circle');
-        this.circle.attr({
-            cx: this.x,
-            cy: this.y,
-            r: this.radius
-        });
-        this.circle.css({
-            fill: 'none',
-            stroke: 'var(--ui-color)',
-            strokeWidth: 1.5
-        });
-        this.circle.start = 0;
-        this.circle.offset = -0.25;
-        this.add(this.circle);
-    }
-
-    addListeners() {
-        ticker.add(this.onUpdate);
-    }
-
-    removeListeners() {
-        ticker.remove(this.onUpdate);
-    }
-
-    // Event handlers
-
-    onUpdate = () => {
-        if (this.needsUpdate) {
-            this.update();
+    const handleClick = () => {
+        if (clicked) {
+            return;
         }
+
+        setClicked(true);
+
+        // The magnetic transform and the animate out share the element, so
+        // both run through the same controls
+        magnetic.stop().animate({ scale: 0.9, opacity: 0 }, 400, 'easeInCubic', onComplete);
     };
 
-    onProgress = ({ progress }) => {
-        clearTween(this);
-
-        this.needsUpdate = true;
-
-        tween(this, { progress }, 500, 'easeOutCubic', () => {
-            this.needsUpdate = false;
-
-            if (this.progress >= 1) {
-                this.onComplete();
-            }
-        });
-    };
-
-    onComplete = () => {
-        this.removeListeners();
-
-        this.events.emit('complete');
-    };
-
-    // Public methods
-
-    update = () => {
-        this.circle.drawLine(this.progress);
-    };
-
-    animateOut = callback => {
-        this.tween({ scale: 0.9, opacity: 0 }, 400, 'easeInCubic', callback);
-    };
-
-    destroy = () => {
-        this.removeListeners();
-
-        clearTween(this);
-
-        return super.destroy();
-    };
+    return (
+        <svg
+            ref={magneticRef}
+            className="progress"
+            width={SIZE}
+            height={SIZE}
+            onClick={handleClick}
+        >
+            <circle ref={circle} cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} />
+        </svg>
+    );
 }
 
 export default function MagneticExample({ title }) {
-    const ref = useRef(null);
+    const [visible, setVisible] = useState(true);
 
-    useEffect(() => {
-        const container = ref.current;
-
-        const view = new Progress();
-        view.css({
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            marginLeft: -view.width / 2,
-            marginTop: -view.height / 2,
-            cursor: 'pointer'
-        });
-        container.appendChild(view.element);
-
-        const magnet = new Magnetic(view);
-        view.add(magnet);
-
-        view.onProgress({ progress: 1 });
-
-        const onClick = () => {
-            view.element.removeEventListener('click', onClick);
-
-            magnet.disable();
-
-            view.animateOut(() => {
-                view.destroy();
-            });
-        };
-
-        view.element.addEventListener('click', onClick);
-
-        ticker.start();
-
-        return () => {
-            view.element.removeEventListener('click', onClick);
-            view.destroy();
-        };
-    }, []);
-
-    return <Example title={title} ref={ref} center />;
+    return (
+        <Example title={title}>
+            {visible && <Progress onComplete={() => setVisible(false)} />}
+        </Example>
+    );
 }

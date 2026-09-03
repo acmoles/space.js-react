@@ -1,0 +1,6 @@
+.point {
+    position: absolute;
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
