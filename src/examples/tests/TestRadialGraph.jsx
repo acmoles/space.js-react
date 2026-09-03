@@ -1,38 +1,24 @@
-import { useEffect, useRef } from 'react';
-
-import { RadialGraph } from '@lib/index.js';
+import { useEffect, useRef, useState } from 'react';
 
 import { Example } from '@/components';
+import { RadialGraph } from '@/space/components/radial/index.js';
 
 export default function TestRadialGraphExample({ title }) {
-    const ref = useRef(null);
+    const graphRef = useRef(null);
+    const [value] = useState(() => Array.from({ length: 10 }, () => Math.random()));
 
     useEffect(() => {
-        const container = ref.current;
-
-        const graph = new RadialGraph({
-            value: Array.from({ length: 10 }, () => Math.random()),
-            precision: 2,
-            lookupPrecision: 200
-        });
-        graph.animateIn();
-        container.appendChild(graph.element);
-
-        let raf;
-
-        function animate() {
-            raf = requestAnimationFrame(animate);
-
-            graph.update();
-        }
-
-        raf = requestAnimationFrame(animate);
-
-        return () => {
-            cancelAnimationFrame(raf);
-            graph.destroy();
-        };
+        graphRef.current?.animateIn();
     }, []);
 
-    return <Example title={title} ref={ref} center />;
+    return (
+        <Example title={title} center>
+            <RadialGraph
+                ref={graphRef}
+                value={value}
+                precision={2}
+                lookupPrecision={200}
+            />
+        </Example>
+    );
 }
