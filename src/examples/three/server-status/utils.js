@@ -60,6 +60,8 @@ export class Data {
     };
 
     static getType = () => {
-        return this.networkName.match(/\(([^)]+)\)/).pop(); // IP address
+        // Extract IP address from network name, e.g. "Internet (1.2.3.4)" → "1.2.3.4"
+        const match = this.networkName?.match(/\(([^)]+)\)/);
+        return match ? match.pop() : (this.networkName || '');
     };
 }

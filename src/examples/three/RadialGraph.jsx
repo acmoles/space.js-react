@@ -9,6 +9,7 @@ import { Example } from '@/components';
 function Scene({ containerRef }) {
     const { gl: renderer, scene, camera } = useThree();
     const uiRef = useRef(null);
+    const isActiveRef = useRef(false);
     const meshRef = useRef();
 
     const geometry = useMemo(() => {
@@ -62,8 +63,11 @@ function Scene({ containerRef }) {
             }
         });
         point.addPanel(item);
+        isActiveRef.current = true;
 
         return () => {
+            // Clear the active flag first so useFrame stops touching destroyed state
+            isActiveRef.current = false;
             scene.remove(point);
             Point3D.destroy();
             uiRef.current = null;
@@ -72,6 +76,8 @@ function Scene({ containerRef }) {
     }, [renderer, scene, camera, containerRef]);
 
     useFrame(state => {
+        if (!isActiveRef.current) return;
+
         const time = state.clock.getElapsedTime();
 
         if (meshRef.current) {
@@ -80,7 +86,7 @@ function Scene({ containerRef }) {
         }
 
         Point3D.update(time);
-        if (uiRef.current) uiRef.current.update();
+        uiRef.current.update();
     });
 
     return (
@@ -95,7 +101,7 @@ function Scene({ containerRef }) {
     );
 }
 
-export default function RadialGraphExample({ title }) {
+export default function RadialGraph({ title }) {
     const containerRef = useRef(null);
 
     return (

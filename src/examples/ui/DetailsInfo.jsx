@@ -4,7 +4,7 @@ import { UI } from '@lib/index.js';
 
 import { Example } from '@/components';
 
-import './DetailsInfoExample.css';
+import './DetailsInfo.css';
 
 export default function DetailsInfoExample({ title }) {
     const ref = useRef(null);

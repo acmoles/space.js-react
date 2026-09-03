@@ -15,7 +15,7 @@ const count = Math.pow(amount, 3);
 function Scene({ containerRef }) {
     const { gl: renderer, scene, camera } = useThree();
     const uiRef = useRef(null);
-    const meshRef = useRef(null);
+    const isActiveRef = useRef(false);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -34,7 +34,6 @@ function Scene({ containerRef }) {
         const material = new MeshPhongMaterial();
 
         const mesh = new InstancedMesh(geometry, material, count);
-        meshRef.current = mesh;
 
         let i = 0;
         const offset = (amount - 1) / 2;
@@ -74,12 +73,15 @@ function Scene({ containerRef }) {
         materialPanel.animateIn(true);
 
         point.setContent(materialPanel);
+        isActiveRef.current = true;
 
         return () => {
+            // Clear the active flag first so useFrame stops touching destroyed state
+            isActiveRef.current = false;
+            scene.remove(point);
             scene.remove(mesh);
             geometry.dispose();
             material.dispose();
-            meshRef.current = null;
             Point3D.destroy();
             uiRef.current = null;
             ui.destroy();
@@ -87,10 +89,12 @@ function Scene({ containerRef }) {
     }, [renderer, scene, camera, containerRef]);
 
     useFrame(state => {
+        if (!isActiveRef.current) return;
+
         const time = state.clock.getElapsedTime();
 
         Point3D.update(time);
-        if (uiRef.current) uiRef.current.update();
+        uiRef.current.update();
     });
 
     return (
@@ -102,7 +106,7 @@ function Scene({ containerRef }) {
     );
 }
 
-export default function MaterialsInstancingExample({ title }) {
+export default function MaterialsInstancing({ title }) {
     const containerRef = useRef(null);
 
     return (

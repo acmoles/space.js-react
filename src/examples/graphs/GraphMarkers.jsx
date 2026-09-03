@@ -5,7 +5,7 @@ import { Graph, RadialGraph, Stage, UI, clamp, mapLinear, ticker } from '@lib/in
 import { Example } from '@/components';
 import { useClassName } from '@/hooks';
 
-import './GraphMarkersExample.css';
+import './GraphMarkers.css';
 
 export default function GraphMarkersExample({ title }) {
     const ref = useRef(null);

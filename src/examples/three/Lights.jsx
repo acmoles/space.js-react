@@ -9,6 +9,7 @@ import { Example } from '@/components';
 function Scene({ containerRef }) {
     const { scene } = useThree();
     const uiRef = useRef(null);
+    const isActiveRef = useRef(false);
     const meshRef = useRef();
     const pointLightRef = useRef();
     const rectLight1Ref = useRef();
@@ -34,8 +35,11 @@ function Scene({ containerRef }) {
         uiRef.current = ui;
 
         LightPanelController.init(scene, ui);
+        isActiveRef.current = true;
 
         return () => {
+            // Clear the active flag first so useFrame stops touching destroyed state
+            isActiveRef.current = false;
             LightPanelController.destroy();
             uiRef.current = null;
             ui.destroy();
@@ -43,6 +47,8 @@ function Scene({ containerRef }) {
     }, [scene, containerRef]);
 
     useFrame(state => {
+        if (!isActiveRef.current) return;
+
         const time = state.clock.getElapsedTime();
 
         if (meshRef.current) {
@@ -57,7 +63,7 @@ function Scene({ containerRef }) {
         }
 
         LightPanelController.update();
-        if (uiRef.current) uiRef.current.update();
+        uiRef.current.update();
     });
 
     return (
@@ -80,7 +86,7 @@ function Scene({ containerRef }) {
     );
 }
 
-export default function LightsExample({ title }) {
+export default function Lights({ title }) {
     const containerRef = useRef(null);
 
     return (
