@@ -1,7 +1,8 @@
-import { useImperativeHandle, useRef } from 'react';
+import { useEffect, useImperativeHandle, useRef } from 'react';
+
+import { clearTween, delayedCall } from '@lib/tween/Tween.js';
 
 import { useAnimation } from '../../motion/index.js';
-import { useDelayedCall } from '../../motion/index.js';
 import { ReticleInfo } from './ReticleInfo.jsx';
 import { TargetNumber } from './TargetNumber.jsx';
 
@@ -13,24 +14,33 @@ import './Tracker.css';
  *
  * @param {object} props
  * @param {boolean} [props.noCorners=false] Omit the corner brackets.
- * @param {object} [props.data] `{ targetNumber, primary, secondary }`.
+ * @param {object} [props.data] `{ targetNumber, primary, secondary }` for the optional sub-views.
  * @param {object} [props.ref]
  *   Exposes `position { x, y }`, `update()`, `animateIn()`, `animateOut(cb)`,
- *   `show()`, `hide(fast)`, `lock()`, `unlock()`, `animatedIn`, `isVisible`,
- *   `isInstanced`, `locked`.
+ *   `show()`, `hide(fast)`, `lock()`, `unlock()`,
+ *   and `animatedIn`, `isVisible`, `isInstanced`, `locked` state.
  * @example
- * <Tracker ref={trackerRef} />
+ * <Tracker data={{ targetNumber: 1 }} ref={trackerRef} />
  */
 export function Tracker({ noCorners = false, data, ref }) {
     const dpr = window.devicePixelRatio;
     const tnSize = dpr > 1 ? 17 : 18;
+
+    const rootRef = useRef(null);
     const positionRef = useRef({ x: 0, y: 0 });
-    const stateRef = useRef({ locked: false, animatedIn: false, isInstanced: false, isVisible: false });
+    const stateRef = useRef({
+        locked: false,
+        animatedIn: false,
+        isInstanced: false,
+        isVisible: false
+    });
     const numberRef = useRef(null);
     const infoRef = useRef(null);
+    const timeoutRef = useRef(null);
 
     const [cornersRef, corners] = useAnimation({ visibility: 'hidden', scale: 1, opacity: 1 });
-    const delay = useDelayedCall();
+
+    useEffect(() => () => clearTween(timeoutRef.current), []);
 
     useImperativeHandle(ref, () => ({
         get position() {
@@ -45,18 +55,16 @@ export function Tracker({ noCorners = false, data, ref }) {
         get isInstanced() {
             return stateRef.current.isInstanced;
         },
-        get isVisible() {
-            return stateRef.current.isVisible;
-        },
         set isInstanced(val) {
             stateRef.current.isInstanced = val;
         },
+        get isVisible() {
+            return stateRef.current.isVisible;
+        },
         update: () => {
-            const el = cornersRef.current?.parentElement;
-
-            if (el) {
-                el.style.left = `${positionRef.current.x}px`;
-                el.style.top = `${positionRef.current.y}px`;
+            if (rootRef.current) {
+                rootRef.current.style.left = `${positionRef.current.x}px`;
+                rootRef.current.style.top = `${positionRef.current.y}px`;
             }
         },
         lock: () => {
@@ -74,7 +82,11 @@ export function Tracker({ noCorners = false, data, ref }) {
             stateRef.current.locked = false;
         },
         show: () => {
-            corners.stop().animate({ scale: 1, opacity: 1 }, 400, 'easeOutCubic');
+            clearTween(timeoutRef.current);
+
+            if (!noCorners) {
+                corners.stop().animate({ scale: 1, opacity: 1 }, 400, 'easeOutCubic');
+            }
 
             stateRef.current.animatedIn = true;
         },
@@ -83,15 +95,23 @@ export function Tracker({ noCorners = false, data, ref }) {
                 return;
             }
 
-            delay(fast ? 0 : 2000, () => {
-                corners.stop().animate({ opacity: 0 }, 400, 'easeOutCubic');
-            });
+            if (!noCorners) {
+                clearTween(timeoutRef.current);
+
+                timeoutRef.current = delayedCall(fast ? 0 : 2000, () => {
+                    corners.stop().animate({ opacity: 0 }, 400, 'easeOutCubic');
+                });
+            }
 
             stateRef.current.animatedIn = false;
         },
         animateIn: () => {
-            corners.stop().set({ visibility: 'visible', scale: 0.25, opacity: 0 });
-            corners.animate({ scale: 1, opacity: 1 }, 400, 'easeOutCubic');
+            clearTween(timeoutRef.current);
+
+            if (!noCorners) {
+                corners.stop().set({ visibility: 'visible', scale: 0.25, opacity: 0 });
+                corners.animate({ scale: 1, opacity: 1 }, 400, 'easeOutCubic');
+            }
 
             if (infoRef.current) {
                 infoRef.current.animateIn();
@@ -101,28 +121,39 @@ export function Tracker({ noCorners = false, data, ref }) {
             stateRef.current.isVisible = true;
         },
         animateOut: callback => {
-            corners.stop().animate({ scale: 0, opacity: 0 }, 500, 'easeInCubic', () => {
-                corners.set({ visibility: 'hidden' });
+            clearTween(timeoutRef.current);
 
+            if (!noCorners) {
+                corners.stop().animate({ scale: 0, opacity: 0 }, 500, 'easeInCubic', () => {
+                    corners.set({ visibility: 'hidden' });
+
+                    stateRef.current.animatedIn = false;
+                    stateRef.current.isVisible = false;
+
+                    if (callback) {
+                        callback();
+                    }
+                });
+            } else {
                 stateRef.current.animatedIn = false;
                 stateRef.current.isVisible = false;
 
                 if (callback) {
                     callback();
                 }
-            });
+            }
 
             if (infoRef.current) {
                 infoRef.current.animateOut();
             }
         }
-    }), [corners, delay]);
+    }), [corners, noCorners]);
 
     const hasTargetNumber = data && data.targetNumber;
     const hasInfo = data && (data.primary !== undefined || data.secondary !== undefined);
 
     return (
-        <div className="tracker">
+        <div ref={rootRef} className="tracker">
             {!noCorners && (
                 <div ref={cornersRef} className="corners">
                     <div className="tl" />
@@ -136,7 +167,6 @@ export function Tracker({ noCorners = false, data, ref }) {
                     ref={numberRef}
                     targetNumber={data.targetNumber}
                     style={{
-                        position: 'absolute',
                         left: -(tnSize + 15),
                         top: '50%',
                         marginTop: -Math.round(tnSize / 2)

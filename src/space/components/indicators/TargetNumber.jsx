@@ -9,11 +9,12 @@ import './TargetNumber.css';
  *
  * @param {object} props
  * @param {string|number} [props.targetNumber] The number to display inside the box.
+ * @param {object} [props.style] Extra inline styles applied to the root element (e.g. positioning from parent).
  * @param {object} [props.ref] Exposes `animateIn(delay)` and `animateOut(fast)`.
  * @example
  * <TargetNumber targetNumber={1} ref={ref} />
  */
-export function TargetNumber({ targetNumber, ref }) {
+export function TargetNumber({ targetNumber, style: styleProp, ref }) {
     const dpr = window.devicePixelRatio;
     const size = dpr > 1 ? 17 : 18;
     const numberLeft = dpr > 1 ? 4 : 5;
@@ -43,7 +44,7 @@ export function TargetNumber({ targetNumber, ref }) {
         <div
             ref={rootRef}
             className="target-number"
-            style={{ width: size, height: size }}
+            style={{ ...styleProp, width: size, height: size }}
         >
             <span
                 className="number"

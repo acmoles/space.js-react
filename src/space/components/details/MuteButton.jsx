@@ -185,11 +185,21 @@ export function MuteButton({ sound: initialSound = true, onUpdate, onHover, onCl
         <div
             ref={rootRef}
             className="button"
+            style={{ width: WIDTH + 20, height: HEIGHT + 20 }}
             onMouseEnter={handleHover}
             onMouseLeave={handleHover}
             onClick={handleClick}
         >
-            <canvas ref={canvasRef} />
+            <canvas
+                ref={canvasRef}
+                style={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: '50%',
+                    marginLeft: -(WIDTH / 2),
+                    marginTop: -(HEIGHT / 2)
+                }}
+            />
         </div>
     );
 }

@@ -242,11 +242,16 @@ export function DetailsButton({ data, fastUpdate = false, onHover, onClick, ref 
         <div
             ref={rootRef}
             className="button"
+            style={{ width: SIZE + 40, height: SIZE + 20 }}
             onMouseEnter={handleHover}
             onMouseLeave={handleHover}
             onClick={onClick}
         >
-            <canvas ref={canvasRef} className="canvas" />
+            <canvas
+                ref={canvasRef}
+                className="canvas"
+                style={{ position: 'absolute', left: 10, top: 10 }}
+            />
             {data && (
                 <div className="number-container">
                     <span ref={numberRef} className="number">{displayNumber}</span>

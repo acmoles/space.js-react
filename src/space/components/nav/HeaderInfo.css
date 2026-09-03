@@ -1,0 +1,12 @@
+.header-info {
+    float: right;
+    padding: 10px;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.header-info .number {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--ui-title-letter-spacing);
+}

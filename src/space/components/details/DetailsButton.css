@@ -1,7 +1,6 @@
+/* Width/height set inline in JSX because they differ per button component */
 .button {
     position: relative;
-    width: 60px; /* SIZE + 40 */
-    height: 40px; /* SIZE + 20 */
     cursor: pointer;
     pointer-events: auto;
     -webkit-user-select: none;

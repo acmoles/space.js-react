@@ -242,16 +242,38 @@ The home page (`/`) is an index of every example, and each example is available 
 index.html            Vite entry point
 lib/                  Space.js library source (published package)
 public/assets/        Example assets
+scripts/parity.mjs    Visual parity harness
 src/
   main.jsx            React entry point
   App.jsx             Routes
-  components/         Shared components
+  components/         Shared app components
   examples/           One component per example, grouped by category
     registry.js       Example metadata used by the router and index page
-  hooks/              Shared hooks
+  hooks/              Shared app hooks
   pages/              Index page
+  space/              Declarative React implementation of the UI library
+    components/       Components, grouped by family
+    hooks/            useEventListener, useResize, useMagnetic
+    motion/           Style engine, useAnimation, useMotion, useTicker
+    three/            React Three Fiber components and hooks
   styles/             Global styles
 examples/mars/        Standalone demo, built separately with Rollup
+```
+
+The UI itself is being re-implemented as declarative React components under
+`src/space/`, documented in [src/space/README.md](src/space/README.md).
+Components own their markup, styles and animation, and motion runs through the
+library's own tween engine and easing functions so timings and curves are
+identical to the vanilla version.
+
+Ports are checked against the pre-port pages with the parity harness, which
+renders a route and the original page side by side in headless Chromium and
+reports the number of differing pixels:
+
+```sh
+npm install --no-save playwright-core   # once
+npm run parity                          # every route
+npm run parity -- tween magnetic        # specific routes
 ```
 
 #### ui
