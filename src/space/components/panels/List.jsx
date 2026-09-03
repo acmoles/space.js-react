@@ -25,11 +25,13 @@ import './List.css';
  *   onChange={e => console.log(e.value)}
  * />
  */
-export function List({ name, list, value, onChange, children, ref }) {
+export function List({ list, value, onChange, children, ref }) {
     const keys = useRef(Array.from(list.keys()));
     const values = useRef(Array.from(list.values()));
 
-    const [index, setIndexState] = useState(() => values.current.indexOf(value));
+    // keysState mirrors keys.current for rendering (JSX cannot read ref.current)
+    const [keysState, setKeysState] = useState(() => Array.from(list.keys()));
+    const [index, setIndexState] = useState(() => Array.from(list.values()).indexOf(value));
     const [showContent, setShowContent] = useState(true);
 
     const indexRef = useRef(index);
@@ -70,6 +72,7 @@ export function List({ name, list, value, onChange, children, ref }) {
         setList(newMap) {
             keys.current = Array.from(newMap.keys());
             values.current = Array.from(newMap.values());
+            setKeysState(keys.current.slice());
             if (keys.current.length > 2) {
                 selectRef.current?.setList(keys.current);
             }
@@ -89,15 +92,15 @@ export function List({ name, list, value, onChange, children, ref }) {
     return (
         <div className="list">
             <div className="container">
-                {keys.current.length > 2 ? (
+                {keysState.length > 2 ? (
                     <ListSelect
                         ref={selectRef}
-                        list={keys.current}
+                        list={keysState}
                         index={index}
                         onClick={handleClick}
                     />
                 ) : (
-                    keys.current.map((k, i) => (
+                    keysState.map((k, i) => (
                         <ListToggle
                             key={k}
                             ref={el => { itemRefs.current[i] = el; }}

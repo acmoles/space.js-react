@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { clearTween, tween } from '@lib/tween/Tween.js';
+import { useMotion } from '../../motion/index.js';
 
 /**
  * Headless canvas drawing helper for an animated line segment, used within a
@@ -24,7 +24,7 @@ export function LineCanvas({ context, ref }) {
     const contextRef = useRef(context);
     const startRef = useRef({ x: 0, y: 0 });
     const endRef = useRef({ x: 0, y: 0 });
-    const propsRef = useRef({ alpha: 0, start: 0, progress: 0 });
+    const motion = useMotion({ alpha: 0, start: 0, progress: 0 });
     const themeRef = useRef({ lineWidth: 1.5, strokeStyle: '' });
 
     useEffect(() => {

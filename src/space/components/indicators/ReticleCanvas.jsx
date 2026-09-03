@@ -38,8 +38,6 @@ export function ReticleCanvas({ context, ref }) {
             getComputedStyle(document.documentElement).getPropertyValue('--ui-color').trim();
     }, []);
 
-    useEffect(() => () => clearTween(propsRef.current), []);
-
     useImperativeHandle(ref, () => ({
         get animatedIn() {
             return animatedInRef.current;
@@ -50,15 +48,16 @@ export function ReticleCanvas({ context, ref }) {
         },
         update: () => {
             const ctx = contextRef.current;
+            const v = motion.values;
 
-            if (!ctx || propsRef.current.alpha <= 0) {
+            if (!ctx || v.alpha <= 0) {
                 return;
             }
 
             ctx.save();
-            ctx.globalAlpha = propsRef.current.alpha < 0.001 ? 0 : propsRef.current.alpha;
+            ctx.globalAlpha = v.alpha < 0.001 ? 0 : v.alpha;
             ctx.translate(positionRef.current.x, positionRef.current.y);
-            ctx.scale(propsRef.current.scale, propsRef.current.scale);
+            ctx.scale(v.scale, v.scale);
             ctx.lineWidth = themeRef.current.lineWidth;
             ctx.strokeStyle = themeRef.current.strokeStyle;
             ctx.beginPath();
@@ -67,19 +66,19 @@ export function ReticleCanvas({ context, ref }) {
             ctx.restore();
         },
         animateIn: () => {
-            clearTween(propsRef.current);
+            motion.stop();
 
-            propsRef.current.scale = 0.25;
-            propsRef.current.alpha = 0;
+            motion.values.scale = 0.25;
+            motion.values.alpha = 0;
 
-            tween(propsRef.current, { scale: 1, alpha: 1 }, 400, 'easeOutCubic');
+            motion.animate({ scale: 1, alpha: 1 }, 400, 'easeOutCubic');
 
             animatedInRef.current = true;
         },
         animateOut: callback => {
-            clearTween(propsRef.current);
+            motion.stop();
 
-            tween(propsRef.current, { scale: 0, alpha: 0 }, 500, 'easeInCubic', () => {
+            motion.animate({ scale: 0, alpha: 0 }, 500, 'easeInCubic', () => {
                 animatedInRef.current = false;
 
                 if (callback) {
