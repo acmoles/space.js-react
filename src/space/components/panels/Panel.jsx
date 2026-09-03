@@ -18,6 +18,8 @@ function getCSSVar(name) {
  * @param {object}     props
  * @param {object[]}   props.items          Item descriptor objects (same shape as the original).
  * @param {function}   [props.onChange]     Called when any child item emits an update.
+ * @param {boolean}    [props.autoAnimateIn=false] When true, calls `animateIn(fast=true)` on mount
+ *                                           (for nested panels created by setContent callbacks).
  * @param {object}     [props.ref]    Exposes `animateIn(fast?)`, `animateOut(callback?)`,
  *                                    `activate()`, `deactivate()`, `invert(isInverted)`.
  * @example

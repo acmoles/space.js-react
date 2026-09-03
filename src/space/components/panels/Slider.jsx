@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useRef } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import { useAnimation } from '../../motion/index.js';
 import { clamp } from '@lib/utils/Utils.js';
@@ -51,6 +51,8 @@ export function Slider({
 
     useEffect(() => { onChangeRef.current = onChange; });
 
+    const [dynContent, setDynContent] = useState(null);
+    const dynContentRef = useRef(null);
     const [lineRef, line] = useAnimation({ transformOrigin: 'left center', scaleX: 0 });
 
     const applyValue = (v, notify = true) => {
@@ -72,6 +74,13 @@ export function Slider({
             const clamped = clampVal(v);
             valueRef.current = clamped;
             applyValue(clamped, notify);
+        },
+        hasContent() {
+            return dynContentRef.current !== null;
+        },
+        setContent(node) {
+            dynContentRef.current = node;
+            setDynContent(node);
         },
         toggleContent(show) {
             if (groupRef.current) groupRef.current.style.display = show ? '' : 'none';
@@ -138,9 +147,9 @@ export function Slider({
                 <span ref={numberRef} className="number">{clampVal(initialValue)}</span>
                 <span ref={lineRef} className="line" />
             </div>
-            {children && (
+            {(dynContent ?? children) && (
                 <div ref={groupRef} className="group">
-                    {children}
+                    {dynContent ?? children}
                 </div>
             )}
         </div>
