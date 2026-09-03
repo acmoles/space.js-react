@@ -143,7 +143,7 @@ export function PanelThumbnail({
         toggleContent(show) {
             setShowContent(show);
         }
-    }), []); // eslint-disable-line react-hooks/exhaustive-deps
+    }), []);
 
     const loadFilesAndUpdate = async files => {
         const data = await loadFiles(files);

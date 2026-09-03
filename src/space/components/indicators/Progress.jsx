@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { useAnimation, useMotion, drawLine, useTicker } from '../../motion/index.js';
+import { drawLine, useAnimation, useMotion, useTicker } from '../../motion/index.js';
 
 import './Progress.css';
 
@@ -58,7 +58,7 @@ export function Progress({
     // Draw initial state after mount
     useEffect(() => {
         drawLine(circleRef.current, 0, 0, -0.25);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     useImperativeHandle(ref, () => ({
         animateIn: () => root.stop().set({ scale: 1, opacity: 0 }).animate({ opacity: 1 }, 400, 'easeOutCubic'),

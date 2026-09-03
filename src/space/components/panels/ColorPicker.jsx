@@ -85,7 +85,6 @@ function buildRingElements(uid) {
  * <ColorPicker name="Diffuse" value={0xff0000} onChange={e => console.log(e.value.getHexString())} />
  */
 export function ColorPicker({
-    name: _name,
     value: initialValue,
     noSwatch = false,
     noText = false,
@@ -93,45 +92,46 @@ export function ColorPicker({
     ref
 }) {
     const uid = useId().replace(/:/g, '_');
-    const { defs: ringDefs, paths: ringPaths } = useMemo(() => buildRingElements(uid), [uid]); // eslint-disable-line react-hooks/exhaustive-deps
+    const { defs: ringDefs, paths: ringPaths } = useMemo(() => buildRingElements(uid), [uid]);
 
     const panelCtx = useContext(PanelContext);
     const onChangeRef = useRef(onChange);
     useEffect(() => { onChangeRef.current = onChange; });
 
+    // Initialise colour once — avoids ref.current access during render
+    const initColor = useMemo(() => {
+        const c = new Color();
+        c.set(initialValue || 0);
+        const hslObj = { h: 0, s: 0, l: 0 };
+        c.getHSL(hslObj);
+        return { color: c, hsl: hslObj, hex: c.getHexString() };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Stable mutable colour/HSL state — avoids triggering re-renders during drag
-    const colorVal = useRef(new Color());
-    const hsl = useRef({ h: 0, s: 0, l: 0 });
+    const colorVal = useRef(initColor.color);
+    const hsl = useRef(initColor.hsl);
     const helperColor = useRef(new Color());
 
-    // Initialise colour synchronously
-    colorVal.current.set(initialValue || 0);
-    colorVal.current.getHSL(hsl.current);
-
     // React state: only what drives visible re-renders
-    const [swatchBg, setSwatchBg] = useState(() => `#${colorVal.current.getHexString()}`);
-    const [hexLabel, setHexLabel] = useState(() => `0x${colorVal.current.getHexString().toUpperCase()}`);
+    const [swatchBg, setSwatchBg] = useState(`#${initColor.hex}`);
+    const [hexLabel, setHexLabel] = useState(`0x${initColor.hex.toUpperCase()}`);
     const [isOpen, setIsOpen] = useState(false);
 
     const isOpenRef = useRef(false);
 
-    // Dimensions — read from CSS variable once after mount
-    const dims = useRef(null);
-    const ensureDims = () => {
-        if (!dims.current) {
-            const w = getPanelWidth();
-            dims.current = {
-                w,
-                height: 20,
-                middle: w / 2,
-                top: 29, // height + 9
-                ratio: SVG_SIZE / w,
-                triRadius: 98,
-                triSide: Math.sqrt(3) * 98
-            };
-        }
-        return dims.current;
-    };
+    // Dimensions — computed once from CSS variables
+    const d = useMemo(() => {
+        const w = getPanelWidth();
+        return {
+            w,
+            height: 20,
+            middle: w / 2,
+            top: 29,
+            ratio: SVG_SIZE / w,
+            triRadius: 98,
+            triSide: Math.sqrt(3) * 98
+        };
+    }, []);
 
     // DOM refs
     const rootRef = useRef(null);
@@ -151,7 +151,6 @@ export function ColorPicker({
     /** Synchronise the SVG dynamic markers with current hsl/color */
     const moveMarkers = () => {
         const { h, s, l } = hsl.current;
-        const d = ensureDims();
         const R = d.triRadius;
         const angle = h * TwoPI;
         const hue = -angle + PI90;
@@ -253,7 +252,6 @@ export function ColorPicker({
         isDragDown.current = true;
         firstDown.current = true;
 
-        const d = ensureDims();
         const b = rootRef.current.getBoundingClientRect();
         const ox = e.clientX - (b.left + d.middle);
         const oy = e.clientY - (b.top + d.top + d.middle);
@@ -297,7 +295,7 @@ export function ColorPicker({
 
                 if (r > maxR) {
                     const dx = Math.tan(rad1) * r;
-                    let rad2 = clamp(Math.atan(dx / maxR), -PI60, PI60);
+                    const rad2 = clamp(Math.atan(dx / maxR), -PI60, PI60);
                     rad += rad2 - rad1;
                     rad0 = (rad + PI90 + TwoPI + ang) % TwoPI;
                     rad1 = rad0 % Third - PI60;
@@ -339,8 +337,6 @@ export function ColorPicker({
             window.removeEventListener('pointerup', upHandlerRef.current);
         }
     }, []);
-
-    const d = ensureDims();
 
     return (
         <div
