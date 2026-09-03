@@ -1,3 +1,487 @@
-export default function UiComponents() {
-    return null;
+import { useEffect, useRef } from 'react';
+
+import { DetailsButton, Interface, LineCanvas, Link, MuteButton, NavLink, Point, Reticle, ReticleCanvas, TargetNumber, Tracker, UI, Vector2, defer, getConstructor, ticker } from '@lib/index.js';
+
+import { Example } from '@/components';
+import { useClassName } from '@/hooks';
+
+import './UiComponents.css';
+
+class ComponentItem extends Interface {
+    constructor(view, index) {
+        super('.component-item');
+
+        this.view = view;
+        this.index = index;
+
+        const size = 92;
+
+        this.width = size;
+        this.height = size;
+        this.animatedIn = false;
+
+        this.init();
+        this.initViews();
+
+        this.addListeners();
+    }
+
+    init() {
+        this.css({
+            position: 'relative',
+            boxSizing: 'border-box',
+            width: this.width,
+            height: this.height,
+            marginTop: 20,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            border: '1px solid var(--ui-color-divider-line)',
+            cursor: 'pointer',
+            opacity: 0
+        });
+
+        this.number = new Interface('.number');
+        this.number.css({
+            position: 'absolute',
+            left: 0,
+            top: -20,
+            whiteSpace: 'nowrap'
+        });
+        this.number.text(this.index + 1);
+        this.add(this.number);
+
+        this.type = new Interface('.type');
+        this.type.css({
+            position: 'relative',
+            top: -1,
+            display: 'inline-block',
+            marginLeft: 10,
+            fontSize: 'var(--ui-secondary-font-size)',
+            letterSpacing: 'var(--ui-secondary-letter-spacing)',
+            color: 'var(--ui-secondary-color)'
+        });
+        this.type.text(getConstructor(this.view).name);
+        this.number.add(this.type);
+    }
+
+    initViews() {
+        if (this.view instanceof Interface) {
+            this.view.css({ pointerEvents: 'none' });
+        }
+
+        this.add(this.view);
+    }
+
+    addListeners() {
+        if (this.view.onHover) {
+            this.element.addEventListener('mouseenter', this.onHover);
+            this.element.addEventListener('mouseleave', this.onHover);
+        }
+
+        this.element.addEventListener('click', this.onClick);
+    }
+
+    // Event handlers
+
+    onHover = e => {
+        this.view.onHover(e);
+    };
+
+    onClick = e => {
+        e.stopPropagation();
+
+        if (this.animatedIn) {
+            this.view.animateOut();
+            this.animatedIn = false;
+        } else {
+            this.view.animateIn();
+            this.animatedIn = true;
+        }
+    };
+
+    // Public methods
+
+    animateIn = delay => {
+        this.tween({ opacity: 1 }, 400, 'easeOutCubic', delay);
+
+        this.view.animateIn();
+        this.animatedIn = true;
+    };
+}
+
+class Components extends Interface {
+    constructor() {
+        super('.components');
+
+        this.itemWidth = 90;
+        this.itemHeight = 90;
+        this.itemHalfWidth = Math.round(this.itemWidth / 2);
+        this.itemHalfHeight = Math.round(this.itemHeight / 2);
+        this.items = [];
+
+        this.init();
+        this.initCanvas();
+        this.initViews();
+
+        this.addListeners();
+        this.onResize();
+    }
+
+    init() {
+        this.css({
+            minHeight: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '55px 0 125px'
+        });
+
+        this.container = new Interface('.container');
+        this.container.css({
+            position: 'relative',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 67,
+            maxWidth: 1205
+        });
+        this.add(this.container);
+    }
+
+    initCanvas() {
+        this.canvas = new Interface(null, 'canvas');
+        this.canvas.css({
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            pointerEvents: 'none'
+        });
+        this.context = this.canvas.element.getContext('2d');
+        this.container.add(this.canvas);
+    }
+
+    initViews() {
+        const width = this.itemWidth;
+        const height = this.itemHeight;
+        const halfWidth = this.itemHalfWidth;
+        const halfHeight = this.itemHalfHeight;
+
+        // Reticle
+        const reticle = new Reticle();
+        reticle.position.set(halfWidth, halfHeight);
+        reticle.update();
+
+        // Reticle with info
+        const reticle2 = new Reticle();
+        reticle2.setData({
+            primary: '127.0.0.1',
+            secondary: 'localhost'
+        });
+        reticle2.position.set(halfWidth, halfHeight);
+        reticle2.update();
+
+        // Reticle canvas
+        const reticle3 = new ReticleCanvas();
+        reticle3.setContext(this.context);
+
+        // Tracker
+        const tracker = new Tracker();
+        tracker.position.set(halfWidth, halfHeight);
+        tracker.update();
+        tracker.css({
+            width,
+            height,
+            marginLeft: -halfWidth,
+            marginTop: -halfHeight
+        });
+
+        // Tracker with target number
+        const tracker2 = new Tracker();
+        tracker2.setData({ targetNumber: 1 });
+        tracker2.position.set(halfWidth, halfHeight);
+        tracker2.update();
+        tracker2.css({
+            width,
+            height,
+            marginLeft: -halfWidth,
+            marginTop: -halfHeight
+        });
+        tracker2.lock();
+
+        // Tracker with target number and reticle info
+        const tracker3 = new Tracker({
+            noCorners: true
+        });
+        tracker3.setData({
+            targetNumber: 1,
+            primary: '127.0.0.1',
+            secondary: 'localhost'
+        });
+        tracker3.position.set(halfWidth, halfHeight);
+        tracker3.update();
+        tracker3.css({
+            width,
+            height,
+            marginLeft: -halfWidth,
+            marginTop: -halfHeight
+        });
+        tracker3.lock();
+
+        // Target number
+        const number = new TargetNumber();
+        number.setData({ targetNumber: 1 });
+
+        // Line canvas
+        const line = new LineCanvas();
+        line.setContext(this.context);
+
+        // Point
+        const point = new Point();
+        point.setData({
+            name: '127.0.0.1',
+            type: 'localhost'
+        });
+
+        // Point with multiple target numbers
+        const point2 = new Point();
+        point2.setData({
+            name: '127.0.0.1',
+            type: 'localhost'
+        });
+        point2.setTargetNumbers([1, 2, 3]);
+        point2.lock();
+
+        // Details button (closed)
+        const detailsButton = new DetailsButton();
+        detailsButton.css({ marginLeft: 20 });
+
+        // Details button (open)
+        const detailsButton2 = new DetailsButton();
+        detailsButton2.css({ marginLeft: 20 });
+        detailsButton2.open();
+
+        // Details button with number (closed)
+        const detailsButton3 = new DetailsButton();
+        detailsButton3.css({ marginLeft: 20 });
+        detailsButton3.setData({ number: 1 });
+
+        // Details button with number (open)
+        const detailsButton4 = new DetailsButton();
+        detailsButton4.css({ marginLeft: 20 });
+        detailsButton4.setData({ number: 1 });
+        detailsButton4.open();
+
+        // Details button with number and total (closed)
+        const detailsButton5 = new DetailsButton();
+        detailsButton5.css({ marginLeft: 20 });
+        detailsButton5.setData({
+            number: 1,
+            total: 6
+        });
+
+        // Details button with number and total (open)
+        const detailsButton6 = new DetailsButton();
+        detailsButton6.css({ marginLeft: 20 });
+        detailsButton6.setData({
+            number: 1,
+            total: 6
+        });
+        detailsButton6.open();
+
+        // Mute button (sound on)
+        const muteButton = new MuteButton({ sound: true });
+
+        // Mute button (sound off)
+        const muteButton2 = new MuteButton({ sound: false });
+
+        // Nav link
+        const link = new NavLink({ title: 'Link' });
+
+        // Link
+        const link2 = new Link({ title: 'Link' });
+
+        // Create components
+        [
+            reticle,
+            reticle2,
+            reticle3,
+            tracker,
+            tracker2,
+            tracker3,
+            number,
+            line,
+            point,
+            point2,
+            detailsButton,
+            detailsButton2,
+            detailsButton3,
+            detailsButton4,
+            detailsButton5,
+            detailsButton6,
+            muteButton,
+            muteButton2,
+            link,
+            link2
+        ].forEach((view, i) => {
+            const item = new ComponentItem(view, i);
+            this.container.add(item);
+            this.items.push(item);
+        });
+
+        // Public properties
+        this.reticle3 = reticle3;
+        this.line = line;
+        this.detailsButton = detailsButton;
+        this.detailsButton2 = detailsButton2;
+        this.detailsButton3 = detailsButton3;
+        this.detailsButton4 = detailsButton4;
+        this.detailsButton5 = detailsButton5;
+        this.detailsButton6 = detailsButton6;
+        this.muteButton = muteButton;
+        this.muteButton2 = muteButton2;
+    }
+
+    addListeners() {
+        document.body.addEventListener('click', this.onClick);
+        window.addEventListener('resize', this.onResize);
+        ticker.add(this.onUpdate);
+    }
+
+    removeListeners() {
+        document.body.removeEventListener('click', this.onClick);
+        window.removeEventListener('resize', this.onResize);
+        ticker.remove(this.onUpdate);
+    }
+
+    // Event handlers
+
+    onClick = () => {
+        this.detailsButton3.setData({
+            number: Number(this.detailsButton3.number.text()) + 1
+        });
+
+        this.detailsButton4.setData({
+            number: Number(this.detailsButton4.number.text()) + 1
+        });
+
+        this.detailsButton5.setData({
+            number: Number(this.detailsButton6.number.text()) + 1
+        });
+
+        this.detailsButton6.setData({
+            number: Number(this.detailsButton6.number.text()) + 1
+        });
+    };
+
+    onResize = async () => {
+        await defer();
+
+        const containerBounds = this.container.element.getBoundingClientRect();
+        const width = containerBounds.width;
+        const height = containerBounds.height;
+        const dpr = window.devicePixelRatio;
+
+        this.canvas.element.width = Math.round(width * dpr);
+        this.canvas.element.height = Math.round(height * dpr);
+        this.canvas.element.style.width = `${width}px`;
+        this.canvas.element.style.height = `${height}px`;
+        this.context.scale(dpr, dpr);
+
+        // Reticle
+        const reticleBounds = this.items[2].element.getBoundingClientRect();
+        const reticleLeft = reticleBounds.left - containerBounds.left;
+        const reticleTop = reticleBounds.top - containerBounds.top;
+
+        this.reticle3.position.set(reticleLeft + this.itemHalfWidth, reticleTop + this.itemHalfHeight);
+
+        // Line
+        const lineBounds = this.items[7].element.getBoundingClientRect();
+        const lineLeft = lineBounds.left - containerBounds.left;
+        const lineTop = lineBounds.top - containerBounds.top;
+
+        this.line.setStartPoint(new Vector2(lineLeft + 1, lineTop + this.itemHeight + 1));
+        this.line.setEndPoint(new Vector2(lineLeft + this.itemWidth + 1, lineTop + 1));
+
+        // Buttons
+        this.detailsButton.resize();
+        this.detailsButton2.resize();
+        this.detailsButton3.resize();
+        this.detailsButton4.resize();
+        this.detailsButton5.resize();
+        this.detailsButton6.resize();
+        this.muteButton.resize();
+        this.muteButton2.resize();
+
+        this.onUpdate();
+    };
+
+    onUpdate = () => {
+        this.context.clearRect(0, 0, this.canvas.element.width, this.canvas.element.height);
+
+        this.reticle3.update();
+        this.line.update();
+        this.detailsButton.update();
+        this.detailsButton2.update();
+        this.detailsButton3.update();
+        this.detailsButton4.update();
+        this.detailsButton5.update();
+        this.detailsButton6.update();
+        this.muteButton.update();
+        this.muteButton2.update();
+    };
+
+    // Public methods
+
+    animateIn = () => {
+        this.items.forEach((item, i) => item.animateIn(i * 50));
+    };
+
+    destroy = () => {
+        this.removeListeners();
+
+        return super.destroy();
+    };
+}
+
+export default function UiComponentsExample({ title }) {
+    const ref = useRef(null);
+
+    useClassName('scroll');
+
+    useEffect(() => {
+        const container = ref.current;
+
+        const ui = new UI({
+            instructions: {
+                content: `${navigator.maxTouchPoints ? 'Tap' : 'Click'} each component to toggle`
+            }
+        });
+        ui.instructions.animateIn();
+        container.appendChild(ui.element);
+
+        const components = new Components();
+        container.appendChild(components.element);
+
+        const onLoad = () => {
+            components.animateIn();
+            ui.animateIn();
+        };
+
+        window.addEventListener('load', onLoad);
+        ticker.start();
+
+        if (document.readyState === 'complete') {
+            onLoad();
+        }
+
+        return () => {
+            window.removeEventListener('load', onLoad);
+            components.destroy();
+            ui.destroy();
+        };
+    }, []);
+
+    return <Example title={title} ref={ref} className='ui-components-example' />;
 }

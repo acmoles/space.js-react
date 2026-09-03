@@ -226,6 +226,34 @@ scene.environmentIntensity = 1.2;
 
 ### Examples
 
+This repository is a React 19 + [Vite](https://vite.dev/) single page application. Every example from the original vanilla version has been ported to a route, with the 3D examples rendered with [React Three Fiber](https://r3f.docs.pmnd.rs/).
+
+```sh
+npm install
+npm run dev      # development server
+npm run build    # production build to dist/
+npm run preview  # preview the production build
+npm run lint
+```
+
+The home page (`/`) is an index of every example, and each example is available at the route matching its original file name, for example `/examples/fps` and `/examples/three/3d_lights`.
+
+```
+index.html            Vite entry point
+lib/                  Space.js library source (published package)
+public/assets/        Example assets
+src/
+  main.jsx            React entry point
+  App.jsx             Routes
+  components/         Shared components
+  examples/           One component per example, grouped by category
+    registry.js       Example metadata used by the router and index page
+  hooks/              Shared hooks
+  pages/              Index page
+  styles/             Global styles
+examples/mars/        Standalone demo, built separately with Rollup
+```
+
 #### ui
 
 [logo](https://space.js.org/examples/logo.html) (interface)  

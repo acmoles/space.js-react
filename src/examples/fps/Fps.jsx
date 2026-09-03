@@ -4,7 +4,7 @@ import { UI } from '@lib/index.js';
 
 import { Example } from '@/components';
 
-export default function Fps({ title }) {
+export default function FpsExample({ title }) {
     const ref = useRef(null);
 
     useEffect(() => {

@@ -1,0 +1,16 @@
+.graph-markers {
+    position: unset;
+    height: unset;
+    min-height: 100%;
+    padding: 55px 0;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-wrap: wrap;
+    gap: 55px 150px;
+}
+
+.graph-markers .ui > .info {
+    background-color: var(--bg-color);
+    border-radius: 4px;
+}

@@ -1,0 +1,13 @@
+.radial-graph-example {
+    position: unset;
+    height: unset;
+    min-height: 100%;
+    max-width: 1205px;
+    margin: 0 auto;
+    padding: 55px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 55px;
+}

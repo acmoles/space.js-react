@@ -1,0 +1,4 @@
+.ui-components-example .ui > .info {
+    background-color: var(--bg-color);
+    border-radius: 4px;
+}
