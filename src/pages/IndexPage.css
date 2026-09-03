@@ -1,0 +1,68 @@
+.index {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 55px 20px 90px;
+}
+
+.index-header {
+    margin-bottom: 55px;
+}
+
+.index-header .caption {
+    margin-top: 8px;
+    font-family: var(--ui-font-family);
+    font-weight: var(--ui-font-weight);
+    font-size: var(--ui-font-size);
+    line-height: var(--ui-line-height);
+    letter-spacing: var(--ui-letter-spacing);
+    color: var(--ui-secondary-color);
+}
+
+.index-group {
+    margin-bottom: 35px;
+}
+
+.index-group h2 {
+    margin-bottom: 8px;
+    font-family: var(--ui-font-family);
+    font-weight: var(--ui-font-weight);
+    font-size: 10.5px;
+    line-height: 1;
+    letter-spacing: var(--ui-letter-spacing);
+    text-transform: uppercase;
+    color: var(--ui-secondary-color);
+}
+
+.index-group ul {
+    list-style: none;
+    border-top: 1px solid var(--ui-color-divider-line);
+}
+
+.index-group li {
+    border-bottom: 1px solid var(--ui-color-divider-line);
+}
+
+.index-group a {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    width: 100%;
+    padding: 8px 0;
+    font-family: var(--ui-font-family);
+    font-weight: var(--ui-font-weight);
+    font-size: var(--ui-font-size);
+    line-height: var(--ui-line-height);
+    letter-spacing: var(--ui-letter-spacing);
+}
+
+.index-group a:hover, .index-group a:focus {
+    text-decoration: none;
+}
+
+.index-group a:hover .name, .index-group a:focus .name {
+    text-decoration: underline;
+}
+
+.index-group .path {
+    color: var(--ui-secondary-color);
+}

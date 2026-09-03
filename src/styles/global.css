@@ -212,3 +212,20 @@ input, pre, .info, .target, .panel, .number, .name, .type, .primary, .secondary,
     background-color: var(--ui-color);
     color: var(--bg-color);
 }
+
+#root {
+    width: 100%;
+    height: 100%;
+}
+
+.example {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.example-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

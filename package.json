@@ -1,15 +1,21 @@
 {
-  "name": "@alienkitty/space.js",
+  "name": "@alienkitty/space.js-react",
   "version": "1.2.0",
-  "description": "Minimal monospace UI library",
+  "description": "Minimal monospace UI library — React/Vite examples",
   "type": "module",
-  "main": "./src/index.js",
+  "main": "./lib/index.js",
   "exports": {
-    ".": "./src/index.js",
-    "./three": "./src/three.js",
-    "./src/*": "./src/*"
+    ".": "./lib/index.js",
+    "./three": "./lib/three.js",
+    "./lib/*": "./lib/*"
   },
   "sideEffects": false,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/alienkitty/space.js"
@@ -19,5 +25,22 @@
   },
   "homepage": "https://space.js.org",
   "author": "pschroen",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.0.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.6",
+    "globals": "^17.12.0",
+    "vite": "^8.2.2"
+  }
 }
