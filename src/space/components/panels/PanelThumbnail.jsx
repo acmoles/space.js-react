@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
 import { loadFiles } from '@lib/loaders/FileUtils.js';
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 
 import './PanelThumbnail.css';
 

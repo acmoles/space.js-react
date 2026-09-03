@@ -1,196 +1,138 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { Interface, clearTween, ticker, tween } from '@lib/index.js';
+import { clearTween, tween } from '@lib/index.js';
 
 import { Example } from '@/components';
+import { drawLine, useTicker } from '@/space';
 
-class Close extends Interface {
-    constructor() {
-        super(null, 'svg');
+import './Close.css';
 
-        const size = 90;
+const SIZE = 90;
+const RADIUS = SIZE * 0.4;
+const ICON_SIZE = 22;
+const ICON_OFFSET = (SIZE - ICON_SIZE) / 2;
 
-        this.width = size;
-        this.height = size;
-        this.x = size / 2;
-        this.y = size / 2;
-        this.radius = size * 0.4;
-        this.animatedIn = false;
-        this.needsUpdate = false;
+/**
+ * SVG close-button indicator: a circle drawn in followed by a cross drawn in,
+ * toggled by click. Self-contained — no matching indicator component yet.
+ */
+function CloseButton() {
+    const circleRef = useRef(null);
+    const line1Ref = useRef(null);
+    const line2Ref = useRef(null);
 
-        this.initSVG();
-    }
+    const needsUpdateRef = useRef(false);
+    const animatedInRef = useRef(false);
 
-    initSVG() {
-        this.attr({
-            width: this.width,
-            height: this.height
-        });
+    // Plain objects as tween targets, stable via useState initialiser
+    const [circle] = useState(() => ({ start: 0, progress: 0 }));
+    const [line1] = useState(() => ({ progress: 0 }));
+    const [line2] = useState(() => ({ progress: 0 }));
 
-        this.circle = new Interface(null, 'svg', 'circle');
-        this.circle.attr({
-            cx: this.x,
-            cy: this.y,
-            r: this.radius
-        });
-        this.circle.css({
-            fill: 'none',
-            stroke: 'var(--ui-color)',
-            strokeWidth: 1.5
-        });
-        this.circle.start = 0;
-        this.circle.offset = -0.25;
-        this.circle.progress = 0;
-        this.add(this.circle);
-
-        this.icon = new Interface(null, 'svg', 'g');
-        this.icon.attr({
-            transform: `translate(${(this.width - 22) / 2}, ${(this.height - 22) / 2})`
-        });
-        this.icon.css({
-            fill: 'none',
-            stroke: 'var(--ui-color)',
-            strokeWidth: 1.5
-        });
-        this.add(this.icon);
-
-        this.line1 = new Interface(null, 'svg', 'line');
-        this.line1.attr({
-            x1: 0,
-            y1: 0,
-            x2: 22,
-            y2: 22
-        });
-        this.line1.start = 0;
-        this.line1.offset = 0;
-        this.line1.progress = 0;
-        this.icon.add(this.line1);
-
-        this.line2 = new Interface(null, 'svg', 'line');
-        this.line2.attr({
-            x1: 22,
-            y1: 0,
-            x2: 0,
-            y2: 22
-        });
-        this.line2.start = 0;
-        this.line2.offset = 0;
-        this.line2.progress = 0;
-        this.icon.add(this.line2);
-    }
-
-    addListeners() {
-        ticker.add(this.onUpdate);
-    }
-
-    removeListeners() {
-        ticker.remove(this.onUpdate);
-    }
-
-    // Event handlers
-
-    onUpdate = () => {
-        if (this.needsUpdate) {
-            this.update();
-        }
-    };
-
-    // Public methods
-
-    update = () => {
-        this.circle.drawLine();
-        this.line1.drawLine();
-        this.line2.drawLine();
-    };
-
-    animateIn = () => {
-        if (this.needsUpdate) {
+    useTicker(() => {
+        if (!needsUpdateRef.current) {
             return;
         }
 
-        this.animatedIn = true;
-        this.needsUpdate = true;
+        drawLine(circleRef.current, circle.progress, circle.start, -0.25);
+        drawLine(line1Ref.current, line1.progress, 0, 0);
+        drawLine(line2Ref.current, line2.progress, 0, 0);
+    });
 
-        this.addListeners();
+    useEffect(() => {
+        // Set initial dasharray so strokes start invisible
+        drawLine(circleRef.current, 0, 0, -0.25);
+        drawLine(line1Ref.current, 0, 0, 0);
+        drawLine(line2Ref.current, 0, 0, 0);
 
-        tween(this.circle, { progress: 1 }, 1000, 'easeOutCubic', () => {
-            tween(this.line1, { progress: 1 }, 400, 'easeOutCubic', () => {
-                tween(this.line2, { progress: 1 }, 400, 'easeOutCubic', () => {
-                    this.removeListeners();
-                    this.needsUpdate = false;
+        const animateIn = () => {
+            if (needsUpdateRef.current) {
+                return;
+            }
+
+            animatedInRef.current = true;
+            needsUpdateRef.current = true;
+
+            tween(circle, { progress: 1 }, 1000, 'easeOutCubic', () => {
+                tween(line1, { progress: 1 }, 400, 'easeOutCubic', () => {
+                    tween(line2, { progress: 1 }, 400, 'easeOutCubic', () => {
+                        needsUpdateRef.current = false;
+                    });
                 });
             });
-        });
-    };
+        };
 
-    animateOut = () => {
-        if (this.needsUpdate) {
-            return;
+        animateIn();
+
+        return () => {
+            clearTween(circle);
+            clearTween(line1);
+            clearTween(line2);
+            needsUpdateRef.current = false;
+            animatedInRef.current = false;
+        };
+    }, [circle, line1, line2]);
+
+    const handleClick = () => {
+        if (animatedInRef.current) {
+            if (needsUpdateRef.current) {
+                return;
+            }
+
+            animatedInRef.current = false;
+            needsUpdateRef.current = true;
+
+            // Erase by driving circle.start 0→1 while progress = 1 − start
+            tween(circle, { start: 1 }, 1000, 'easeInOutCubic', () => {
+                circle.start = 0;
+                needsUpdateRef.current = false;
+            }, () => {
+                circle.progress = 1 - circle.start;
+                line1.progress = circle.progress;
+                line2.progress = circle.progress;
+            });
+        } else {
+            if (needsUpdateRef.current) {
+                return;
+            }
+
+            animatedInRef.current = true;
+            needsUpdateRef.current = true;
+
+            tween(circle, { progress: 1 }, 1000, 'easeOutCubic', () => {
+                tween(line1, { progress: 1 }, 400, 'easeOutCubic', () => {
+                    tween(line2, { progress: 1 }, 400, 'easeOutCubic', () => {
+                        needsUpdateRef.current = false;
+                    });
+                });
+            });
         }
-
-        this.animatedIn = false;
-        this.needsUpdate = true;
-
-        this.addListeners();
-
-        tween(this.circle, { start: 1 }, 1000, 'easeInOutCubic', () => {
-            this.circle.start = 0;
-            this.removeListeners();
-            this.needsUpdate = false;
-        }, () => {
-            this.circle.progress = 1 - this.circle.start;
-            this.line1.progress = this.circle.progress;
-            this.line2.progress = this.circle.progress;
-        });
     };
 
-    destroy = () => {
-        this.removeListeners();
-
-        clearTween(this.circle);
-        clearTween(this.line1);
-        clearTween(this.line2);
-
-        return super.destroy();
-    };
+    return (
+        <svg className="close-button" width={SIZE} height={SIZE} onClick={handleClick}>
+            <circle
+                ref={circleRef}
+                className="close-stroke"
+                cx={SIZE / 2}
+                cy={SIZE / 2}
+                r={RADIUS}
+            />
+            <g
+                className="close-stroke"
+                transform={`translate(${ICON_OFFSET}, ${ICON_OFFSET})`}
+            >
+                <line ref={line1Ref} x1={0} y1={0} x2={ICON_SIZE} y2={ICON_SIZE} />
+                <line ref={line2Ref} x1={ICON_SIZE} y1={0} x2={0} y2={ICON_SIZE} />
+            </g>
+        </svg>
+    );
 }
 
 export default function CloseExample({ title }) {
-    const ref = useRef(null);
-
-    useEffect(() => {
-        const container = ref.current;
-
-        const view = new Close();
-        view.css({
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            marginLeft: -view.width / 2,
-            marginTop: -view.height / 2,
-            cursor: 'pointer'
-        });
-        container.appendChild(view.element);
-
-        view.animateIn();
-
-        const onClick = () => {
-            if (view.animatedIn) {
-                view.animateOut();
-            } else {
-                view.animateIn();
-            }
-        };
-
-        view.element.addEventListener('click', onClick);
-
-        ticker.start();
-
-        return () => {
-            view.element.removeEventListener('click', onClick);
-            view.destroy();
-        };
-    }, []);
-
-    return <Example title={title} ref={ref} center />;
+    return (
+        <Example title={title}>
+            <CloseButton />
+        </Example>
+    );
 }

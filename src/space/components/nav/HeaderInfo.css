@@ -4,9 +4,18 @@
     pointer-events: auto;
     -webkit-user-select: none;
     user-select: none;
+    position: relative;
 }
 
 .header-info .number {
     font-variant-numeric: tabular-nums;
     letter-spacing: var(--ui-title-letter-spacing);
+}
+
+/* Panel floats below the FPS number, anchored to the right edge of the info box. */
+.header-info .panel {
+    position: absolute;
+    top: 0;
+    right: 10px;
+    margin-top: 10px;
 }

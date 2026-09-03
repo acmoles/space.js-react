@@ -1,110 +1,92 @@
-import { useEffect, useRef } from 'react';
-
-import { Meter } from '@lib/index.js';
+import { useEffect, useRef, useState } from 'react';
 
 import { Example } from '@/components';
 import { useClassName } from '@/hooks';
+import { Meter } from '@/space/components/graphs/index.js';
+import { useTicker } from '@/space/motion/index.js';
 
 import './Meter.css';
 
+const METER_WIDTH = 200;
+const METER_RANGE = 150;
+const METER_SUFFIX = 'ms';
+
 export default function MeterExample({ title }) {
-    const ref = useRef(null);
+    const meterRef = useRef(null);
+    const meter2Ref = useRef(null);
+    const meter3Ref = useRef(null);
+    const meter4Ref = useRef(null);
+    const meter5Ref = useRef(null);
+    const meter6Ref = useRef(null);
+    const counterRef = useRef(-180);
+    const [meterValue] = useState(Math.random);
+    const [meter2Value] = useState(Math.random);
+    const [meter3Value] = useState(() => METER_RANGE * Math.random());
+    const [meter4Value] = useState(() => METER_RANGE * Math.random());
+    const [meter4Ghost] = useState(() => METER_RANGE * Math.random());
+    const [meter5Value] = useState(() => METER_RANGE * Math.random());
+    const [meter5Ghost] = useState(() => METER_RANGE * Math.random());
 
     useClassName('scroll');
 
     useEffect(() => {
-        const container = ref.current;
-
-        // Meter
-        const meter = new Meter({
-            value: Math.random(),
-            width: 200,
-            precision: 2
-        });
-        meter.animateIn();
-        container.appendChild(meter.element);
-
-        // Meter with no text or gradient
-        const meter2 = new Meter({
-            noText: true,
-            noGradient: true
-        });
-        meter2.setValue(Math.random());
-        meter2.setWidth(200);
-        meter2.animateIn();
-        container.appendChild(meter2.element);
-
-        // Meter with suffix
-        const meter3 = new Meter({
-            suffix: 'ms',
-            range: 150,
-            value: 150 * Math.random(),
-            width: 200
-        });
-        meter3.animateIn();
-        container.appendChild(meter3.element);
-
-        // Meter with ghost and no range text
-        const meter4 = new Meter({
-            suffix: 'ms',
-            range: 150,
-            value: 150 * Math.random(),
-            ghost: 150 * Math.random(),
-            width: 200,
-            noRange: true
-        });
-        meter4.animateIn();
-        container.appendChild(meter4.element);
-
-        // Meter with ghost
-        const meter5 = new Meter({
-            suffix: 'ms'
-        });
-        meter5.setRange(150);
-        meter5.setValue(150 * Math.random());
-        meter5.setGhostValue(150 * Math.random());
-        meter5.setWidth(200);
-        meter5.animateIn();
-        container.appendChild(meter5.element);
-
-        // Meter
-        const meter6 = new Meter({
-            width: 200,
-            precision: 2
-        });
-        meter6.animateIn();
-        container.appendChild(meter6.element);
-
-        // animation
-
-        let counter = -180;
-        let raf;
-
-        function animate() {
-            raf = requestAnimationFrame(animate);
-
-            meter.update();
-            meter2.update();
-            meter3.update();
-            meter4.update();
-            meter5.update();
-
-            const x = 0.5 + 0.5 * Math.sin(counter++ / 100);
-            meter6.update(x);
-        }
-
-        raf = requestAnimationFrame(animate);
-
-        return () => {
-            cancelAnimationFrame(raf);
-            meter.destroy();
-            meter2.destroy();
-            meter3.destroy();
-            meter4.destroy();
-            meter5.destroy();
-            meter6.destroy();
-        };
+        meterRef.current?.animateIn();
+        meter2Ref.current?.animateIn();
+        meter3Ref.current?.animateIn();
+        meter4Ref.current?.animateIn();
+        meter5Ref.current?.animateIn();
+        meter6Ref.current?.animateIn();
     }, []);
 
-    return <Example title={title} className='meter-example' ref={ref} />;
+    useTicker(() => {
+        const x = 0.5 + 0.5 * Math.sin(counterRef.current++ / 100);
+        meter6Ref.current?.update(x);
+    });
+
+    return (
+        <Example title={title} className='meter-example'>
+            <Meter
+                ref={meterRef}
+                width={METER_WIDTH}
+                value={meterValue}
+                precision={2}
+            />
+            <Meter
+                ref={meter2Ref}
+                width={METER_WIDTH}
+                value={meter2Value}
+                noText
+                noGradient
+            />
+            <Meter
+                ref={meter3Ref}
+                width={METER_WIDTH}
+                range={METER_RANGE}
+                value={meter3Value}
+                suffix={METER_SUFFIX}
+            />
+            <Meter
+                ref={meter4Ref}
+                width={METER_WIDTH}
+                range={METER_RANGE}
+                value={meter4Value}
+                ghost={meter4Ghost}
+                suffix={METER_SUFFIX}
+                noRange
+            />
+            <Meter
+                ref={meter5Ref}
+                width={METER_WIDTH}
+                range={METER_RANGE}
+                value={meter5Value}
+                ghost={meter5Ghost}
+                suffix={METER_SUFFIX}
+            />
+            <Meter
+                ref={meter6Ref}
+                width={METER_WIDTH}
+                precision={2}
+            />
+        </Example>
+    );
 }

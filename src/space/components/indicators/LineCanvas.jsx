@@ -1,7 +1,5 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { tween } from '@lib/tween/Tween.js';
-
 import { useMotion } from '../../motion/index.js';
 
 /**
@@ -95,8 +93,7 @@ export function LineCanvas({ context, ref }) {
                 v.start = 1;
                 v.progress = 0;
 
-                // tween used directly to access the onUpdate (6th arg) callback
-                tween(v, { start: 0 }, 500, 'easeInCubic', null, () => {
+                motion.animate({ start: 0 }, 500, 'easeInCubic', 0, null, () => {
                     v.progress = 1 - v.start;
                 });
             } else {
@@ -114,7 +111,7 @@ export function LineCanvas({ context, ref }) {
             motion.stop();
 
             // tween used directly for the onUpdate callback
-            tween(v, { start: 1 }, duration, ease, () => {
+            motion.animate({ start: 1 }, duration, ease, 0, () => {
                 v.alpha = 0;
                 v.start = 0;
 

@@ -860,10 +860,7 @@ export function RadialGraphSegments({
             return;
         }
 
-        if (s.needsUpdate || s.hoveredIn || s.isDragging) {
-            drawGraph();
-            s.needsUpdate = false;
-        }
+        drawGraph();
     });
 
     useImperativeHandle(ref, () => {

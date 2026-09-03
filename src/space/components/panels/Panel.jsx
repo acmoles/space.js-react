@@ -1,6 +1,6 @@
 import { useCallback, useImperativeHandle, useMemo, useRef } from 'react';
 
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 import { PanelContext } from './PanelContext.js';
 import { PanelItem } from './PanelItem.jsx';
 

@@ -1,6 +1,6 @@
 import { useImperativeHandle, useRef, useState } from 'react';
 
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 
 import './Toggle.css';
 

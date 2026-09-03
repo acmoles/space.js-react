@@ -1,138 +1,131 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { Graph, GraphSegments, clamp, mapLinear } from '@lib/index.js';
+import { clamp, mapLinear } from '@lib/utils/Utils.js';
 
 import { Example } from '@/components';
 import { useClassName } from '@/hooks';
+import { Graph, GraphSegments } from '@/space/components/graphs/index.js';
+import { useResize } from '@/space/hooks/index.js';
+import { useTicker } from '@/space/motion/index.js';
 
 import './Graph.css';
 
+const GRAPH_2_SEGMENTS = [2, 2];
+const GRAPH_3_SEGMENTS = [5, 5, 5];
+const GRAPH_3_LABELS = ['Segment 1', 'Segment 2', 'Segment 3'];
+const GRAPH_6_SEGMENTS = [5, 5, 3];
+const GRAPH_6_RATIO = [0.45, 0.45, 0.1];
+const GRAPH_6_LABELS = ['Segment 1', 'Segment 2', 'Segment 3'];
+const GRAPH_6_LOOKUP_PRECISION = [100, 100, 50];
+const GRAPH_6_DATA = [
+    Array.from({ length: 10 }, (_, i) => i + 1),
+    Array.from({ length: 10 }, (_, i) => i + 1),
+    []
+];
+
+function getGraphDimensions() {
+    return {
+        width: Math.round(window.innerWidth * 0.74),
+        height: clamp(mapLinear(window.innerHeight, 600, 1000, 40, 80), 40, 80)
+    };
+}
+
 export default function GraphExample({ title }) {
-    const ref = useRef(null);
+    const graphRef = useRef(null);
+    const graph2Ref = useRef(null);
+    const graph3Ref = useRef(null);
+    const graph4Ref = useRef(null);
+    const graph5Ref = useRef(null);
+    const graph6Ref = useRef(null);
+    const counterRef = useRef(0);
+    const [dimensions, setDimensions] = useState(() => getGraphDimensions());
+    const [graphValue] = useState(() => Array.from({ length: 10 }, () => Math.random()));
+    const [graph2Value] = useState(() => Array.from({ length: 4 }, () => Math.random()));
+    const [graph3Value] = useState(() => Array.from({ length: 15 }, () => Math.random()));
+    const [graph4Value] = useState(() => Array.from({ length: 10 }, () => Math.random()));
+    const [graph4Ghost] = useState(() => Array.from({ length: 10 }, () => Math.random()));
+    const [graph6Value] = useState(() => Array.from({ length: 13 }, () => Math.random()));
+    const [graph6Ghost] = useState(() => Array.from({ length: 13 }, () => Math.random()));
 
     useClassName('scroll');
 
+    useResize(() => {
+        setDimensions(getGraphDimensions());
+    });
+
     useEffect(() => {
-        const container = ref.current;
-
-        // Graph
-        const graph = new Graph({
-            value: Array.from({ length: 10 }, () => Math.random()),
-            width: document.documentElement.clientWidth * 0.74,
-            height: clamp(mapLinear(document.documentElement.clientHeight, 600, 1000, 40, 80), 40, 80),
-            precision: 2,
-            lookupPrecision: 200
-        });
-        graph.animateIn();
-        container.appendChild(graph.element);
-
-        // Graph with 2 segments
-        const graph2 = new GraphSegments({
-            precision: 2,
-            lookupPrecision: 100, // per segment
-            segments: [2, 2] // length of each segment (minimum length of 2)
-        });
-        graph2.setArray(Array.from({ length: 4 }, () => Math.random()));
-        graph2.setSize(document.documentElement.clientWidth * 0.74, clamp(mapLinear(document.documentElement.clientHeight, 600, 1000, 40, 80), 40, 80));
-        graph2.animateIn();
-        container.appendChild(graph2.element);
-
-        // Graph with 3 segments and labels
-        const graph3 = new GraphSegments({
-            precision: 2,
-            lookupPrecision: 100, // per segment
-            segments: [5, 5, 5], // length of each segment (minimum length of 2)
-            labels: ['Segment 1', 'Segment 2', 'Segment 3']
-        });
-        graph3.setArray(Array.from({ length: 15 }, () => Math.random()));
-        graph3.setSize(document.documentElement.clientWidth * 0.74, clamp(mapLinear(document.documentElement.clientHeight, 600, 1000, 40, 80), 40, 80));
-        graph3.animateIn();
-        container.appendChild(graph3.element);
-
-        // Graph with ghost
-        const graph4 = new Graph({
-            precision: 2,
-            lookupPrecision: 200
-        });
-        graph4.setArray(Array.from({ length: 10 }, () => Math.random()));
-        graph4.setGhostArray(Array.from({ length: 10 }, () => Math.random()));
-        graph4.setSize(document.documentElement.clientWidth * 0.74, clamp(mapLinear(document.documentElement.clientHeight, 600, 1000, 40, 80), 40, 80));
-        graph4.animateIn();
-        container.appendChild(graph4.element);
-
-        // Graph with ghost value
-        const graph5 = new Graph({
-            resolution: 311,
-            precision: 2,
-            ghost: true
-        });
-        graph5.setSize(document.documentElement.clientWidth * 0.74, clamp(mapLinear(document.documentElement.clientHeight, 600, 1000, 40, 80), 40, 80));
-        graph5.animateIn();
-        container.appendChild(graph5.element);
-
-        // Graph with uneven segments, ghost and labels
-        const graph6 = new GraphSegments({
-            value: Array.from({ length: 13 }, () => Math.random()),
-            ghost: Array.from({ length: 13 }, () => Math.random()),
-            precision: 2,
-            lookupPrecision: [100, 100, 50], // per segment
-            segments: [5, 5, 3], // length of each segment (minimum length of 2)
-            ratio: [0.45, 0.45, 0.1], // normalized ratio of each segment
-            labels: ['Segment 1', 'Segment 2', 'Segment 3']
-        });
-        graph6.setData([Array.from({ length: 10 }, (_, i) => i + 1), Array.from({ length: 10 }, (_, i) => i + 1), []]);
-        graph6.setSize(document.documentElement.clientWidth * 0.74, clamp(mapLinear(document.documentElement.clientHeight, 600, 1000, 40, 80), 40, 80));
-        graph6.animateIn();
-        container.appendChild(graph6.element);
-
-        // animation
-
-        let counter = 0;
-        let raf;
-
-        function animate() {
-            raf = requestAnimationFrame(animate);
-
-            graph.update();
-            graph2.update();
-            graph3.update();
-            graph4.update();
-
-            const y = 0.5 + 0.5 * Math.sin(counter++ / 9) * 0.5;
-            graph5.update(y);
-
-            graph6.update();
-        }
-
-        raf = requestAnimationFrame(animate);
-
-        // resize
-
-        function onWindowResize() {
-            const width = document.documentElement.clientWidth * 0.74;
-            const height = clamp(mapLinear(document.documentElement.clientHeight, 600, 1000, 40, 80), 40, 80);
-
-            graph.setSize(width, height);
-            graph2.setSize(width, height);
-            graph3.setSize(width, height);
-            graph4.setSize(width, height);
-            graph5.setSize(width, height);
-            graph6.setSize(width, height);
-        }
-
-        window.addEventListener('resize', onWindowResize);
-
-        return () => {
-            cancelAnimationFrame(raf);
-            window.removeEventListener('resize', onWindowResize);
-            graph.destroy();
-            graph2.destroy();
-            graph3.destroy();
-            graph4.destroy();
-            graph5.destroy();
-            graph6.destroy();
-        };
+        graphRef.current?.animateIn();
+        graph2Ref.current?.animateIn();
+        graph3Ref.current?.animateIn();
+        graph4Ref.current?.animateIn();
+        graph5Ref.current?.animateIn();
+        graph6Ref.current?.animateIn();
     }, []);
 
-    return <Example title={title} className='graph-example' ref={ref} />;
+    useTicker(() => {
+        const y = 0.5 + 0.5 * Math.sin(counterRef.current++ / 9) * 0.5;
+        graph5Ref.current?.update(y);
+    });
+
+    return (
+        <Example title={title} className='graph-example'>
+            <Graph
+                ref={graphRef}
+                width={dimensions.width}
+                height={dimensions.height}
+                value={graphValue}
+                precision={2}
+                lookupPrecision={200}
+            />
+            <GraphSegments
+                ref={graph2Ref}
+                width={dimensions.width}
+                height={dimensions.height}
+                value={graph2Value}
+                precision={2}
+                lookupPrecision={100}
+                segments={GRAPH_2_SEGMENTS}
+            />
+            <GraphSegments
+                ref={graph3Ref}
+                width={dimensions.width}
+                height={dimensions.height}
+                value={graph3Value}
+                precision={2}
+                lookupPrecision={100}
+                segments={GRAPH_3_SEGMENTS}
+                labels={GRAPH_3_LABELS}
+            />
+            <Graph
+                ref={graph4Ref}
+                width={dimensions.width}
+                height={dimensions.height}
+                value={graph4Value}
+                ghost={graph4Ghost}
+                precision={2}
+                lookupPrecision={200}
+            />
+            <Graph
+                ref={graph5Ref}
+                width={dimensions.width}
+                height={dimensions.height}
+                resolution={311}
+                precision={2}
+                ghost
+            />
+            <GraphSegments
+                ref={graph6Ref}
+                width={dimensions.width}
+                height={dimensions.height}
+                value={graph6Value}
+                ghost={graph6Ghost}
+                precision={2}
+                lookupPrecision={GRAPH_6_LOOKUP_PRECISION}
+                segments={GRAPH_6_SEGMENTS}
+                ratio={GRAPH_6_RATIO}
+                labels={GRAPH_6_LABELS}
+                data={GRAPH_6_DATA}
+            />
+        </Example>
+    );
 }

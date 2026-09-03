@@ -2,6 +2,9 @@ import { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 
 import { useAnimation } from '../../motion/index.js';
 import { useResize } from '../../hooks/index.js';
+import { Graph } from '../graphs/Graph.jsx';
+import { GraphSegments } from '../graphs/GraphSegments.jsx';
+import { Meter } from '../graphs/Meter.jsx';
 import { DetailsLink } from './DetailsLink.jsx';
 import { DetailsTitle } from './DetailsTitle.jsx';
 import { DividerLine } from '../nav/DividerLine.jsx';
@@ -79,7 +82,14 @@ function renderContentItem(item, key) {
                     dangerouslySetInnerHTML={{ __html: item.content }}
                 />
             )}
-            {/* graph / meter slots left for future ported components */}
+            {item.graph !== undefined && (
+                item.graph.segments
+                    ? <GraphSegments {...item.graph} />
+                    : <Graph {...item.graph} />
+            )}
+            {item.meter !== undefined && (
+                <Meter {...item.meter} />
+            )}
             {Array.isArray(item.links) && item.links.map((link, i) => (
                 <DetailsLink
                     key={i}

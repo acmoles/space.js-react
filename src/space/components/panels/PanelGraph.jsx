@@ -5,8 +5,7 @@ import { SVGPathProperties } from '@lib/path/SVGPathProperties.js';
 import { Easing } from '@lib/tween/Easing.js';
 import { clearTween, tween } from '@lib/tween/Tween.js';
 import { clamp } from '@lib/utils/Utils.js';
-import { useDelayedCall } from '../motion/index.js';
-import { useTicker } from '../motion/index.js';
+import { useDelayedCall, useTicker } from '../../motion/index.js';
 
 import './PanelGraph.css';
 

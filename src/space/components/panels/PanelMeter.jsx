@@ -3,7 +3,7 @@ import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 're
 import { Color } from '@lib/math/Color.js';
 import { Easing } from '@lib/tween/Easing.js';
 import { defer } from '@lib/tween/Tween.js';
-import { useTicker } from '../motion/index.js';
+import { useTicker } from '../../motion/index.js';
 
 import './PanelMeter.css';
 

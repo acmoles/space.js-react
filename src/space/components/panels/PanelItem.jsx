@@ -1,6 +1,6 @@
 import { useImperativeHandle, useRef } from 'react';
 
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 import { ColorPicker } from './ColorPicker.jsx';
 import { Content } from './Content.jsx';
 import { List } from './List.jsx';

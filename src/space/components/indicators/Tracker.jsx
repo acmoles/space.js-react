@@ -22,7 +22,7 @@ import './Tracker.css';
  * @example
  * <Tracker data={{ targetNumber: 1 }} ref={trackerRef} />
  */
-export function Tracker({ noCorners = false, data, ref }) {
+export function Tracker({ noCorners = false, data, style, ref }) {
     const dpr = window.devicePixelRatio;
     const tnSize = dpr > 1 ? 17 : 18;
 
@@ -153,7 +153,7 @@ export function Tracker({ noCorners = false, data, ref }) {
     const hasInfo = data && (data.primary !== undefined || data.secondary !== undefined);
 
     return (
-        <div ref={rootRef} className="tracker">
+        <div ref={rootRef} className="tracker" style={style}>
             {!noCorners && (
                 <div ref={cornersRef} className="corners">
                     <div className="tl" />

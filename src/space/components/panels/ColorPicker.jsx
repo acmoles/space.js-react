@@ -2,7 +2,7 @@ import { useContext, useEffect, useId, useImperativeHandle, useMemo, useRef, use
 
 import { Color } from '@lib/math/Color.js';
 import { PI60, PI90, Third, TwoPI, brightness, clamp, radToDeg } from '@lib/utils/Utils.js';
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 import { PanelContext } from './PanelContext.js';
 
 import './ColorPicker.css';

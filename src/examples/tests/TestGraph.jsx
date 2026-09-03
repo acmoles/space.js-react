@@ -1,38 +1,25 @@
-import { useEffect, useRef } from 'react';
-
-import { Graph } from '@lib/index.js';
+import { useEffect, useRef, useState } from 'react';
 
 import { Example } from '@/components';
 
+import { Graph } from '@/space/components/graphs/index.js';
+
 export default function TestGraphExample({ title }) {
-    const ref = useRef(null);
+    const graphRef = useRef(null);
+    const [value] = useState(() => Array.from({ length: 10 }, () => Math.random()));
 
     useEffect(() => {
-        const container = ref.current;
-
-        const graph = new Graph({
-            value: Array.from({ length: 10 }, () => Math.random()),
-            precision: 2,
-            lookupPrecision: 100
-        });
-        graph.animateIn();
-        container.appendChild(graph.element);
-
-        let raf;
-
-        function animate() {
-            raf = requestAnimationFrame(animate);
-
-            graph.update();
-        }
-
-        raf = requestAnimationFrame(animate);
-
-        return () => {
-            cancelAnimationFrame(raf);
-            graph.destroy();
-        };
+        graphRef.current?.animateIn();
     }, []);
 
-    return <Example title={title} ref={ref} center />;
+    return (
+        <Example title={title} center>
+            <Graph
+                ref={graphRef}
+                value={value}
+                precision={2}
+                lookupPrecision={100}
+            />
+        </Example>
+    );
 }

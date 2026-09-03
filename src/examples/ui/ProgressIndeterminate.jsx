@@ -1,148 +1,94 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { Interface, clearTween, delayedCall, ticker, tween } from '@lib/index.js';
+import { clearTween, tween } from '@lib/index.js';
 
 import { Example } from '@/components';
+import { drawLine, useDelayedCall, useTicker } from '@/space';
 
-class ProgressIndeterminate extends Interface {
-    constructor() {
-        super(null, 'svg');
+import './ProgressIndeterminate.css';
 
-        const size = 90;
+const SIZE = 90;
+const RADIUS = SIZE * 0.4;
 
-        this.width = size;
-        this.height = size;
-        this.x = size / 2;
-        this.y = size / 2;
-        this.radius = size * 0.4;
-        this.startOffset = -0.25;
-        this.animatedIn = false;
-        this.needsUpdate = false;
+/**
+ * SVG arc progress indicator running in indeterminate (looping) mode.
+ * Ported directly from the original ProgressIndeterminate class; no
+ * indicator-layer component exists for this variant yet.
+ */
+function ProgressIndeterminate() {
+    const svgRef = useRef(null);
+    const circleRef = useRef(null);
+    const needsUpdateRef = useRef(false);
+    const animatedInRef = useRef(false);
+    const delay = useDelayedCall();
 
-        this.initSVG();
-    }
+    // Plain object used as the tween target (matches original pattern)
+    const [circle] = useState(() => ({ start: 0, progress: 0 }));
 
-    initSVG() {
-        this.attr({
-            width: this.width,
-            height: this.height
-        });
-
-        this.circle = new Interface(null, 'svg', 'circle');
-        this.circle.attr({
-            cx: this.x,
-            cy: this.y,
-            r: this.radius
-        });
-        this.circle.css({
-            fill: 'none',
-            stroke: 'var(--ui-color)',
-            strokeWidth: 1.5
-        });
-        this.circle.start = 0;
-        this.circle.offset = this.startOffset;
-        this.circle.progress = 0;
-        this.add(this.circle);
-    }
-
-    addListeners() {
-        ticker.add(this.onUpdate);
-    }
-
-    removeListeners() {
-        ticker.remove(this.onUpdate);
-    }
-
-    // Event handlers
-
-    onUpdate = () => {
-        if (this.needsUpdate) {
-            this.update();
+    useTicker(() => {
+        if (!needsUpdateRef.current) {
+            return;
         }
-    };
 
-    // Public methods
+        drawLine(circleRef.current, circle.progress, circle.start, -0.25);
+    });
 
-    update = () => {
-        this.circle.drawLine();
-    };
-
-    animateIn = () => {
-        this.animatedIn = true;
-        this.needsUpdate = true;
-
-        this.addListeners();
+    useEffect(() => {
+        // Draw empty initial state so the circle is invisible before animateIn
+        drawLine(circleRef.current, 0, 0, -0.25);
 
         const start = () => {
-            tween(this.circle, { progress: 1 }, 1000, 'easeOutCubic', () => {
-                tween(this.circle, { start: 1 }, 1000, 'easeInOutCubic', () => {
-                    this.circle.start = 0;
+            tween(circle, { progress: 1 }, 1000, 'easeOutCubic', () => {
+                tween(circle, { start: 1 }, 1000, 'easeInOutCubic', () => {
+                    circle.start = 0;
 
-                    delayedCall(500, () => {
-                        if (this.animatedIn) {
+                    delay(500, () => {
+                        if (animatedInRef.current) {
                             start();
                         } else {
-                            this.removeListeners();
-                            this.needsUpdate = false;
+                            needsUpdateRef.current = false;
                         }
                     });
                 }, () => {
-                    this.circle.progress = 1 - this.circle.start;
+                    circle.progress = 1 - circle.start;
                 });
             });
         };
 
+        animatedInRef.current = true;
+        needsUpdateRef.current = true;
         start();
+
+        return () => {
+            clearTween(circle);
+            animatedInRef.current = false;
+            needsUpdateRef.current = false;
+        };
+    }, [circle, delay]);
+
+    const handleClick = () => {
+        if (needsUpdateRef.current) {
+            animatedInRef.current = false;
+        }
     };
 
-    animateOut = () => {
-        this.animatedIn = false;
-    };
-
-    destroy = () => {
-        this.removeListeners();
-
-        clearTween(this.circle);
-
-        return super.destroy();
-    };
+    return (
+        <svg ref={svgRef} className="progress-indeterminate" width={SIZE} height={SIZE} onClick={handleClick}>
+            <circle
+                ref={circleRef}
+                className="progress-indeterminate-circle"
+                cx={SIZE / 2}
+                cy={SIZE / 2}
+                r={RADIUS}
+            />
+        </svg>
+    );
 }
 
 export default function ProgressIndeterminateExample({ title }) {
-    const ref = useRef(null);
-
-    useEffect(() => {
-        const container = ref.current;
-
-        const view = new ProgressIndeterminate();
-        view.css({
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            marginLeft: -view.width / 2,
-            marginTop: -view.height / 2,
-            cursor: 'pointer'
-        });
-        container.appendChild(view.element);
-
-        view.animateIn();
-
-        const onClick = () => {
-            if (view.needsUpdate) {
-                view.animateOut();
-            } else {
-                view.animateIn();
-            }
-        };
-
-        view.element.addEventListener('click', onClick);
-        ticker.start();
-
-        return () => {
-            view.element.removeEventListener('click', onClick);
-            view.destroy();
-        };
-    }, []);
-
-    return <Example title={title} ref={ref} center />;
+    return (
+        <Example title={title}>
+            <ProgressIndeterminate />
+        </Example>
+    );
 }
