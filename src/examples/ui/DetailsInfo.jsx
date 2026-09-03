@@ -1,53 +1,56 @@
 import { useEffect, useRef } from 'react';
 
-import { UI } from '@lib/index.js';
-
 import { Example } from '@/components';
+
+import { UI } from '../../space/components/ui/index.js';
 
 import './DetailsInfo.css';
 
 export default function DetailsInfoExample({ title }) {
-    const ref = useRef(null);
+    const uiRef = useRef(null);
+    const animatedInRef = useRef(false);
 
     useEffect(() => {
-        const container = ref.current;
+        const ui = uiRef.current;
 
-        let animatedIn = false;
+        if (!ui) return;
 
-        const ui = new UI({
-            detailsInfo: {
-                title: 'Mars',
-                content: /* html */ `
-Distance from Sun: 230 million km
-<br>Mass: 0.107 Earths
-<br>Surface gravity: 0.3794 Earths
-                `
-            }
-        });
-        ui.detailsInfo.animateIn();
-        container.appendChild(ui.element);
+        // Mirror the original: animateIn detailsInfo, then whole UI
+        ui.animateDetailsInfoIn();
+        ui.animateIn();
+
+        animatedInRef.current = true;
 
         const onClick = () => {
-            if (animatedIn) {
-                ui.detailsInfo.animateOut();
-                animatedIn = false;
+            if (animatedInRef.current) {
+                uiRef.current?.animateDetailsInfoOut();
+                animatedInRef.current = false;
             } else {
-                ui.detailsInfo.animateIn();
-                animatedIn = true;
+                uiRef.current?.animateDetailsInfoIn();
+                animatedInRef.current = true;
             }
         };
 
         document.body.addEventListener('click', onClick);
 
-        animatedIn = true;
-
-        ui.animateIn();
-
         return () => {
             document.body.removeEventListener('click', onClick);
-            ui.destroy();
         };
     }, []);
 
-    return <Example title={title} ref={ref} className='details-info-example' />;
+    return (
+        <Example title={title} className="details-info-example">
+            <UI
+                ref={uiRef}
+                detailsInfo={{
+                    title: 'Mars',
+                    content: /* html */ `
+Distance from Sun: 230 million km
+<br>Mass: 0.107 Earths
+<br>Surface gravity: 0.3794 Earths
+                    `
+                }}
+            />
+        </Example>
+    );
 }

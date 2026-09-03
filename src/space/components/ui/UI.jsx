@@ -2,16 +2,14 @@
  * @author pschroen / https://ufo.ai/
  */
 
-import { useImperativeHandle, useLayoutEffect, useRef } from 'react';
+import { useImperativeHandle, useRef } from 'react';
 
 import { useEventListener, useResize } from '../../hooks/index.js';
 
 import { Footer } from '../nav/Footer.jsx';
-import { HeaderInfo } from '../nav/HeaderInfo.jsx';
+import { Header } from '../nav/Header.jsx';
 import { Info } from '../nav/Info.jsx';
 import { Menu } from '../nav/Menu.jsx';
-import { NavLink } from '../nav/NavLink.jsx';
-import { NavTitle } from '../nav/NavTitle.jsx';
 
 import { Details } from '../details/Details.jsx';
 import { DetailsButton } from '../details/DetailsButton.jsx';
@@ -23,11 +21,6 @@ import { Thumbnail } from '../indicators/Thumbnail.jsx';
 
 import './UI.css';
 
-// ─── Internal header ─────────────────────────────────────────────────────────
-// UI renders its header sub-components directly (instead of composing the
-// `Header` wrapper) so that it can hold a direct ref to `HeaderInfo` and
-// expose `addPanel` / panel value helpers on its own imperative handle.
-
 /**
  * Full HUD container. Conditionally renders header, footer, menu, info,
  * details, thumbnail, and button overlays based on the props provided.
@@ -35,7 +28,7 @@ import './UI.css';
  *
  * @param {object}  props
  * @param {boolean} [props.fps=false]        Show the FPS counter in the header.
- * @param {boolean} [props.fpsOpen=false]    Show FPS counter and immediately open its panel.
+ * @param {boolean} [props.fpsOpen=false]    Show FPS counter and open its panel immediately.
  * @param {number}  [props.breakpoint=1000]  Width below which insets/positions narrow.
  * @param {object}  [props.header]           Data for the header: `{ title, links }`.
  * @param {object}  [props.footer]           Data forwarded to `Footer`.
@@ -45,18 +38,24 @@ import './UI.css';
  * @param {object}  [props.details]          Data forwarded to `Details`.
  * @param {object}  [props.detailsInfo]      Data forwarded to `DetailsInfo`.
  * @param {object}  [props.thumbnail]        Data forwarded to `Thumbnail`.
- * @param {boolean|object} [props.detailsButton]  Truthy → show `DetailsButton`.
+ * @param {boolean|object} [props.detailsButton]  Pass `true` for an unstyled button, or
+ *   an object `{ number, total }` to initialise the counter.
  * @param {object}  [props.muteButton]       Data forwarded to `MuteButton`.
  * @param {object}  [props.audioButton]      Data forwarded to `AudioButton`.
  * @param {function} [props.onDetails]       Called with `{ open }` when details toggles.
  * @param {function} [props.onUI]            Called with `{ open }` on Ctrl+0 toggle.
- * @param {object}  [props.ref]  Exposes `animateIn`, `animateOut`, `toggleDetails`,
- *   `addPanel`, `getPanelIndex`, `getPanelValue`, `setPanelIndex`, `setPanelValue`,
- *   `invert` and `update`.
+ * @param {object}  [props.style]            Inline style overrides on the root `.ui` div.
+ *   Use `{ position: 'static' }` for scroll-layout examples.
+ * @param {object}  [props.ref]  Exposes: `animateIn`, `animateOut`, `toggleDetails`,
+ *   `animateInfoIn(delay?)`, `animateInstructionsIn(delay?)`,
+ *   `animateDetailsInfoIn(delay?)`, `animateDetailsInfoOut(callback?)`,
+ *   `addPanel(item)`, `getPanelIndex`, `getPanelValue`, `setPanelIndex`,
+ *   `setPanelValue`, `invert(isInverted)`, `update` (no-op).
  * @example
  * const uiRef = useRef(null);
- * <UI fps header={{ title: { name: 'Space.js' } }} details={detailsData} ref={uiRef} />
+ * <UI fps header={{ title: { name: 'Space.js' } }} details={data} ref={uiRef} />
  * uiRef.current.animateIn();
+ * uiRef.current.animateInfoIn();
  */
 export function UI({
     fps = false,
@@ -75,14 +74,11 @@ export function UI({
     audioButton,
     onDetails,
     onUI,
+    style,
     ref
 }) {
-    // ── Per-child refs ──────────────────────────────────────────────────────
-    const headerRootRef = useRef(null);
-    const navTitleRef = useRef(null);
-    const navLinkRefs = useRef([]);
-    const headerInfoRef = useRef(null);
-
+    // ── Child refs ──────────────────────────────────────────────────────────
+    const headerRef = useRef(null);
     const footerRef = useRef(null);
     const menuRef = useRef(null);
     const infoRef = useRef(null);
@@ -94,12 +90,12 @@ export function UI({
     const muteButtonRef = useRef(null);
     const audioButtonRef = useRef(null);
 
-    // Button wrapper refs (for responsive positioning)
+    // Wrapper refs for responsive button positioning
     const dbWrapRef = useRef(null);
     const muteWrapRef = useRef(null);
     const audioWrapRef = useRef(null);
 
-    // Mutable tracking (no renders needed)
+    // Mutable state that does not drive re-renders
     const stateRef = useRef({
         animatedIn: false,
         detailsOpen: false,
@@ -108,41 +104,22 @@ export function UI({
         detailsInfoToggle: false
     });
 
-    // ── Derived flags ───────────────────────────────────────────────────────
+    // ── Derived ─────────────────────────────────────────────────────────────
     const showHeader = !!(header || fps || fpsOpen);
-    const showInfo = fps || fpsOpen;
-    const headerLinks = (header && Array.isArray(header.links)) ? header.links : [];
+    // detailsButton can be `true` (boolean) or an object `{ number, total }`
+    const detailsButtonData = detailsButton && typeof detailsButton === 'object'
+        ? detailsButton
+        : null;
 
-    // ── Header children collector for staggered animations ─────────────────
-    const getHeaderChildren = () => [
-        (header && header.title) ? navTitleRef.current : null,
-        ...headerLinks.map((_, i) => navLinkRefs.current[i]),
-        showInfo ? headerInfoRef.current : null
-    ].filter(Boolean);
-
-    // Hide header children before first paint (mirrors Header's useLayoutEffect)
-    useLayoutEffect(() => {
-        if (!showHeader) return;
-        getHeaderChildren().forEach(child => child?.hide?.());
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // ── Responsive layout ───────────────────────────────────────────────────
+    // ── Responsive button positioning ────────────────────────────────────────
     useResize(({ width }) => {
         const narrow = width < breakpoint;
-        const inset = narrow ? 10 : 20;
 
-        if (headerRootRef.current) {
-            headerRootRef.current.style.left = `${inset}px`;
-            headerRootRef.current.style.top = `${inset}px`;
-            headerRootRef.current.style.right = `${inset}px`;
-        }
-
-        // DetailsButton
         if (dbWrapRef.current) {
             dbWrapRef.current.style.left = narrow ? '9px' : '19px';
             dbWrapRef.current.style.bottom = narrow ? '8px' : '18px';
         }
-        // MuteButton / AudioButton
+
         [muteWrapRef, audioWrapRef].forEach(r => {
             if (r.current) {
                 r.current.style.right = narrow ? '12px' : '22px';
@@ -150,12 +127,11 @@ export function UI({
             }
         });
 
-        // Canvas resize (MuteButton/AudioButton redraw)
         muteButtonRef.current?.resize?.();
         audioButtonRef.current?.resize?.();
     });
 
-    // ── Core animation helpers (used by both imperative handle and keyboard) ─
+    // ── Core animation helpers ───────────────────────────────────────────────
     const handleAnimateIn = () => {
         const st = stateRef.current;
 
@@ -163,17 +139,13 @@ export function UI({
             detailsRef.current?.animateIn();
             st.detailsOpen = true;
         }
+
         if (detailsInfo && st.detailsInfoToggle && !st.detailsInfoOpen) {
             detailsInfoRef.current?.animateIn();
             st.detailsInfoOpen = true;
         }
 
-        if (showHeader) {
-            const children = getHeaderChildren();
-            children.forEach((child, i) => child?.animateIn?.(i * 200));
-            if (fpsOpen) headerInfoRef.current?.openPanel();
-        }
-
+        headerRef.current?.animateIn();
         footerRef.current?.animateIn();
         menuRef.current?.animateIn();
         thumbnailRef.current?.animateIn();
@@ -192,15 +164,13 @@ export function UI({
             detailsRef.current?.animateOut();
             st.detailsOpen = false;
         }
+
         if (detailsInfo) {
             detailsInfoRef.current?.animateOut();
             st.detailsInfoOpen = false;
         }
 
-        if (showHeader) {
-            getHeaderChildren().forEach(child => child?.animateOut?.());
-        }
-
+        headerRef.current?.animateOut();
         footerRef.current?.animateOut();
         menuRef.current?.animateOut();
         infoRef.current?.animateOut();
@@ -231,13 +201,14 @@ export function UI({
                 detailsInfoRef.current?.animateIn();
                 st.detailsInfoOpen = true;
             }
+
             detailsButtonRef.current?.close();
         }
 
         onDetails?.({ open: show });
     };
 
-    // ── Keyboard shortcuts ──────────────────────────────────────────────────
+    // ── Keyboard shortcuts ───────────────────────────────────────────────────
     useEventListener(window, 'keyup', e => {
         const st = stateRef.current;
 
@@ -248,6 +219,7 @@ export function UI({
                 st.detailsInfoToggle = st.detailsInfoOpen;
                 handleToggleDetails(false);
             }
+
             return;
         }
 
@@ -262,26 +234,33 @@ export function UI({
                 st.detailsToggle = false;
                 st.detailsInfoToggle = false;
             }
+
             onUI?.({ open: st.animatedIn });
         }
     });
 
-    // ── Imperative handle ───────────────────────────────────────────────────
+    // ── Imperative handle ────────────────────────────────────────────────────
     useImperativeHandle(ref, () => ({
         animateIn: () => handleAnimateIn(),
         animateOut: () => handleAnimateOut(),
         toggleDetails: show => handleToggleDetails(show),
 
-        // Panel methods — delegate to HeaderInfo
-        addPanel: item => headerInfoRef.current?.addPanel(item),
-        getPanelIndex: name => headerInfoRef.current?.getPanelIndex(name),
-        getPanelValue: name => headerInfoRef.current?.getPanelValue(name),
-        setPanelIndex: (name, idx, path) => headerInfoRef.current?.setPanelIndex(name, idx, path),
-        setPanelValue: (name, val, path) => headerInfoRef.current?.setPanelValue(name, val, path),
+        // Per-overlay animate methods so callers don't need direct child refs
+        animateInfoIn: (delay) => infoRef.current?.animateIn(delay),
+        animateInstructionsIn: (delay) => instructionsRef.current?.animateIn(delay),
+        animateDetailsInfoIn: (delay) => detailsInfoRef.current?.animateIn(delay),
+        animateDetailsInfoOut: (callback) => detailsInfoRef.current?.animateOut(callback),
+
+        // Panel API — proxied through Header → HeaderInfo
+        addPanel: item => headerRef.current?.addPanel(item),
+        getPanelIndex: name => headerRef.current?.getPanelIndex(name),
+        getPanelValue: name => headerRef.current?.getPanelValue(name),
+        setPanelIndex: (name, idx, path) => headerRef.current?.setPanelIndex(name, idx, path),
+        setPanelValue: (name, val, path) => headerRef.current?.setPanelValue(name, val, path),
 
         /**
-         * Set CSS colour variables on the document root to switch between light
-         * and dark themes. Mirrors `UI.invert()` from the original.
+         * Switches between light and dark colour themes by setting CSS vars
+         * on the document root. Mirrors `UI.invert()` from the original.
          */
         invert(isInverted) {
             const s = getComputedStyle(document.documentElement);
@@ -292,23 +271,22 @@ export function UI({
             r.style.setProperty('--ui-color-triplet', isInverted ? get('--ui-invert-light-color-triplet') : get('--ui-invert-dark-color-triplet'));
             r.style.setProperty('--ui-color-line', isInverted ? get('--ui-invert-light-color-line') : get('--ui-invert-dark-color-line'));
 
-            // Buttons redraw their canvas strokes from CSS vars on next frame
             muteButtonRef.current?.resize?.();
             audioButtonRef.current?.resize?.();
             detailsButtonRef.current?.resize?.();
         },
 
         /**
-         * No-op. Per-frame work is driven by `useTicker` internally — no
-         * external `requestAnimationFrame` loop required.
+         * No-op. Per-frame work is handled by `useTicker` inside each child.
+         * External `requestAnimationFrame` loops are not required.
          */
         update: () => {}
     }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // ── Render ──────────────────────────────────────────────────────────────
+    // ── Render ───────────────────────────────────────────────────────────────
     return (
-        <div className="ui">
-            {/* Details panel (rendered first so it sits below other overlays) */}
+        <div className="ui" style={style}>
+            {/* Details panel (behind everything else) */}
             {details && (
                 <Details
                     ref={detailsRef}
@@ -329,29 +307,16 @@ export function UI({
                 />
             )}
 
-            {/* Header (inlined for direct headerInfoRef access) */}
+            {/* Header — uses the Header composite; panel API is forwarded
+                through Header.ref → HeaderInfo.ref */}
             {showHeader && (
-                <div ref={headerRootRef} className="header">
-                    {header && header.title && (
-                        <NavTitle
-                            ref={navTitleRef}
-                            {...header.title}
-                        />
-                    )}
-                    {headerLinks.map((linkData, i) => (
-                        <NavLink
-                            key={i}
-                            ref={el => { navLinkRefs.current[i] = el; }}
-                            {...linkData}
-                        />
-                    ))}
-                    {showInfo && (
-                        <HeaderInfo
-                            ref={headerInfoRef}
-                            fpsOpen={fpsOpen}
-                        />
-                    )}
-                </div>
+                <Header
+                    ref={headerRef}
+                    {...header}
+                    fps={fps}
+                    fpsOpen={fpsOpen}
+                    breakpoint={breakpoint}
+                />
             )}
 
             {/* Footer */}
@@ -380,7 +345,7 @@ export function UI({
                 />
             )}
 
-            {/* Instructions (bottom) */}
+            {/* Instructions (bottom-pinned Info) */}
             {instructions && (
                 <Info
                     ref={instructionsRef}
@@ -400,14 +365,13 @@ export function UI({
 
             {/* DetailsButton — fixed lower-left */}
             {detailsButton && (
-                <div
-                    ref={dbWrapRef}
-                    className="ui-details-button"
-                >
+                <div ref={dbWrapRef} className="ui-details-button">
                     <DetailsButton
                         ref={detailsButtonRef}
+                        data={detailsButtonData}
                         onClick={() => {
                             const st = stateRef.current;
+
                             if (st.detailsOpen) {
                                 handleToggleDetails(false);
                             } else {
@@ -420,10 +384,7 @@ export function UI({
 
             {/* MuteButton — fixed lower-right */}
             {muteButton && (
-                <div
-                    ref={muteWrapRef}
-                    className="ui-mute-button"
-                >
+                <div ref={muteWrapRef} className="ui-mute-button">
                     <MuteButton
                         ref={muteButtonRef}
                         {...muteButton}
@@ -433,10 +394,7 @@ export function UI({
 
             {/* AudioButton — fixed lower-right */}
             {audioButton && (
-                <div
-                    ref={audioWrapRef}
-                    className="ui-audio-button"
-                >
+                <div ref={audioWrapRef} className="ui-audio-button">
                     <AudioButton
                         ref={audioButtonRef}
                         {...audioButton}

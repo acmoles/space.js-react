@@ -11,7 +11,10 @@ import './Header.css';
 /**
  * Fixed navigation header. Children slide in staggered via `animateIn` and
  * fade out via `animateOut`. Shows an FPS counter when `fps` or `fpsOpen` is
- * set (panel support for HeaderInfo is deferred until Panel is ported).
+ * set. When `HeaderInfo` has panel items, the header ref also proxies the full
+ * panel API (`addPanel`, `getPanelIndex`, `getPanelValue`, `setPanelIndex`,
+ * `setPanelValue`, `openPanel`) so composites like `UI` can delegate without
+ * holding a direct reference to `HeaderInfo`.
  *
  * @param {object} props
  * @param {object} [props.title] Data forwarded to a `NavTitle`:
@@ -20,14 +23,17 @@ import './Header.css';
  *   components: `{ title, link, target, onHover, onClick }`.
  * @param {boolean} [props.fps=false] Show the FPS counter.
  * @param {boolean} [props.fpsOpen=false] Show the FPS counter and immediately
- *   open the debug panel (panel open is a no-op until Panel is ported).
+ *   open the debug panel on `animateIn`.
  * @param {number} [props.breakpoint=0] Viewport width below which inset
  *   shrinks from 20 px to 10 px.
- * @param {object} [props.ref] Exposes `animateIn` and `animateOut`.
+ * @param {object} [props.ref] Exposes `animateIn`, `animateOut`, `addPanel`,
+ *   `getPanelIndex`, `getPanelValue`, `setPanelIndex`, `setPanelValue` and
+ *   `openPanel`.
  * @example
  * const headerRef = useRef(null);
- * <Header title={{ name: 'Space.js' }} ref={headerRef} />
+ * <Header title={{ name: 'Space.js' }} fps ref={headerRef} />
  * headerRef.current.animateIn();
+ * headerRef.current.addPanel({ type: 'slider', name: 'Speed', value: 5 });
  */
 export function Header({
     title,
@@ -83,7 +89,15 @@ export function Header({
         },
         animateOut: () => {
             getChildren().forEach(child => child.animateOut());
-        }
+        },
+        // Panel API — proxied from HeaderInfo so composites don't need a
+        // separate ref to HeaderInfo.
+        addPanel: item => infoRef.current?.addPanel(item),
+        getPanelIndex: name => infoRef.current?.getPanelIndex(name),
+        getPanelValue: name => infoRef.current?.getPanelValue(name),
+        setPanelIndex: (name, idx, path) => infoRef.current?.setPanelIndex(name, idx, path),
+        setPanelValue: (name, val, path) => infoRef.current?.setPanelValue(name, val, path),
+        openPanel: () => infoRef.current?.openPanel()
     }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
@@ -102,7 +116,7 @@ export function Header({
                 />
             ))}
             {showInfo && (
-                <HeaderInfo ref={infoRef} />
+                <HeaderInfo ref={infoRef} fpsOpen={fpsOpen} />
             )}
         </div>
     );
