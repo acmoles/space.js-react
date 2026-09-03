@@ -1,26 +1,28 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 
 import { router } from '@lib/index.js';
 
 import { Example } from '@/components';
 
+/**
+ * Exercises the Space.js router and updates the document title via React
+ * state when the route's page callback fires.
+ */
 export default function TestRouterExample({ title }) {
-    const ref = useRef(null);
+    const [pageTitle, setPageTitle] = useState(title);
 
     useEffect(() => {
         const prevPath = location.pathname;
         const prevScrollRestoration = history.scrollRestoration;
 
-        router.add('/test_router', onPage, { title: 'Home' });
+        router.add('/test_router', ({ title: t }) => {
+            setPageTitle(`${t} — Alien Kitty`);
+        }, { title: 'Home' });
 
         router.init({
             path: '/examples',
             scrollRestoration: 'auto'
         });
-
-        function onPage({ title: pageTitle }) {
-            document.title = `${pageTitle} — Alien Kitty`;
-        }
 
         return () => {
             window.removeEventListener('popstate', router.onPopState);
@@ -31,5 +33,5 @@ export default function TestRouterExample({ title }) {
         };
     }, []);
 
-    return <Example title={title} ref={ref} />;
+    return <Example title={pageTitle} />;
 }

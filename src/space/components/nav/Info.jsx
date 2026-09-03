@@ -1,6 +1,6 @@
 import { useImperativeHandle } from 'react';
 
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 
 import './Info.css';
 
@@ -21,12 +21,12 @@ export function Info({ content, bottom = false, ref }) {
     const [contentRef, contentCtrl] = useAnimation();
 
     useImperativeHandle(ref, () => ({
-        animateIn: (delay) => {
+        animateIn: delay => {
             root.set({ visibility: '' });
             root.stop().animate({ opacity: 1 }, 800, 'easeInOutSine', delay);
             contentCtrl.stop().set({ y: 10 }).animate({ y: 0 }, 1200, 'easeOutCubic', delay);
         },
-        animateOut: (callback) => {
+        animateOut: callback => {
             root.stop().animate({ opacity: 0 }, 400, 'easeOutCubic', () => {
                 root.set({ visibility: 'hidden' });
                 callback?.();
@@ -39,7 +39,6 @@ export function Info({ content, bottom = false, ref }) {
             ref={rootRef}
             className={bottom ? 'info info--bottom' : 'info info--top'}
         >
-            {/* eslint-disable-next-line react/no-danger */}
             <div ref={contentRef} className="content" dangerouslySetInnerHTML={{ __html: content }} />
         </div>
     );

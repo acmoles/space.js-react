@@ -1,9 +1,9 @@
-import { useEffect, useImperativeHandle, useReducer, useRef } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import { Color } from '@lib/math/Color.js';
 import { Easing } from '@lib/tween/Easing.js';
 import { clearTween, delayedCall, tween } from '@lib/tween/Tween.js';
-import { degToRad, mapLinear, TwoPI } from '@lib/utils/Utils.js';
+import { TwoPI, degToRad, mapLinear } from '@lib/utils/Utils.js';
 
 import { useTicker } from '../../motion/useTicker.js';
 import {
@@ -101,12 +101,11 @@ export function RadialGraph({
     const canvasRef = useRef(null);
     const infoRef = useRef(null);
 
-    // Triggers re-render when the marker list changes.
-    const [, dispatchMarker] = useReducer(c => c + 1, 0);
-
-    // Authoritative marker list for rendering + per-frame data.
-    const markerListRef = useRef([]); // [{ id, name, noDrag }]
+    // Marker list for rendering (state) and internal logic (ref in sync).
+    const [markerList, setMarkerList] = useState([]);
+    const markerListRef = useRef([]);
     const markerDataRef = useRef({}); // { [id]: { angle, multiplier, el } }
+    const handleMarkerPointerDownRef = useRef(null);
 
     // Mutable animation and geometry state.  Never causes React re-renders.
     const sRef = useRef({
@@ -626,7 +625,7 @@ export function RadialGraph({
 
         markerDataRef.current[id] = { angle, multiplier: 0, el: null };
         markerListRef.current = [...markerListRef.current, { id, name, noDrag }];
-        dispatchMarker();
+        setMarkerList([...markerListRef.current]);
 
         const md = markerDataRef.current[id];
         const s = sRef.current;
@@ -668,78 +667,7 @@ export function RadialGraph({
 
         delete markerDataRef.current[id];
         markerListRef.current = markerListRef.current.filter(m => m.id !== id);
-        dispatchMarker();
-    }
-
-    // --- marker drag ---
-
-    function handleMarkerPointerDown(id, e) {
-        const md = markerDataRef.current[id];
-
-        if (!md) {
-            return;
-        }
-
-        const s = sRef.current;
-        const lastTime = performance.now();
-        const lastMouse = { x: e.clientX, y: e.clientY };
-        let delta = { x: 0, y: 0 };
-
-        const onMove = ev => {
-            delta = { x: ev.clientX - lastMouse.x, y: ev.clientY - lastMouse.y };
-            const dLen = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
-
-            if (dLen) {
-                s.isDragging = true;
-                s.isDraggingAway = Math.sqrt(s.offset.x * s.offset.x + s.offset.y * s.offset.y) > s.middle + 50;
-
-                if (s.isDragging && s.isDraggingAway) {
-                    if (s.hoveredIn) {
-                        hoverOut();
-                    }
-
-                    if (md.el && s.bounds) {
-                        md.el.style.left = `${s.mouse.x - s.bounds.left}px`;
-                        md.el.style.top = `${s.mouse.y - s.bounds.top + s.mobileOffset}px`;
-                    }
-                } else {
-                    md.angle = s.mouseAngle;
-                }
-
-                s.needsUpdate = true;
-            }
-        };
-
-        const onUp = () => {
-            window.removeEventListener('pointermove', onMove);
-            window.removeEventListener('pointerup', onUp);
-
-            const wasDraggingAway = s.isDraggingAway;
-            s.isDragging = false;
-            s.isDraggingAway = false;
-
-            if (wasDraggingAway) {
-                removeMarkerInternal(id);
-                return;
-            }
-
-            if (performance.now() - lastTime > 250) {
-                return;
-            }
-
-            const dLen = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
-
-            if (dLen > 50) {
-                return;
-            }
-
-            if (onMarkerClick) {
-                onMarkerClick({ id, target: rootRef.current });
-            }
-        };
-
-        window.addEventListener('pointermove', onMove);
-        window.addEventListener('pointerup', onUp);
+        setMarkerList([...markerListRef.current]);
     }
 
     // --- ticker ---
@@ -928,7 +856,7 @@ export function RadialGraph({
 
                 markerListRef.current = [];
                 markerDataRef.current = {};
-                dispatchMarker();
+                setMarkerList([]);
 
                 for (const data of ms) {
                     addMarkerInternal(data, fast);
@@ -983,6 +911,80 @@ export function RadialGraph({
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Keep the marker drag handler current so it always closes over the
+    // latest props (onMarkerClick, onMarkerRemove) without needing a
+    // full effect dep array.  Runs after every render (no deps).
+    useEffect(() => {
+        handleMarkerPointerDownRef.current = (id, e) => {
+            const md = markerDataRef.current[id];
+
+            if (!md) {
+                return;
+            }
+
+            const s = sRef.current;
+            const lastTime = performance.now();
+            const lastMouse = { x: e.clientX, y: e.clientY };
+            let delta = { x: 0, y: 0 };
+
+            const onMove = ev => {
+                delta = { x: ev.clientX - lastMouse.x, y: ev.clientY - lastMouse.y };
+                const dLen = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+
+                if (dLen) {
+                    s.isDragging = true;
+                    s.isDraggingAway = Math.sqrt(s.offset.x * s.offset.x + s.offset.y * s.offset.y) > s.middle + 50;
+
+                    if (s.isDragging && s.isDraggingAway) {
+                        if (s.hoveredIn) {
+                            hoverOut();
+                        }
+
+                        if (md.el && s.bounds) {
+                            md.el.style.left = `${s.mouse.x - s.bounds.left}px`;
+                            md.el.style.top = `${s.mouse.y - s.bounds.top + s.mobileOffset}px`;
+                        }
+                    } else {
+                        md.angle = s.mouseAngle;
+                    }
+
+                    s.needsUpdate = true;
+                }
+            };
+
+            const onUp = () => {
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+
+                const wasDraggingAway = s.isDraggingAway;
+                s.isDragging = false;
+                s.isDraggingAway = false;
+
+                if (wasDraggingAway) {
+                    removeMarkerInternal(id);
+                    return;
+                }
+
+                if (performance.now() - lastTime > 250) {
+                    return;
+                }
+
+                const dLen = Math.sqrt(delta.x * delta.x + delta.y * delta.y);
+
+                if (dLen > 50) {
+                    return;
+                }
+
+                if (onMarkerClick) {
+                    onMarkerClick({ id, target: rootRef.current });
+                }
+            };
+
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        };
+    });
+
     return (
         <div
             ref={rootRef}
@@ -993,7 +995,7 @@ export function RadialGraph({
             {!noHover && (
                 <span ref={infoRef} className="info" />
             )}
-            {markerListRef.current.map(m => (
+            {markerList.map(m => (
                 <div
                     key={m.id}
                     className={m.noDrag ? 'marker' : 'marker draggable'}
@@ -1002,7 +1004,7 @@ export function RadialGraph({
                             markerDataRef.current[m.id].el = el;
                         }
                     }}
-                    onPointerDown={!m.noDrag ? e => handleMarkerPointerDown(m.id, e) : undefined}
+                    onPointerDown={!m.noDrag ? e => handleMarkerPointerDownRef.current?.(m.id, e) : undefined}
                 >
                     {m.name}
                 </div>

@@ -1,4 +1,7 @@
-.info {
+/* All rules scoped to the position modifier so they don't bleed into HeaderInfo,
+   which also uses the .info class name from the original library. */
+.info.info--top,
+.info.info--bottom {
     position: fixed;
     left: 50%;
     width: 300px;
@@ -16,7 +19,8 @@
     bottom: 55px;
 }
 
-.info .content {
+.info.info--top .content,
+.info.info--bottom .content {
     text-align: center;
     text-transform: uppercase;
     color: var(--ui-info-color);

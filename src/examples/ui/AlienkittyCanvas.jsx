@@ -1,221 +1,167 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { AssetLoader, Interface, clearTween, degToRad, delayedCall, headsTails, randInt, ticker, tween } from '@lib/index.js';
+import { AssetLoader, clearTween, degToRad, headsTails, randInt, tween } from '@lib/index.js';
 
 import { Example } from '@/components';
+import { useAnimation, useDelayedCall, useTicker } from '@/space';
+
+import './AlienkittyCanvas.css';
 
 const assetLoader = new AssetLoader();
 const loadImage = path => assetLoader.loadImage(path);
 
-class AlienKittyCanvas extends Interface {
-    constructor() {
-        super(null, 'canvas');
-
-        this.width = 90;
-        this.height = 86;
-        this.needsUpdate = false;
-        this.isLoaded = false;
-
-        this.init();
-        this.initCanvas();
-    }
-
-    init() {
-        this.css({
-            opacity: 0
-        });
-    }
-
-    initCanvas() {
-        this.context = this.element.getContext('2d');
-    }
-
-    async initImages() {
-        const [alienkitty, eyelid] = await Promise.all([
-            loadImage('/assets/images/alienkitty.svg'),
-            loadImage('/assets/images/alienkitty_eyelid.svg')
-        ]);
-
-        this.alienkitty = this.createCanvasObject(alienkitty, 90, 86);
-        this.eyelid1 = this.createCanvasObject(eyelid, 24, 14, { pX: 0.5, x: 35, y: 25, scaleX: 1.5, scaleY: 0.01 });
-        this.eyelid2 = this.createCanvasObject(eyelid, 24, 14, { x: 53, y: 26, scaleX: 1, scaleY: 0.01 });
-
-        this.isLoaded = true;
-
-        this.update();
-    }
-
-    createCanvasObject(image, width, height, {
-        x = 0,
-        y = 0,
-        pX = 0,
-        pY = 0,
-        rotation = 0,
-        scaleX = 1,
-        scaleY = 1,
-        scale = 1,
-        opacity = 1
-    } = {}) {
-        return {
-            image,
-            width,
-            height,
-            x,
-            y,
-            pX: width * pX,
-            pY: height * pY,
-            rotation,
-            scaleX: scaleX * scale,
-            scaleY: scaleY * scale,
-            opacity
-        };
-    }
-
-    drawImage(object) {
-        const context = this.context;
-
-        context.save();
-        context.translate(object.x + object.pX, object.y + object.pY);
-        context.rotate(degToRad(object.rotation));
-        context.scale(object.scaleX, object.scaleY);
-        context.globalAlpha = object.opacity;
-        context.drawImage(object.image, -object.pX, -object.pY, object.width, object.height);
-        context.restore();
-    }
-
-    addListeners() {
-        ticker.add(this.onUpdate);
-    }
-
-    removeListeners() {
-        ticker.remove(this.onUpdate);
-    }
-
-    blink() {
-        this.timeout = delayedCall(randInt(0, 10000), headsTails(this.onBlink1, this.onBlink2));
-    }
-
-    // Event handlers
-
-    onUpdate = () => {
-        if (this.needsUpdate) {
-            this.update();
-        }
-    };
-
-    onBlink1 = () => {
-        this.needsUpdate = true;
-        tween(this.eyelid1, { scaleY: 1.5 }, 120, 'easeOutCubic', () => {
-            tween(this.eyelid1, { scaleY: 0.01 }, 180, 'easeOutCubic');
-        });
-        tween(this.eyelid2, { scaleX: 1.3, scaleY: 1.3 }, 120, 'easeOutCubic', () => {
-            tween(this.eyelid2, { scaleX: 1, scaleY: 0.01 }, 180, 'easeOutCubic', () => {
-                this.needsUpdate = false;
-                this.blink();
-            });
-        });
-    };
-
-    onBlink2 = () => {
-        this.needsUpdate = true;
-        tween(this.eyelid1, { scaleY: 1.5 }, 120, 'easeOutCubic', () => {
-            tween(this.eyelid1, { scaleY: 0.01 }, 180, 'easeOutCubic');
-        });
-        tween(this.eyelid2, { scaleX: 1.3, scaleY: 1.3 }, 180, 'easeOutCubic', () => {
-            tween(this.eyelid2, { scaleX: 1, scaleY: 0.01 }, 240, 'easeOutCubic', () => {
-                this.needsUpdate = false;
-                this.blink();
-            });
-        });
-    };
-
-    // Public methods
-
-    resize = () => {
-        const dpr = window.devicePixelRatio;
-
-        this.element.width = Math.round(this.width * dpr);
-        this.element.height = Math.round(this.height * dpr);
-        this.element.style.width = `${this.width}px`;
-        this.element.style.height = `${this.height}px`;
-        this.context.scale(dpr, dpr);
-
-        if (this.isLoaded) {
-            this.update();
-        }
-    };
-
-    update = () => {
-        this.context.clearRect(0, 0, this.element.width, this.element.height);
-
-        this.drawImage(this.alienkitty);
-        this.drawImage(this.eyelid1);
-        this.drawImage(this.eyelid2);
-    };
-
-    animateIn = () => {
-        this.addListeners();
-        this.resize();
-        this.blink();
-
-        this.tween({ opacity: 1 }, 1000, 'easeOutSine');
-    };
-
-    animateOut = callback => {
-        this.tween({ opacity: 0 }, 500, 'easeInOutQuad', callback);
-    };
-
-    ready = () => this.initImages();
-
-    destroy = () => {
-        this.removeListeners();
-
-        clearTween(this.timeout);
-        clearTween(this.eyelid1);
-        clearTween(this.eyelid2);
-
-        return super.destroy();
+function createCanvasObject(image, width, height, {
+    x = 0,
+    y = 0,
+    pX = 0,
+    pY = 0,
+    rotation = 0,
+    scaleX = 1,
+    scaleY = 1,
+    scale = 1,
+    opacity = 1
+} = {}) {
+    return {
+        image,
+        width,
+        height,
+        x,
+        y,
+        pX: width * pX,
+        pY: height * pY,
+        rotation,
+        scaleX: scaleX * scale,
+        scaleY: scaleY * scale,
+        opacity
     };
 }
 
-export default function AlienkittyCanvasExample({ title }) {
-    const ref = useRef(null);
+function drawImage(context, object) {
+    context.save();
+    context.translate(object.x + object.pX, object.y + object.pY);
+    context.rotate(degToRad(object.rotation));
+    context.scale(object.scaleX, object.scaleY);
+    context.globalAlpha = object.opacity;
+    context.drawImage(object.image, -object.pX, -object.pY, object.width, object.height);
+    context.restore();
+}
+
+/**
+ * Canvas version of the mascot, blinking at random intervals, fading out when
+ * clicked.
+ */
+function AlienKittyCanvas({ onComplete }) {
+    const [canvasRef, canvasAnim] = useAnimation({ opacity: 0 });
+    const delay = useDelayedCall();
+    const needsUpdateRef = useRef(false);
+    const sceneRef = useRef(null);
+
+    useTicker(() => {
+        const scene = sceneRef.current;
+
+        if (!needsUpdateRef.current || !scene) {
+            return;
+        }
+
+        const { canvas, context, alienkitty, eyelid1, eyelid2 } = scene;
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        drawImage(context, alienkitty);
+        drawImage(context, eyelid1);
+        drawImage(context, eyelid2);
+    });
 
     useEffect(() => {
-        const container = ref.current;
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
 
-        const view = new AlienKittyCanvas();
-        view.css({
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            marginLeft: -view.width / 2,
-            marginTop: -view.height / 2 - 65,
-            cursor: 'pointer'
-        });
-        container.appendChild(view.element);
+        const dpr = window.devicePixelRatio;
+        canvas.width = Math.round(90 * dpr);
+        canvas.height = Math.round(86 * dpr);
+        canvas.style.width = '90px';
+        canvas.style.height = '86px';
+        context.scale(dpr, dpr);
 
-        const onClick = () => {
-            view.element.removeEventListener('click', onClick);
+        let eyelid1;
+        let eyelid2;
 
-            view.animateOut(() => {
-                view.destroy();
-            });
-        };
+        Promise.all([
+            loadImage('/assets/images/alienkitty.svg'),
+            loadImage('/assets/images/alienkitty_eyelid.svg')
+        ]).then(([alienkittyImg, eyelidImg]) => {
+            eyelid1 = createCanvasObject(eyelidImg, 24, 14, { pX: 0.5, x: 35, y: 25, scaleX: 1.5, scaleY: 0.01 });
+            eyelid2 = createCanvasObject(eyelidImg, 24, 14, { x: 53, y: 26, scaleX: 1, scaleY: 0.01 });
 
-        view.element.addEventListener('click', onClick);
+            sceneRef.current = {
+                canvas,
+                context,
+                alienkitty: createCanvasObject(alienkittyImg, 90, 86),
+                eyelid1,
+                eyelid2
+            };
 
-        ticker.start();
+            needsUpdateRef.current = true;
 
-        view.ready().then(() => {
-            view.animateIn();
+            const blink = () => {
+                delay(randInt(0, 10000), headsTails(onBlink1, onBlink2));
+            };
+
+            const onBlink1 = () => {
+                needsUpdateRef.current = true;
+                tween(eyelid1, { scaleY: 1.5 }, 120, 'easeOutCubic', () => {
+                    tween(eyelid1, { scaleY: 0.01 }, 180, 'easeOutCubic');
+                });
+                tween(eyelid2, { scaleX: 1.3, scaleY: 1.3 }, 120, 'easeOutCubic', () => {
+                    tween(eyelid2, { scaleX: 1, scaleY: 0.01 }, 180, 'easeOutCubic', () => {
+                        needsUpdateRef.current = false;
+                        blink();
+                    });
+                });
+            };
+
+            const onBlink2 = () => {
+                needsUpdateRef.current = true;
+                tween(eyelid1, { scaleY: 1.5 }, 120, 'easeOutCubic', () => {
+                    tween(eyelid1, { scaleY: 0.01 }, 180, 'easeOutCubic');
+                });
+                tween(eyelid2, { scaleX: 1.3, scaleY: 1.3 }, 180, 'easeOutCubic', () => {
+                    tween(eyelid2, { scaleX: 1, scaleY: 0.01 }, 240, 'easeOutCubic', () => {
+                        needsUpdateRef.current = false;
+                        blink();
+                    });
+                });
+            };
+
+            blink();
+            canvasAnim.animate({ opacity: 1 }, 1000, 'easeOutSine');
         });
 
         return () => {
-            view.element.removeEventListener('click', onClick);
-            view.destroy();
-        };
-    }, []);
+            if (eyelid1) {
+                clearTween(eyelid1);
+            }
 
-    return <Example title={title} ref={ref} center />;
+            if (eyelid2) {
+                clearTween(eyelid2);
+            }
+
+            sceneRef.current = null;
+        };
+    }, [canvasRef, canvasAnim, delay]);
+
+    const handleClick = () => {
+        canvasAnim.stop().animate({ opacity: 0 }, 500, 'easeInOutQuad', onComplete);
+    };
+
+    return <canvas ref={canvasRef} className="alienkitty-canvas" onClick={handleClick} />;
+}
+
+export default function AlienkittyCanvasExample({ title }) {
+    const [visible, setVisible] = useState(true);
+
+    return (
+        <Example title={title}>
+            {visible && <AlienKittyCanvas onComplete={() => setVisible(false)} />}
+        </Example>
+    );
 }

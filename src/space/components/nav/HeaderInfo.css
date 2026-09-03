@@ -1,6 +1,6 @@
+/* All rules scoped to .header-info so they don't bleed into the Info component,
+   which also uses the .info class name. */
 .header-info {
-    float: right;
-    padding: 10px;
     pointer-events: auto;
     -webkit-user-select: none;
     user-select: none;

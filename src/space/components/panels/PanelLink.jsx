@@ -16,7 +16,7 @@ import './PanelLink.css';
  * @example
  * <PanelLink name="source" value="Open" onChange={e => console.log(e.value)} />
  */
-export function PanelLink({ name: _name, value: initialValue, onChange, ref }) {
+export function PanelLink({ value: initialValue, onChange, ref }) {
     const [value, setValueState] = useState(initialValue);
     const onChangeRef = useRef(onChange);
 

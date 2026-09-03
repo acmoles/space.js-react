@@ -13,7 +13,7 @@ import './AudioButtonInfo.css';
  * @example
  * <AudioButtonInfo data={{ name: 'Artist', title: 'Track' }} />
  */
-export function AudioButtonInfo({ data }) {
+export function AudioButtonInfo({ data, style }) {
     const [rootRef, root] = useAnimation();
     const [displayData, setDisplayData] = useState(data);
 
@@ -46,7 +46,7 @@ export function AudioButtonInfo({ data }) {
     }, [data, root]);
 
     if (!displayData) {
-        return <div ref={rootRef} className="info" />;
+        return <div ref={rootRef} className="info" style={style} />;
     }
 
     const { name, title, image, link } = displayData;
@@ -60,7 +60,7 @@ export function AudioButtonInfo({ data }) {
     };
 
     return (
-        <div ref={rootRef} className="info">
+        <div ref={rootRef} className="info" style={style}>
             <div
                 className="wrapper"
                 style={link ? { cursor: 'pointer', pointerEvents: 'auto' } : undefined}

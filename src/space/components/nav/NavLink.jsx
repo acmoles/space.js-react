@@ -51,7 +51,18 @@ export function NavLink({
     }, []);
 
     useImperativeHandle(ref, () => ({
-        animateIn: () => root.stop().animate({ opacity: 1 }, 400, 'easeOutCubic'),
+        /**
+         * Resets to the off-screen start state without animating. Called by
+         * parent composites (`Header`, `Footer`) from `useLayoutEffect` so the
+         * link is invisible before the first paint.
+         */
+        hide: () => root.stop().set({ x: -10, opacity: 0 }),
+        /**
+         * Slides in from x −10 → 0 and fades in, matching the Header stagger
+         * animation: 1 000 ms easeOutQuart with an optional `delay` for
+         * staggering.
+         */
+        animateIn: (delay = 0) => root.stop().set({ x: -10, opacity: 0 }).animate({ x: 0, opacity: 1 }, 1000, 'easeOutQuart', delay),
         animateOut: () => root.stop().animate({ opacity: 0 }, 400, 'easeOutCubic')
     }), [root]);
 

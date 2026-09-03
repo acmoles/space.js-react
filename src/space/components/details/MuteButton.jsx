@@ -1,7 +1,6 @@
-import { useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
+import { useImperativeHandle, useLayoutEffect, useRef } from 'react';
 
-import { clearTween, tween } from '@lib/tween/Tween.js';
-import { useAnimation, useTicker } from '../../motion/index.js';
+import { useAnimation, useMotion, useTicker } from '../../motion/index.js';
 
 import './MuteButton.css';
 
@@ -9,10 +8,10 @@ const WIDTH = 24;
 const HEIGHT = 16;
 const DPR = 2;
 
-function drawWave(ctx, canvas, props) {
+function drawWave(ctx, canvas, values) {
     const w = WIDTH + 2;
     const h = HEIGHT / 2;
-    const progress = w * props.progress;
+    const progress = w * values.progress;
     const increase = (90 / 180 * Math.PI) / (h / 2);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -27,7 +26,7 @@ function drawWave(ctx, canvas, props) {
             ctx.moveTo(x, y);
 
             x = i;
-            y = h - Math.sin(counter) * (h - 1) * props.yMultiplier;
+            y = h - Math.sin(counter) * (h - 1) * values.yMultiplier;
             counter += increase;
 
             ctx.lineTo(x, y);
@@ -55,7 +54,7 @@ export function MuteButton({ sound: initialSound = true, onUpdate, onHover, onCl
     const canvasRef = useRef(null);
     const ctxRef = useRef(null);
 
-    const drawProps = useRef({
+    const motion = useMotion({
         yMultiplier: initialSound ? 1 : 0,
         progress: 0
     });
@@ -88,30 +87,23 @@ export function MuteButton({ sound: initialSound = true, onUpdate, onHover, onCl
         stateRef.current.needsUpdate = true;
     }, []);
 
-    useEffect(() => {
-        const dp = drawProps.current;
-
-        return () => clearTween(dp);
-    }, []);
-
     useTicker(() => {
         if (stateRef.current.needsUpdate) {
-            drawWave(ctxRef.current, canvasRef.current, drawProps.current);
+            drawWave(ctxRef.current, canvasRef.current, motion.values);
         }
     });
 
     useImperativeHandle(ref, () => ({
         animateIn() {
-            const dp = drawProps.current;
             const st = stateRef.current;
 
-            clearTween(dp);
-            dp.yMultiplier = st.sound ? 1 : 0;
-            dp.progress = 0;
+            motion.stop();
+            motion.values.yMultiplier = st.sound ? 1 : 0;
+            motion.values.progress = 0;
             st.animatedIn = false;
             st.needsUpdate = true;
 
-            tween(dp, { progress: 1 }, 1000, 'easeOutExpo', () => {
+            motion.animate({ progress: 1 }, 1000, 'easeOutExpo', () => {
                 st.needsUpdate = false;
                 st.animatedIn = true;
             });
@@ -123,25 +115,24 @@ export function MuteButton({ sound: initialSound = true, onUpdate, onHover, onCl
             stateRef.current.animatedIn = false;
             root.stop().animate({ opacity: 0 }, 400, 'easeOutCubic');
         }
-    }), [root]);
+    }), [root, motion]);
 
     const handleHover = event => {
-        const dp = drawProps.current;
         const st = stateRef.current;
 
         if (!st.animatedIn) {
             return;
         }
 
-        clearTween(dp);
+        motion.stop();
         st.needsUpdate = true;
 
         if (event.type === 'mouseenter') {
-            tween(dp, { yMultiplier: st.sound ? 0.7 : 0.3 }, 275, 'easeInOutCubic', () => {
+            motion.animate({ yMultiplier: st.sound ? 0.7 : 0.3 }, 275, 'easeInOutCubic', () => {
                 st.needsUpdate = false;
             });
         } else {
-            tween(dp, { yMultiplier: st.sound ? 1 : 0 }, 275, 'easeInOutCubic', () => {
+            motion.animate({ yMultiplier: st.sound ? 1 : 0 }, 275, 'easeInOutCubic', () => {
                 st.needsUpdate = false;
             });
         }
@@ -152,22 +143,21 @@ export function MuteButton({ sound: initialSound = true, onUpdate, onHover, onCl
     };
 
     const handleClick = event => {
-        const dp = drawProps.current;
         const st = stateRef.current;
 
-        clearTween(dp);
+        motion.stop();
         st.needsUpdate = true;
 
         if (st.sound) {
             st.sound = false;
 
-            tween(dp, { yMultiplier: 0 }, 300, 'easeOutCubic', () => {
+            motion.animate({ yMultiplier: 0 }, 300, 'easeOutCubic', () => {
                 st.needsUpdate = false;
             });
         } else {
             st.sound = true;
 
-            tween(dp, { yMultiplier: 1 }, 300, 'easeOutCubic', () => {
+            motion.animate({ yMultiplier: 1 }, 300, 'easeOutCubic', () => {
                 st.needsUpdate = false;
             });
         }

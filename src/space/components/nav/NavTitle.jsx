@@ -1,6 +1,6 @@
 import { useImperativeHandle } from 'react';
 
-import { useAnimation } from '../motion/index.js';
+import { useAnimation } from '../../motion/index.js';
 
 import './NavTitle.css';
 
@@ -65,11 +65,9 @@ export function NavTitle({
             onClick={isClickable ? handleClick : undefined}
         >
             {name !== undefined && (
-                // eslint-disable-next-line react/no-danger
                 <div className="name" dangerouslySetInnerHTML={{ __html: name }} />
             )}
             {caption !== undefined && (
-                // eslint-disable-next-line react/no-danger
                 <div className="caption" dangerouslySetInnerHTML={{ __html: caption }} />
             )}
         </div>

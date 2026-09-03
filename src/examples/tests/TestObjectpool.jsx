@@ -1,12 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { ObjectPool } from '@lib/index.js';
 
 import { Example } from '@/components';
 
+/**
+ * Exercises the ObjectPool data structure and logs the results to the console,
+ * matching the original test_objectpool.html.
+ */
 export default function TestObjectpoolExample({ title }) {
-    const ref = useRef(null);
-
     useEffect(() => {
         //
 
@@ -47,10 +49,7 @@ export default function TestObjectpoolExample({ title }) {
 
         pool2.put(object2);
         console.log(pool2.length); // 4
-
-        return () => {
-        };
     }, []);
 
-    return <Example title={title} ref={ref} />;
+    return <Example title={title} />;
 }

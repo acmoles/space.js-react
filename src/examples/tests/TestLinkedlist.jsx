@@ -1,12 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { LinkedList } from '@lib/index.js';
 
 import { Example } from '@/components';
 
+/**
+ * Exercises the LinkedList data structure and logs the results to the console,
+ * matching the original test_linkedlist.html.
+ */
 export default function TestLinkedlistExample({ title }) {
-    const ref = useRef(null);
-
     useEffect(() => {
         const list = new LinkedList();
 
@@ -25,12 +27,9 @@ export default function TestLinkedlistExample({ title }) {
             object = list.next();
         }
 
-        object = list.find(object => object === 1);
+        object = list.find(item => item === 1);
         console.log(object); // 1
-
-        return () => {
-        };
     }, []);
 
-    return <Example title={title} ref={ref} />;
+    return <Example title={title} />;
 }

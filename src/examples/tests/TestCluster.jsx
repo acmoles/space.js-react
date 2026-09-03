@@ -1,12 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { Cluster } from '@lib/index.js';
 
 import { Example } from '@/components';
 
+/**
+ * Exercises the Cluster data structure and logs the results to the console,
+ * matching the original test_cluster.html.
+ */
 export default function TestClusterExample({ title }) {
-    const ref = useRef(null);
-
     useEffect(() => {
         //
 
@@ -41,10 +43,7 @@ export default function TestClusterExample({ title }) {
 
         const object2 = cluster2.get();
         console.log(object2, cluster2.length); // 0 4
-
-        return () => {
-        };
     }, []);
 
-    return <Example title={title} ref={ref} />;
+    return <Example title={title} />;
 }

@@ -1,29 +1,24 @@
-import { useEffect, useRef } from 'react';
-
-import { ticker } from '@lib/index.js';
+import { useEffect, useState } from 'react';
 
 import { Example } from '@/components';
+import { useTicker } from '@/space';
 
+/**
+ * Logs time, delta and frame to the console for one second via the shared
+ * ticker, the same as the original test_ticker.html.
+ */
 export default function TestTickerExample({ title }) {
-    const ref = useRef(null);
+    const [enabled, setEnabled] = useState(true);
+
+    useTicker((time, delta, frame) => {
+        console.log(time, delta, frame);
+    }, enabled);
 
     useEffect(() => {
-        ticker.add(onUpdate);
-        ticker.start();
+        const id = setTimeout(() => setEnabled(false), 1000);
 
-        function onUpdate(time, delta, frame) {
-            console.log(time, delta, frame);
-        }
-
-        const timeout = setTimeout(() => {
-            ticker.remove(onUpdate);
-        }, 1000);
-
-        return () => {
-            clearTimeout(timeout);
-            ticker.remove(onUpdate);
-        };
+        return () => clearTimeout(id);
     }, []);
 
-    return <Example title={title} ref={ref} />;
+    return <Example title={title} />;
 }

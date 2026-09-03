@@ -1,6 +1,6 @@
-import { useImperativeHandle, useRef } from 'react';
+import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { degToRad, TwoPI } from '@lib/utils/Utils.js';
+import { TwoPI, degToRad } from '@lib/utils/Utils.js';
 
 /**
  * Manages a set of {@link RadialGraphCanvas} (or {@link RadialGraphSegmentsCanvas})
@@ -69,9 +69,9 @@ export function RadialGraphContainer({
 
     const onCursorRef = useRef(onCursor);
 
-    // Keep callback ref current so the imperative handle does not need to
-    // be recreated when onCursor changes.
-    onCursorRef.current = onCursor;
+    useEffect(() => {
+        onCursorRef.current = onCursor;
+    }, [onCursor]);
 
     useImperativeHandle(ref, () => {
         const s = stateRef.current;

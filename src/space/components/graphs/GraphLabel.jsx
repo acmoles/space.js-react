@@ -28,12 +28,13 @@ export function GraphLabel({ name, ref }) {
 
     // Internal tween-target object. Holds numeric opacity so the tween engine
     // can interpolate it; its update callback pushes the value to the DOM.
-    const tweenTarget = useMemo(() => ({ opacity: 0 }), []);
+    // useRef makes its `.current` safely mutable from inside useMemo closures.
+    const tweenTargetRef = useRef({ opacity: 0 });
 
     const handle = useMemo(() => {
         const syncOpacity = () => {
             if (rootRef.current) {
-                rootRef.current.style.opacity = tweenTarget.opacity;
+                rootRef.current.style.opacity = tweenTargetRef.current.opacity;
             }
         };
 
@@ -45,7 +46,7 @@ export function GraphLabel({ name, ref }) {
             /** Mirror of Interface.css — immediate style set, chainable. */
             css(props) {
                 if (props.opacity !== undefined) {
-                    tweenTarget.opacity = props.opacity;
+                    tweenTargetRef.current.opacity = props.opacity;
                     syncOpacity();
                 }
 
@@ -61,7 +62,7 @@ export function GraphLabel({ name, ref }) {
             /** Mirror of Interface.tween — chainable animated set. */
             tween(props, duration, ease, delay = 0, complete) {
                 if (props.opacity !== undefined) {
-                    tweenFn(tweenTarget, { opacity: props.opacity }, duration, ease, delay, complete, syncOpacity);
+                    tweenFn(tweenTargetRef.current, { opacity: props.opacity }, duration, ease, delay, complete, syncOpacity);
                 }
 
                 return h;
@@ -69,19 +70,19 @@ export function GraphLabel({ name, ref }) {
 
             /** Mirror of Interface.clearTween — stops running tweens, chainable. */
             clearTween() {
-                clearTween(tweenTarget);
+                clearTween(tweenTargetRef.current);
 
                 return h;
             }
         };
 
         return h;
-    }, [tweenTarget]);
+    }, [tweenTargetRef]);
 
     useImperativeHandle(ref, () => handle, [handle]);
 
     // Cancel any outstanding tween when the component unmounts.
-    useEffect(() => () => clearTween(tweenTarget), [tweenTarget]);
+    useEffect(() => () => clearTween(tweenTargetRef.current), [tweenTargetRef]);
 
     return (
         <div ref={rootRef} className="label">

@@ -1,25 +1,27 @@
-.info {
+.point > .info {
     position: absolute;
+    left: 10px;
+    top: -15px;
 }
 
-.info .container {
+.point > .info .container {
     position: relative;
     cursor: move;
 }
 
-.info .container .name {
+.point > .info .container .name {
     line-height: var(--ui-title-line-height);
     white-space: nowrap;
 }
 
-.info .container .type {
+.point > .info .container .type {
     font-size: var(--ui-secondary-font-size);
     letter-spacing: var(--ui-secondary-letter-spacing);
     color: var(--ui-secondary-color);
     padding-bottom: 3px;
 }
 
-.info .numbers {
+.point > .info .container .numbers {
     position: absolute;
     left: -28px;
     top: 0;
