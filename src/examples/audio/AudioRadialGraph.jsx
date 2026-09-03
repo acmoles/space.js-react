@@ -1,144 +1,126 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { PanelItem, RadialGraphSegments, UI, WebAudio, clamp, mapLinear, median, rms, ticker, tween } from '@lib/index.js';
+import { WebAudio, clamp, mapLinear, median, rms, ticker, tween } from '@lib/index.js';
 
 import { Example } from '@/components';
+import { Info } from '@/space/components/nav/index.js';
+import { RadialGraphSegments } from '@/space/components/radial/index.js';
+import { useResize } from '@/space/hooks/index.js';
+import { UI } from '@/space/components/ui/UI.jsx';
+
+import './AudioRadialGraph.css';
+
+const AUDIO_BUTTON_INFO = {
+    name: 'Cyberspace',
+    title: 'cyberspace.app',
+    link: 'https://cyberspace.app/'
+};
+
+// fftSize 4096 → frequencyBinCount = 2048
+const BUFFER_LENGTH = 2048;
+
+// Initial chunk=1 → arrayLength=2048, segmentSize=682
+const INITIAL_SEGMENT_SIZE = Math.floor(BUFFER_LENGTH / 3);
+const INITIAL_SEGMENTS = [
+    INITIAL_SEGMENT_SIZE,
+    INITIAL_SEGMENT_SIZE,
+    BUFFER_LENGTH - INITIAL_SEGMENT_SIZE * 2
+];
 
 export default function AudioRadialGraphExample({ title }) {
-    const ref = useRef(null);
+    const uiRef = useRef(null);
+    const graphRef = useRef(null);
+    const instructionsRef = useRef(null);
+
+    const [initialSound] = useState(() => {
+        const v = localStorage.getItem('sound');
+
+        return v ? JSON.parse(v) : true;
+    });
+
+    // Mutable audio-analysis state — all in one ref so the ticker closure
+    // always sees fresh values without causing re-renders.
+    const audioState = useRef({
+        highsRange: [0.4, 0.6],
+        midsRange: [0, 1],
+        lowsRange: [0.1, 0.3],
+        multiplier: 0.5,
+        peakInterval: 3,
+        lastTime: 0,
+        highs: 0,
+        mids: 0,
+        lows: 0,
+        chunkSize: 1,
+        chunkSizes: [],
+        arrayLength: BUFFER_LENGTH,
+        segmentPositions: [INITIAL_SEGMENT_SIZE, INITIAL_SEGMENT_SIZE * 2, BUFFER_LENGTH]
+    });
 
     useEffect(() => {
-        const container = ref.current;
+        let alive = true;
+        const as = audioState.current;
 
-        const store = {
-            sound: true
-        };
-
-        const sound = localStorage.getItem('sound');
-        store.sound = sound ? JSON.parse(sound) : true;
-
-        // Views
-        const ui = new UI({
-            fps: true,
-            instructions: {
-                content: `${navigator.maxTouchPoints ? 'Tap' : 'Click'} for sound`
-            },
-            audioButton: {
-                sound: store.sound
-            }
-        });
-        ui.css({
-            minHeight: '100%',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-        });
-        container.appendChild(ui.element);
-
-        ui.audioButton.setData({
-            name: 'Cyberspace',
-            title: 'cyberspace.app',
-            link: 'https://cyberspace.app/'
-        });
-
-        // Radial graph with 3 segments, ghost and labels
-        const graph = new RadialGraphSegments({
-            value: new Array(2048).fill(0),
-            ghost: true,
-            start: -90,
-            precision: 2,
-            lookupPrecision: 100,
-            segments: [1, 1, 1],
-            labels: ['Highs', 'Mids', 'Lows'],
-            noHover: true
-        });
-        ui.add(graph);
-
-        // Audio
+        // ── Audio setup ──────────────────────────────────────────────────────
         WebAudio.init({ sampleRate: 48000 });
         WebAudio.load({ cyberspace: 'https://icecast.cyberspace.app/dive.ogg' });
 
         const context = WebAudio.context;
-
         const cyberspace = WebAudio.get('cyberspace');
         cyberspace.gain.set(1);
 
-        // Median downsample
-        const array = [];
-        const chunkSizes = [];
-        let chunkSize = 1;
-
-        // Peak levels for ghost graph
-        const peakInterval = 3; // 3 seconds
-        let lastTime = 0;
-        let highs = 0;
-        let mids = 0;
-        let lows = 0;
-
-        // Bars
-        const highsRange = [0.4, 0.6];
-        const midsRange = [0, 1];
-        const lowsRange = [0.1, 0.3];
-
-        // Oscilloscope
-        let multiplier = 0.5;
-
-        // Delay the output to sync with the analyser
         const analyserDelay = context.createDelay();
-        analyserDelay.delayTime.value = 4 / 60; // seconds
+        analyserDelay.delayTime.value = 4 / 60;
         analyserDelay.connect(cyberspace.parent.input);
 
         const analyser = context.createAnalyser();
         analyser.fftSize = 4096;
-
         const bufferLength = analyser.frequencyBinCount;
         const data = new Uint8Array(bufferLength);
 
-        // Connect the source to be analyzed (directly without output)
-        // cyberspace.source.connect(analyser);
-
-        // Reconnect the output to be analyzed (with analyser output)
         cyberspace.output.disconnect();
         cyberspace.output.connect(analyser);
         analyser.connect(analyserDelay);
 
-        // Find all the chunk sizes evenly divisible by 3
+        // ── Chunk size lookup (same logic as original) ───────────────────────
+        const chunkSizes = [];
         const segmentSizes = [];
 
         for (let i = 1; i < bufferLength; i++) {
-            const arrayLength = Math.floor(bufferLength / i);
-            const segmentSize = Math.floor(arrayLength / 3);
+            const al = Math.floor(bufferLength / i);
+            const ss = Math.floor(al / 3);
 
-            if (arrayLength - segmentSize * 3 === 0 && segmentSize >= 5 && !segmentSizes.includes(segmentSize)) {
-                segmentSizes.push(segmentSize);
-
+            if (al - ss * 3 === 0 && ss >= 5 && !segmentSizes.includes(ss)) {
+                segmentSizes.push(ss);
                 chunkSizes.push(i);
             }
         }
 
         chunkSizes.unshift(1, 2, 3, 4, 5, 6, 7, 8, 9);
+        as.chunkSizes = chunkSizes;
 
-        let arrayLength = Math.floor(bufferLength / chunkSize);
-        let segmentPositions;
+        const array = [];
 
         function setGraphSegments(size) {
-            chunkSize = size;
+            as.chunkSize = size;
+            as.arrayLength = Math.floor(bufferLength / size);
 
-            arrayLength = Math.floor(bufferLength / chunkSize);
+            const ss = Math.floor(as.arrayLength / 3);
+            const g = graphRef.current;
 
-            const segmentSize = Math.floor(arrayLength / 3);
+            if (g) {
+                g.array.length = as.arrayLength;
 
-            graph.segments = [segmentSize, segmentSize, arrayLength - segmentSize * 2];
-            graph.array.length = arrayLength;
-            graph.ghostArray.length = arrayLength;
+                if (g.ghostArray) {
+                    g.ghostArray.length = as.arrayLength;
+                }
+            }
 
-            segmentPositions = [segmentSize, segmentSize * 2, arrayLength];
+            as.segmentPositions = [ss, ss * 2, as.arrayLength];
         }
 
-        setGraphSegments(chunkSize);
+        setGraphSegments(as.chunkSize);
 
-        function getAverageFrequency(arr, start = 0, end = arr.length) {
-            // Calculate the root median square (RMS)
+        function getAverageFrequency(arr, start, end) {
             return rms(arr.slice(start, end).map(v => v / 256));
         }
 
@@ -160,63 +142,50 @@ export default function AudioRadialGraphExample({ title }) {
 
         function onClick() {
             document.removeEventListener('click', onClick);
-
             WebAudio.resume();
+            instructionsRef.current?.animateOut();
 
-            ui.instructions.animateOut();
-
-            if (!store.sound) {
-                ui.audioButton.onClick();
+            if (!as.soundState) {
+                // Sound is stored as off — leave gain at 0
+                mute();
             }
 
             cyberspace.play();
         }
 
-        function onAudio({ sound: s }) {
-            if (s) {
+        function onAudio(sound) {
+            if (sound) {
                 unmute();
             } else {
                 mute();
             }
 
-            localStorage.setItem('sound', JSON.stringify(s));
-
-            store.sound = s;
+            localStorage.setItem('sound', JSON.stringify(sound));
+            as.soundState = sound;
         }
 
         function preventZoom(e) {
             e.preventDefault();
         }
 
-        function onResize() {
-            const width = document.documentElement.clientWidth;
-            const height = document.documentElement.clientHeight;
-
-            if (width < height) {
-                const size = document.documentElement.clientWidth * 0.74;
-
-                graph.setSize(size, size);
-            } else {
-                const size = document.documentElement.clientHeight * 0.74;
-
-                graph.setSize(size, size);
-            }
-
-            ui.instructions.css({ bottom: Math.round(height / 2) - 16 });
-        }
-
         function onUpdate(time) {
+            if (!alive) return;
+
+            const { peakInterval, highsRange, midsRange, lowsRange, segmentPositions } = as;
+            let { lastTime, highs, mids, lows, chunkSize, arrayLength, multiplier } = as;
+
             if (time - lastTime > peakInterval) {
-                lastTime = time;
+                as.lastTime = time;
+                as.highs = 0;
+                as.mids = 0;
+                as.lows = 0;
                 highs = 0;
                 mids = 0;
                 lows = 0;
             }
 
-            // Bars
             analyser.getByteFrequencyData(data);
 
-            // Median downsample
             array.length = 0;
 
             for (let i = 0; i < bufferLength; i += chunkSize) {
@@ -227,22 +196,24 @@ export default function AudioRadialGraphExample({ title }) {
             const currentMids = getAverageFrequency(array, Math.floor(arrayLength * 0.4), Math.floor(arrayLength * 0.6));
             const currentLows = getAverageFrequency(array, Math.floor(arrayLength * 0.6), arrayLength);
 
-            highs = Math.max(highs, currentHighs);
-            mids = Math.max(mids, currentMids);
-            lows = Math.max(lows, currentLows);
+            as.highs = Math.max(highs, currentHighs);
+            as.mids = Math.max(mids, currentMids);
+            as.lows = Math.max(lows, currentLows);
 
-            graph.ghostArray.fill(clamp(mapLinear(highs, highsRange[0], highsRange[1], 0, 1), 0, 1), 0, segmentPositions[0]);
-            graph.ghostArray.fill(clamp(mapLinear(mids, midsRange[0], midsRange[1], 0, 1), 0, 1), segmentPositions[0], segmentPositions[1]);
-            graph.ghostArray.fill(clamp(mapLinear(lows, lowsRange[0], lowsRange[1], 0, 1), 0, 1), segmentPositions[1], segmentPositions[2]);
+            const g = graphRef.current;
 
-            graph.array.fill(clamp(mapLinear(currentHighs, highsRange[0], highsRange[1], 0, 1), 0, 1), 0, segmentPositions[0]);
-            graph.array.fill(clamp(mapLinear(currentMids, midsRange[0], midsRange[1], 0, 1), 0, 1), segmentPositions[0], segmentPositions[1]);
-            graph.array.fill(clamp(mapLinear(currentLows, lowsRange[0], lowsRange[1], 0, 1), 0, 1), segmentPositions[1], segmentPositions[2]);
+            if (!g) return;
 
-            // Oscilloscope
+            g.ghostArray.fill(clamp(mapLinear(as.highs, highsRange[0], highsRange[1], 0, 1), 0, 1), 0, segmentPositions[0]);
+            g.ghostArray.fill(clamp(mapLinear(as.mids, midsRange[0], midsRange[1], 0, 1), 0, 1), segmentPositions[0], segmentPositions[1]);
+            g.ghostArray.fill(clamp(mapLinear(as.lows, lowsRange[0], lowsRange[1], 0, 1), 0, 1), segmentPositions[1], segmentPositions[2]);
+
+            g.array.fill(clamp(mapLinear(currentHighs, highsRange[0], highsRange[1], 0, 1), 0, 1), 0, segmentPositions[0]);
+            g.array.fill(clamp(mapLinear(currentMids, midsRange[0], midsRange[1], 0, 1), 0, 1), segmentPositions[0], segmentPositions[1]);
+            g.array.fill(clamp(mapLinear(currentLows, lowsRange[0], lowsRange[1], 0, 1), 0, 1), segmentPositions[1], segmentPositions[2]);
+
             analyser.getByteTimeDomainData(data);
 
-            // Median downsample
             array.length = 0;
 
             for (let i = 0; i < bufferLength; i += chunkSize) {
@@ -253,35 +224,18 @@ export default function AudioRadialGraphExample({ title }) {
                 const v = array[i] / 128;
                 const y = clamp(mapLinear(v, 0, 2, -0.5, 0.5), -0.5, 0.5);
 
-                graph.array[i] = graph.array[i] + y * multiplier;
+                g.array[i] = g.array[i] + y * multiplier;
             }
 
-            graph.needsUpdate = true;
-
-            graph.update();
-            ui.update();
+            g.markDirty();
+            g.update();
+            uiRef.current?.update();
         }
 
-        document.addEventListener('visibilitychange', onVisibility);
-        document.addEventListener('click', onClick);
-        document.addEventListener('dblclick', preventZoom);
-        window.addEventListener('resize', onResize);
-
-        ui.audioButton.events.on('update', onAudio);
-
-        ticker.add(onUpdate);
-        ticker.start();
-
-        onResize();
-
-        // Panel
-        const items = [
-            {
-                name: 'FPS'
-            },
-            {
-                type: 'divider'
-            },
+        // ── Panel items ──────────────────────────────────────────────────────
+        const panelItems = [
+            { name: 'FPS' },
+            { type: 'divider' },
             {
                 type: 'slider',
                 name: 'Volume',
@@ -304,19 +258,15 @@ export default function AudioRadialGraphExample({ title }) {
                     analyserDelay.delayTime.value = value / 60;
                 }
             },
-            {
-                type: 'divider'
-            },
+            { type: 'divider' },
             {
                 type: 'slider',
                 name: 'Highs Min',
                 min: 0,
                 max: 1,
                 step: 0.01,
-                value: highsRange[0],
-                callback: value => {
-                    highsRange[0] = value;
-                }
+                value: as.highsRange[0],
+                callback: value => { as.highsRange[0] = value; }
             },
             {
                 type: 'slider',
@@ -324,24 +274,18 @@ export default function AudioRadialGraphExample({ title }) {
                 min: 0,
                 max: 1,
                 step: 0.01,
-                value: highsRange[1],
-                callback: value => {
-                    highsRange[1] = value;
-                }
+                value: as.highsRange[1],
+                callback: value => { as.highsRange[1] = value; }
             },
-            {
-                type: 'divider'
-            },
+            { type: 'divider' },
             {
                 type: 'slider',
                 name: 'Mids Min',
                 min: 0,
                 max: 1,
                 step: 0.01,
-                value: midsRange[0],
-                callback: value => {
-                    midsRange[0] = value;
-                }
+                value: as.midsRange[0],
+                callback: value => { as.midsRange[0] = value; }
             },
             {
                 type: 'slider',
@@ -349,24 +293,18 @@ export default function AudioRadialGraphExample({ title }) {
                 min: 0,
                 max: 1,
                 step: 0.01,
-                value: midsRange[1],
-                callback: value => {
-                    midsRange[1] = value;
-                }
+                value: as.midsRange[1],
+                callback: value => { as.midsRange[1] = value; }
             },
-            {
-                type: 'divider'
-            },
+            { type: 'divider' },
             {
                 type: 'slider',
                 name: 'Lows Min',
                 min: 0,
                 max: 1,
                 step: 0.01,
-                value: lowsRange[0],
-                callback: value => {
-                    lowsRange[0] = value;
-                }
+                value: as.lowsRange[0],
+                callback: value => { as.lowsRange[0] = value; }
             },
             {
                 type: 'slider',
@@ -374,24 +312,18 @@ export default function AudioRadialGraphExample({ title }) {
                 min: 0,
                 max: 1,
                 step: 0.01,
-                value: lowsRange[1],
-                callback: value => {
-                    lowsRange[1] = value;
-                }
+                value: as.lowsRange[1],
+                callback: value => { as.lowsRange[1] = value; }
             },
-            {
-                type: 'divider'
-            },
+            { type: 'divider' },
             {
                 type: 'slider',
                 name: 'Oscope',
                 min: 0,
                 max: 1,
                 step: 0.01,
-                value: multiplier,
-                callback: value => {
-                    multiplier = value;
-                }
+                value: as.multiplier,
+                callback: value => { as.multiplier = value; }
             },
             {
                 type: 'slider',
@@ -399,40 +331,92 @@ export default function AudioRadialGraphExample({ title }) {
                 min: 0,
                 max: chunkSizes.length - 1,
                 step: 1,
-                value: chunkSizes.indexOf(chunkSize),
+                value: chunkSizes.indexOf(as.chunkSize),
                 callback: value => {
                     setGraphSegments(chunkSizes[value]);
                 }
             }
         ];
 
-        items.forEach(data => {
-            ui.addPanel(new PanelItem(data));
+        panelItems.forEach(item => {
+            uiRef.current?.addPanel(item);
         });
 
-        ui.instructions.animateIn();
+        // ── Listeners & start ────────────────────────────────────────────────
+        document.addEventListener('visibilitychange', onVisibility);
+        document.addEventListener('click', onClick);
+        document.addEventListener('dblclick', preventZoom);
 
-        graph.animateIn();
-        ui.animateIn();
+        uiRef.current?.audioButton?.events?.on?.('update', onAudio);
+
+        ticker.add(onUpdate);
+        ticker.start();
+
+        instructionsRef.current?.animateIn();
+        graphRef.current?.animateIn();
+        uiRef.current?.animateIn();
 
         return () => {
+            alive = false;
+
             document.removeEventListener('visibilitychange', onVisibility);
             document.removeEventListener('click', onClick);
             document.removeEventListener('dblclick', preventZoom);
-            window.removeEventListener('resize', onResize);
 
-            ui.audioButton.events.off('update', onAudio);
+            uiRef.current?.audioButton?.events?.off?.('update', onAudio);
 
             ticker.remove(onUpdate);
 
             cyberspace.stop();
-            ui.destroy();
 
             if (WebAudio.context) {
                 WebAudio.destroy();
             }
         };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return <Example title={title} ref={ref} />;
+    useResize(({ width, height }) => {
+        const size = (width < height ? width : height) * 0.74;
+
+        graphRef.current?.setSize(size, size);
+    });
+
+    return (
+        <Example title={title}>
+            <div className="audio-radial-graph-container">
+                <RadialGraphSegments
+                    ref={graphRef}
+                    value={new Array(BUFFER_LENGTH).fill(0)}
+                    ghost
+                    start={-90}
+                    precision={2}
+                    lookupPrecision={100}
+                    segments={INITIAL_SEGMENTS}
+                    labels={['Highs', 'Mids', 'Lows']}
+                    noHover
+                />
+            </div>
+            <Info
+                ref={instructionsRef}
+                bottom
+                content={`${navigator.maxTouchPoints ? 'Tap' : 'Click'} for sound`}
+            />
+            <UI
+                ref={uiRef}
+                fps
+                audioButton={{ sound: initialSound, info: AUDIO_BUTTON_INFO }}
+                onAudio={sound => {
+                    const s = audioState.current;
+
+                    if (sound) {
+                        s.soundState = true;
+                    } else {
+                        s.soundState = false;
+                    }
+                }}
+            />
+        </Example>
+    );
 }
+
+

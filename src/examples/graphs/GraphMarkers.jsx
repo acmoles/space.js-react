@@ -1,149 +1,140 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Graph, RadialGraph, Stage, UI, clamp, mapLinear, ticker } from '@lib/index.js';
+import { Stage, clamp, mapLinear } from '@lib/index.js';
 
 import { Example } from '@/components';
-import { useClassName } from '@/hooks';
+import { useClassName, useResize } from '@/hooks';
+
+import { Graph } from '@/space/components/graphs/index.js';
+import { Info } from '@/space/components/nav/index.js';
+import { RadialGraph } from '@/space/components/radial/index.js';
+import { UI } from '@/space/components/ui/UI.jsx';
 
 import './GraphMarkers.css';
 
-export default function GraphMarkersExample({ title }) {
-    const ref = useRef(null);
+const GRAPH1_VALUE = Array.from({ length: 10 }, () => Math.random());
+const GRAPH1_MARKERS = [[0.5, 'Marker 1'], [1, 'Drag me']];
 
+const GRAPH2_VALUE = Array.from({ length: 10 }, () => Math.random());
+const GRAPH2_MARKERS = [[0.5, 'Not me'], [1, 'Marker 2']];
+
+const GRAPH3_VALUE = Array.from({ length: 10 }, () => Math.random());
+const GRAPH3_MARKERS = [[0.5, 'Marker 1'], [1, 'Drag me']];
+
+/**
+ * Graph Markers example — demonstrates RadialGraph and Graph with draggable markers
+ * and an animated instructions overlay. Mirrors the original `graph_markers.html`.
+ */
+export default function GraphMarkersExample({ title }) {
     useClassName('scroll');
 
+    const uiRef = useRef(null);
+    const instructionsRef = useRef(null);
+    const graph1Ref = useRef(null);
+    const graph2Ref = useRef(null);
+    const graph3Ref = useRef(null);
+
+    // Responsive sizes driven by useResize
+    const [radialSize, setRadialSize] = useState(300);
+    const [graph3W, setGraph3W] = useState(600);
+    const [graph3H, setGraph3H] = useState(60);
+
+    // Instructions overlay content; updated imperatively via state to trigger re-render
+    const [instructionsContent, setInstructionsContent] = useState(
+        `${navigator.maxTouchPoints ? 'Tap' : 'Click'} graph to add marker`
+    );
+
+    // Counter tracks which instructions step we are on
+    const instructionsCounterRef = useRef(0);
+
+    useResize(() => {
+        const width = document.documentElement.clientWidth;
+        const height = document.documentElement.clientHeight;
+        setRadialSize(width < height ? 250 : 300);
+        setGraph3W(width * 0.74);
+        setGraph3H(clamp(mapLinear(height, 600, 1000, 40, 80), 40, 80));
+    });
+
+    // Animate in on mount
     useEffect(() => {
-        const container = ref.current;
+        instructionsRef.current?.animateIn();
+        uiRef.current?.animateIn();
+        graph1Ref.current?.animateIn();
+        graph2Ref.current?.animateIn();
+        graph3Ref.current?.animateIn();
+    }, []);
 
-        let instructionsCounter = 0;
+    // After instructionsContent changes (triggered from the marker callback), animate in again
+    const pendingAnimateInRef = useRef(false);
+    useEffect(() => {
+        if (pendingAnimateInRef.current) {
+            pendingAnimateInRef.current = false;
+            instructionsRef.current?.animateIn();
+        }
+    }, [instructionsContent]);
 
-        // initViews
+    const onMarker = useCallback(e => {
+        console.log('Marker event:', e);
 
-        const graph = new RadialGraph({
-            value: Array.from({ length: 10 }, () => Math.random()),
-            precision: 2,
-            lookupPrecision: 200,
-            markers: [ // An array of normalized positions
-                [0.5, 'Marker 1'],
-                [1, 'Drag me']
-            ]
-        });
-        container.appendChild(graph.element);
-
-        const graph2 = new RadialGraph({
-            value: Array.from({ length: 10 }, () => Math.random()),
-            precision: 2,
-            lookupPrecision: 200,
-            markers: [ // An array of normalized positions
-                [0.5, 'Not me'],
-                [1, 'Marker 2']
-            ],
-            // noMarker: true,
-            noMarkerDrag: true
-        });
-        container.appendChild(graph2.element);
-
-        const graph3 = new Graph({
-            value: Array.from({ length: 10 }, () => Math.random()),
-            precision: 2,
-            lookupPrecision: 200
-        });
-        // An array of normalized positions
-        graph3.setMarkers([
-            [0.5, 'Marker 1'],
-            [1, 'Drag me']
-        ]);
-        container.appendChild(graph3.element);
-
-        const ui = new UI({
-            instructions: {
-                content: `${navigator.maxTouchPoints ? 'Tap' : 'Click'} graph to add marker`
+        if (e.type === 'add') {
+            if (instructionsCounterRef.current === 0) {
+                instructionsRef.current?.animateOut(() => {
+                    pendingAnimateInRef.current = true;
+                    setInstructionsContent('Drag away marker to remove');
+                });
+                instructionsCounterRef.current++;
             }
-        });
-        ui.instructions.animateIn();
-        container.appendChild(ui.element);
-
-        // addListeners
-
-        const onMarker = e => {
-            console.log('Marker event:', e);
-
-            if (e.type === 'add') {
-                if (instructionsCounter === 0) {
-                    ui.instructions.animateOut(() => {
-                        ui.instructions.setContent('Drag away marker to remove');
-                        ui.instructions.animateIn();
-                    });
-
-                    instructionsCounter++;
-                }
-            } else {
-                if (instructionsCounter === 1) {
-                    ui.instructions.animateOut();
-                    instructionsCounter++;
-                }
+        } else {
+            if (instructionsCounterRef.current === 1) {
+                instructionsRef.current?.animateOut();
+                instructionsCounterRef.current++;
             }
-        };
+        }
+    }, []);
 
-        const preventZoom = e => {
-            e.preventDefault();
-        };
-
-        const onResize = () => {
-            const width = document.documentElement.clientWidth;
-            const height = document.documentElement.clientHeight;
-
-            if (width < height) {
-                graph.setSize(250, 250);
-            } else {
-                graph.setSize(300, 300);
-            }
-
-            if (width < height) {
-                graph2.setSize(250, 250);
-            } else {
-                graph2.setSize(300, 300);
-            }
-
-            graph3.setSize(width * 0.74, clamp(mapLinear(height, 600, 1000, 40, 80), 40, 80));
-        };
-
-        const onUpdate = () => {
-            graph.update();
-            graph2.update();
-            graph3.update();
-            ui.update();
-        };
-
-        const onLoad = () => {
-            graph.animateIn();
-            graph2.animateIn();
-            graph3.animateIn();
-            ui.animateIn();
-        };
-
+    useEffect(() => {
         Stage.events.on('marker', onMarker);
+        const preventZoom = e => e.preventDefault();
         document.addEventListener('dblclick', preventZoom);
-        window.addEventListener('resize', onResize);
-        window.addEventListener('load', onLoad);
-        ticker.add(onUpdate);
-        ticker.start();
-
-        onResize();
-        onLoad();
-
         return () => {
             Stage.events.off('marker', onMarker);
             document.removeEventListener('dblclick', preventZoom);
-            window.removeEventListener('resize', onResize);
-            window.removeEventListener('load', onLoad);
-            ticker.remove(onUpdate);
-            graph.destroy();
-            graph2.destroy();
-            graph3.destroy();
-            ui.destroy();
         };
-    }, []);
+    }, [onMarker]);
 
-    return <Example title={title} className='graph-markers' ref={ref} />;
+    return (
+        <Example title={title} className="graph-markers">
+            <RadialGraph
+                ref={graph1Ref}
+                value={GRAPH1_VALUE}
+                precision={2}
+                lookupPrecision={200}
+                markers={GRAPH1_MARKERS}
+                width={radialSize}
+                height={radialSize}
+            />
+            <RadialGraph
+                ref={graph2Ref}
+                value={GRAPH2_VALUE}
+                precision={2}
+                lookupPrecision={200}
+                markers={GRAPH2_MARKERS}
+                noMarkerDrag
+                width={radialSize}
+                height={radialSize}
+            />
+            <Graph
+                ref={graph3Ref}
+                value={GRAPH3_VALUE}
+                precision={2}
+                lookupPrecision={200}
+                markers={GRAPH3_MARKERS}
+                width={graph3W}
+                height={graph3H}
+            />
+            <UI ref={uiRef} />
+            {/* Standalone Info for instructions — UI handle lacks animateInstructionsOut */}
+            <Info ref={instructionsRef} bottom content={instructionsContent} />
+        </Example>
+    );
 }

@@ -1,0 +1,1 @@
+import{r as e,t as a}from"./index-C2NdBy1A.js";var r=a();function Example({title:a,className:s="",center:t=!1,ref:n,children:c,...l}){e(`${a} — Space.js`);const p=["example"];return t&&p.push("example-center"),s&&p.push(s),(0,r.jsx)("div",{ref:n,className:p.join(" "),...l,children:c})}export{Example as t};

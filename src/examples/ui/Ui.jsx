@@ -71,7 +71,7 @@ export default function UiExample({ title }) {
                     itemWidth: 44,
                     items: ['POL', 'OBL', 'ISO'],
                     active: 'OBL',
-                    onUpdate: (name) => {
+                    onUpdate: name => {
                         console.log('Menu callback:', name);
                     }
                 }}

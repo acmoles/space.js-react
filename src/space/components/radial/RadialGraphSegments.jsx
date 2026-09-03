@@ -1115,7 +1115,26 @@ export function RadialGraphSegments({
 
             removeMarker(id) {
                 removeMarkerInternal(id);
-            }
+            },
+
+            /**
+             * Direct access to the live data array.
+             * Use this for high-frequency in-place fills (e.g., audio analysis)
+             * without calling setArray, which copies. Always call markDirty()
+             * after mutating.
+             */
+            get array() { return s.array; },
+
+            /**
+             * Direct access to the ghost array (undefined if ghost is not enabled).
+             */
+            get ghostArray() { return s.ghostArray; },
+
+            /**
+             * Mark the graph as needing a redraw on the next tick.
+             * Call after mutating array/ghostArray directly.
+             */
+            markDirty() { s.needsUpdate = true; }
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
