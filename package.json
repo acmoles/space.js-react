@@ -16,6 +16,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "parity": "node scripts/parity.mjs",
+    "smoke": "node scripts/smoke.mjs",
     "domparity": "node scripts/domparity.mjs"
   },
   "repository": {

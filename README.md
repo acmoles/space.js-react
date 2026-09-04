@@ -285,6 +285,14 @@ npm run domparity -- details_info
 diff /tmp/domparity/details_info-reference.txt /tmp/domparity/details_info-current.txt
 ```
 
+Neither harness catches a route that renders correctly but throws while it
+animates, so the smoke test opens every route and fails on any uncaught error:
+
+```sh
+npm run smoke                           # every route
+npm run smoke -- panel fps_panel        # specific routes
+```
+
 #### ui
 
 [logo](https://space.js.org/examples/logo.html) (interface)  
