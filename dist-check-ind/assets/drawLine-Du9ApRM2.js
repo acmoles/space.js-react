@@ -1,1 +1,0 @@
-function drawLine(t,e=0,r=0,s=0){if(!t)return;const a=t.getTotalLength(),n=a*e,o=a-n;t.style.strokeDasharray=`${n},${o}`,t.style.strokeDashoffset=-a*(r+s)}export{drawLine as t};

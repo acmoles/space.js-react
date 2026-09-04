@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Example } from '@/components';
 import { useEventListener } from '@/space/index.js';
@@ -6,7 +6,6 @@ import { UI } from '@/space/index.js';
 
 export default function UiAudioExample({ title }) {
     const uiRef = useRef(null);
-    const imageRef = useRef(null);
 
     // Initialise sound from localStorage — stable, never written back via setState
     const [sound] = useState(() => {
@@ -14,18 +13,23 @@ export default function UiAudioExample({ title }) {
         return saved ? JSON.parse(saved) : true;
     });
 
-    // audioInfo drives the AudioButtonInfo panel; starts null until the image
-    // object is created in the effect (mirrors the original setData call).
-    const [audioInfo, setAudioInfo] = useState(null);
+    // The share image is created once, mirroring the original setData call
+    const [image] = useState(() => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = 'https://space.js.org/assets/meta/share.png';
+        return img;
+    });
+
+    // The link is only added once the body has been clicked
+    const [link, setLink] = useState(null);
+
+    const audioInfo = useMemo(
+        () => ({ image, name: '127.0.0.1', title: 'localhost', ...(link ? { link } : {}) }),
+        [image, link]
+    );
 
     useEffect(() => {
-        const image = new Image();
-        image.crossOrigin = 'anonymous';
-        image.src = 'https://space.js.org/assets/meta/share.png';
-        imageRef.current = image;
-
-        setAudioInfo({ image, name: '127.0.0.1', title: 'localhost' });
-
         // Animate in — mirrors window.addEventListener('load', ui.animateIn())
         uiRef.current.animateIn();
     }, []);
@@ -33,12 +37,7 @@ export default function UiAudioExample({ title }) {
     // Body click: if the click landed on bare body, add the link to the info.
     useEventListener(document.body, 'click', ({ clientX, clientY }) => {
         if (document.elementFromPoint(clientX, clientY) === document.body) {
-            setAudioInfo({
-                image: imageRef.current,
-                name: '127.0.0.1',
-                title: 'localhost',
-                link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-            });
+            setLink('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
         }
     });
 

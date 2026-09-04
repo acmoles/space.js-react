@@ -377,7 +377,7 @@ export default function AudioRadialGraphExample({ title }) {
                 WebAudio.destroy();
             }
         };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);  
 
     useResize(({ width, height }) => {
         const size = (width < height ? width : height) * 0.74;

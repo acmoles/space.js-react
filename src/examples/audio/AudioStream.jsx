@@ -58,7 +58,7 @@ export default function AudioStreamExample({ title }) {
                 WebAudio.destroy();
             }
         };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);  
 
     const st = stateRef.current;
 

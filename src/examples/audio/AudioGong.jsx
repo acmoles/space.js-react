@@ -66,7 +66,7 @@ export default function AudioGongExample({ title }) {
                 WebAudio.destroy();
             }
         };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);  
 
     return (
         <Example title={title}>

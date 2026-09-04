@@ -1,1 +1,0 @@
-import{a as e,c as r}from"./index-C2NdBy1A.js";import{t}from"./Ticker-w6Kf66ZZ.js";var s=r(e(),1);function useTicker(e,r=!0){const c=(0,s.useRef)(e);(0,s.useEffect)(()=>{c.current=e}),(0,s.useEffect)(()=>{if(!r)return;const onUpdate=(e,r,t)=>c.current(e,r,t);return t.add(onUpdate),t.start(),()=>t.remove(onUpdate)},[r])}export{useTicker as t};

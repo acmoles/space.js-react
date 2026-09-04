@@ -1,1 +1,0 @@
-import{a as e,c as r}from"./index-C2NdBy1A.js";import{r as t,t as n}from"./Tween-DNW7N17G.js";var s=r(e(),1);function useDelayedCall(){const e=(0,s.useRef)([]);return(0,s.useEffect)(()=>{const r=e.current;return()=>{r.forEach(n),r.length=0}},[]),(r,n)=>{const s=t(r,()=>{e.current=e.current.filter(e=>e!==s),n()});return e.current.push(s),s}}export{useDelayedCall as t};

@@ -285,20 +285,11 @@ class Socket extends EventEmitter {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function DetailsServerStatusExample({ title }) {
-    // `scroll` class on <html> lets the body scroll (mirrors body { position: unset })
-    useClassName('scroll');
-
-    const uiRef = useRef(null);
-
-    // Server data state. null = not yet connected; object = initial details received.
-    // Live status updates (uptime, latency, load, clients) are stored in refs so
-    // the graph/meter callbacks can read the latest values each frame without
-    // triggering a full re-render. Text values that need to appear in the Details
-    // content are stored separately and merged into the details data on each
-    // status update.
-    const [serverDetails, setServerDetails] = useState(null);
-    const liveRef = useRef({
+/**
+ * Initial live status values, before the first status message is received.
+ */
+function createLive() {
+    return {
         serverUptime: '',
         latency: 0,
         latencyAvg: 0,
@@ -308,20 +299,45 @@ export default function DetailsServerStatusExample({ title }) {
         numClients: '',
         ghostArray: [],
         array: []
-    });
+    };
+}
+
+export default function DetailsServerStatusExample({ title }) {
+    // `scroll` class on <html> lets the body scroll (mirrors body { position: unset })
+    useClassName('scroll');
+
+    const uiRef = useRef(null);
+
+    // Server data state. null = not yet connected; object = initial details received.
+    // Live status updates (uptime, latency, load, clients) are accumulated in a ref
+    // so the socket handlers can mutate the load arrays in place, then published as
+    // an immutable snapshot so the Details content re-renders with the new values,
+    // mirroring the `details.update()` calls in the original example.
+    const [serverDetails, setServerDetails] = useState(null);
+    const liveRef = useRef(null);
+    liveRef.current ??= createLive();
+    const [live, setLive] = useState(createLive);
 
     useEffect(() => {
         const socket = new Socket('wss://hello-websockets-server-status.cyberspace.app');
-        let chunkSize = 10;
+        const chunkSize = 10;
         let realtimeCounter = 0;
 
         const onServerDetails = details => {
             setServerDetails(details);
         };
 
+        // Publishes an immutable snapshot of the accumulated values to the view
+        const publish = () => {
+            const { ghostArray, array, ...rest } = liveRef.current;
+            setLive({ ...rest, ghostArray: [...ghostArray], array: [...array] });
+        };
+
         const onServerArray = ({ ghostArray, array }) => {
             liveRef.current.ghostArray = ghostArray;
             liveRef.current.array = array;
+
+            publish();
         };
 
         const onServerStatus = ({ serverUptime, latency, latencyAvg, loadAvg, numClients }) => {
@@ -362,6 +378,8 @@ export default function DetailsServerStatusExample({ title }) {
                 }
             }
             if (numClients !== undefined) live.numClients = numClients;
+
+            publish();
         };
 
         socket.on('details', onServerDetails);
@@ -406,8 +424,6 @@ export default function DetailsServerStatusExample({ title }) {
         processorName,
         numProcessingUnits
     } = serverDetails;
-
-    const live = liveRef.current;
 
     const details = {
         title: 'server-status'.replace(/[\s.-]+/g, '_'),
@@ -461,7 +477,7 @@ export default function DetailsServerStatusExample({ title }) {
                             height: 48,
                             ghost: true,
                             noMarker: true,
-                            callback: () => live.latency
+                            callback: () => liveRef.current.latency
                         }
                     }
                 ]

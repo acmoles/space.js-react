@@ -101,7 +101,7 @@ export function ColorPicker({
     // Initialise colour once — avoids ref.current access during render
     const initColor = useMemo(() => {
         const c = new Color();
-        if (initialValue != null) c.set(initialValue);
+        if (initialValue !== undefined && initialValue !== null) c.set(initialValue);
         const hslObj = { h: 0, s: 0, l: 0 };
         c.getHSL(hslObj);
         return { color: c, hsl: hslObj, hex: c.getHexString() };
