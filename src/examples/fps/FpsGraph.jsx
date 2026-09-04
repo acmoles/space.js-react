@@ -21,9 +21,16 @@ export default function FpsGraphExample({ title }) {
         let sine2Counter = -13;
         let clip2Counter = -13;
         let ghostCounter = -13;
-        let randomLast = performance.now() - 1000;
+        // Initialize to 0 so the first tick (time > 1s) always returns an array,
+        // ensuring PanelGraph's graphNeedsUpdateRef is set before getCurveY runs.
+        let randomReady = false;
+        let randomLast = 0;
         const graphInitial = Array.from({ length: 10 }, () => Math.random());
         let graphValue = graphInitial;
+        // 'Array' item needs a callback returning data on the first tick so that
+        // PanelGraph's graphNeedsUpdateRef is true before getCurveY is first called.
+        const arrayInitial = Array.from({ length: 10 }, () => Math.random());
+        let arrayReady = false;
 
         return [
             {
@@ -98,7 +105,15 @@ export default function FpsGraphExample({ title }) {
                 name: 'Array',
                 precision: 2,
                 lookupPrecision: 50,
-                value: Array.from({ length: 10 }, () => Math.random())
+                value: arrayInitial,
+                // Callback returns the array on first tick so PanelGraph's
+                // graphNeedsUpdateRef is set before getCurveY is first called.
+                callback: () => {
+                    if (!arrayReady) {
+                        arrayReady = true;
+                        return arrayInitial;
+                    }
+                }
             },
             {
                 type: 'graph',
@@ -108,7 +123,8 @@ export default function FpsGraphExample({ title }) {
                 noText: true,
                 callback: () => {
                     const time = performance.now();
-                    if (time - 1000 > randomLast) {
+                    if (!randomReady || time - 1000 > randomLast) {
+                        randomReady = true;
                         randomLast = time;
                         return Array.from({ length: 10 }, () => Math.random());
                     }

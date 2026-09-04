@@ -920,9 +920,10 @@ export function RadialGraphSegments({
                                     if (el) {
                                         el.style.transition = '';
 
-                                        tween({ alpha: 0 }, { alpha: 1 }, 500, 'easeOutSine', null, obj => {
+                                        const labelObj = { alpha: 0 };
+                                        tween(labelObj, { alpha: 1 }, 500, 'easeOutSine', 0, null, () => {
                                             if (el) {
-                                                el.style.opacity = String(obj.alpha);
+                                                el.style.opacity = String(labelObj.alpha);
                                             }
                                         });
                                     }
@@ -1013,7 +1014,7 @@ export function RadialGraphSegments({
 
                     const obj = { alpha: parseFloat(el.style.opacity) || 0 };
                     clearTween(obj);
-                    tween(obj, { alpha: 0 }, 300, 'easeOutSine', null, null, () => {
+                    tween(obj, { alpha: 0 }, 300, 'easeOutSine', 0, null, () => {
                         if (el) {
                             el.style.opacity = String(obj.alpha);
                         }
