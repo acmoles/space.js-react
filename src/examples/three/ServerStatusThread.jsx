@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 
 import { EventEmitter } from '@lib/three.js';
@@ -10,12 +10,6 @@ import { SceneContent } from './server-status/SceneContent.jsx';
 
 const isDebug = /[?&]debug/.test(location.search);
 
-/**
- * Thin main-thread adapter that wraps a Vite module worker and exposes the
- * same EventEmitter interface that SceneContent expects.  This is the
- * bundler-friendly replacement for space.js Thread used in the original
- * 3d_server_status_thread.html example.
- */
 class WorkerEmitter extends EventEmitter {
     constructor(workerUrl) {
         super();
@@ -27,12 +21,10 @@ class WorkerEmitter extends EventEmitter {
         });
     }
 
-    // Send an RPC call to the worker (fire-and-forget for void methods).
     call(fn, args) {
         this._worker.postMessage({ message: { fn, ...args } });
     }
 
-    // Convenience wrapper used by createSource below.
     init(args) {
         this.call('init', args);
     }
@@ -42,20 +34,24 @@ class WorkerEmitter extends EventEmitter {
     }
 }
 
-// Factory called once per mount.
 function createThreadSource() {
-    // Vite module worker — resolves the URL at build time.
     const workerUrl = new URL('./server-status/socketWorker.js', import.meta.url);
     const emitter = new WorkerEmitter(workerUrl);
+
     emitter.init({ server: 'wss://hello-websockets-server-status.cyberspace.app' });
+
     return {
         emitter,
         cleanup: () => emitter.destroy()
     };
 }
 
+/**
+ * Declarative server-status example backed by the worker adapter.
+ */
 export default function ServerStatusThread({ title }) {
     const containerRef = useRef(null);
+    const [overlayEl, setOverlayEl] = useState(null);
 
     useClassName('scroll');
 
@@ -68,10 +64,12 @@ export default function ServerStatusThread({ title }) {
             >
                 <SceneContent
                     containerRef={containerRef}
-                    isDebug={isDebug}
                     createSource={createThreadSource}
+                    isDebug={isDebug}
+                    overlayEl={overlayEl}
                 />
             </Canvas>
+            <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
         </Example>
     );
 }

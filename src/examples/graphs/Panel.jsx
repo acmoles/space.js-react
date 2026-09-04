@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
 
 import { brightness, getKeyByValue } from '@lib/index.js';
 
@@ -16,36 +16,35 @@ export default function PanelExample({ title }) {
     const backgroundColor = getComputedStyle(document.querySelector(':root'))
         .getPropertyValue('--bg-color').trim();
 
-    const originalBodyBg = useRef(document.body.style.backgroundColor).current;
+    const [originalBodyBg] = useState(() => document.body.style.backgroundColor);
 
-    const toggleOptions = new Map([
+    const [toggleOptions] = useState(() => new Map([
         ['Dark', false],
         ['Light', true]
-    ]);
+    ]));
 
-    const selectOptions = new Map([
+    const [selectOptions] = useState(() => new Map([
         ['Never', 1],
         ['Gonna', 2],
         ['Give', 3],
         ['You', 4],
         ['Up', 5]
-    ]);
+    ]));
 
-    const contentOptions = new Map([
+    const [contentOptions] = useState(() => new Map([
         ['Content A', 1],
         ['Content B', 2],
         ['Empty', 3]
-    ]);
+    ]));
 
-    const image = useRef(null);
-    if (!image.current) {
-        image.current = new Image();
-        image.current.crossOrigin = 'anonymous';
-        image.current.src = 'https://space.js.org/assets/meta/share.png';
-    }
-    const img = image.current;
+    const [img] = useState(() => {
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.src = 'https://space.js.org/assets/meta/share.png';
+        return image;
+    });
 
-    const items = useRef([
+    const [items] = useState(() => [
         {
             type: 'color',
             name: 'Color',
@@ -281,7 +280,7 @@ export default function PanelExample({ title }) {
                 panelRef.current?.setPanelValue('Thumbnail', img);
             }
         }
-    ]).current;
+    ]);
 
     useEffect(() => {
         panelRef.current?.animateIn();

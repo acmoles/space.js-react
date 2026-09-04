@@ -82,7 +82,7 @@ export function PanelItem({ data, onChange, ref }) {
             if (data.name !== name) return;
             viewRef.current?.setIndex?.(index, false);
         }
-    }), [root, container, containerRef, rootRef]);
+    }), [root, container, containerRef, rootRef, data.name]);
 
     const handleChange = e => {
         // Pass the view/graph ref as the second argument — mirrors the original

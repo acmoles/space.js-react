@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Example } from '@/components';
 
@@ -11,7 +11,7 @@ import { Panel } from '../../space/components/panels/Panel.jsx';
 export default function TestPanelExample({ title }) {
     const panelRef = useRef(null);
 
-    const items = useRef([
+    const [items] = useState(() => [
         // Uncomment to test different item types:
         // { name: 'FPS' }
         // { type: 'spacer' }
@@ -25,7 +25,7 @@ export default function TestPanelExample({ title }) {
         // { type: 'toggle' }
         // { type: 'content' }
         { type: 'color' }
-    ]).current;
+    ]);
 
     useEffect(() => {
         panelRef.current?.animateIn();

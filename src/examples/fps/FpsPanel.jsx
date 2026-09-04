@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
 
 import { brightness, getKeyByValue } from '@lib/index.js';
 
@@ -7,6 +7,25 @@ import { Example } from '@/components';
 import { Panel } from '../../space/components/panels/Panel.jsx';
 import { UI } from '../../space/components/ui/UI.jsx';
 
+const TOGGLE_OPTIONS = new Map([
+    ['Dark', false],
+    ['Light', true]
+]);
+
+const SELECT_OPTIONS = new Map([
+    ['Never', 1],
+    ['Gonna', 2],
+    ['Give', 3],
+    ['You', 4],
+    ['Up', 5]
+]);
+
+const CONTENT_OPTIONS = new Map([
+    ['Content A', 1],
+    ['Content B', 2],
+    ['Empty', 3]
+]);
+
 /**
  * FPS Panel example — renders the UI with fps panel open and a full set of
  * panel controls including nested content. Mirrors `fps_panel.html`.
@@ -14,40 +33,18 @@ import { UI } from '../../space/components/ui/UI.jsx';
 export default function FpsPanelExample({ title }) {
     const uiRef = useRef(null);
 
-    const backgroundColor = getComputedStyle(document.querySelector(':root'))
-        .getPropertyValue('--bg-color').trim();
+    const [backgroundColor] = useState(() =>
+        getComputedStyle(document.querySelector(':root')).getPropertyValue('--bg-color').trim()
+    );
+    const [originalBodyBg] = useState(() => document.body.style.backgroundColor);
+    const [img] = useState(() => {
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.src = 'https://space.js.org/assets/meta/share.png';
+        return image;
+    });
 
-    const originalBodyBg = useRef(document.body.style.backgroundColor).current;
-
-    const toggleOptions = new Map([
-        ['Dark', false],
-        ['Light', true]
-    ]);
-
-    const selectOptions = new Map([
-        ['Never', 1],
-        ['Gonna', 2],
-        ['Give', 3],
-        ['You', 4],
-        ['Up', 5]
-    ]);
-
-    const contentOptions = new Map([
-        ['Content A', 1],
-        ['Content B', 2],
-        ['Empty', 3]
-    ]);
-
-    const image = useRef(null);
-    if (!image.current) {
-        image.current = new Image();
-        image.current.crossOrigin = 'anonymous';
-        image.current.src = 'https://space.js.org/assets/meta/share.png';
-    }
-    const img = image.current;
-
-    // Items defined once; callbacks close over uiRef (populated after mount)
-    const panelItems = useRef([
+    const [panelItems] = useState(() => [
         {
             name: 'FPS'
         },
@@ -66,12 +63,12 @@ export default function FpsPanelExample({ title }) {
         {
             type: 'list',
             name: 'List Toggle',
-            list: toggleOptions,
-            value: getKeyByValue(toggleOptions, false),
+            list: TOGGLE_OPTIONS,
+            value: getKeyByValue(TOGGLE_OPTIONS, false),
             callback: value => {
                 console.log('ListToggle callback:', value);
 
-                const light = toggleOptions.get(value);
+                const light = TOGGLE_OPTIONS.get(value);
 
                 if (light) {
                     uiRef.current?.setPanelValue('Color', 0xffffff);
@@ -86,12 +83,12 @@ export default function FpsPanelExample({ title }) {
         {
             type: 'list',
             name: 'List Select',
-            list: selectOptions,
+            list: SELECT_OPTIONS,
             value: 'Never',
             callback: value => {
                 console.log('ListSelect callback:', value);
 
-                const roll = selectOptions.get(value);
+                const roll = SELECT_OPTIONS.get(value);
 
                 if (roll === 5) {
                     open('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
@@ -104,7 +101,7 @@ export default function FpsPanelExample({ title }) {
         {
             type: 'list',
             name: 'List Content',
-            list: contentOptions,
+            list: CONTENT_OPTIONS,
             value: 'Content A',
             callback: (value, item) => {
                 console.log('ListSelect with content callback:', value);
@@ -289,7 +286,7 @@ export default function FpsPanelExample({ title }) {
                 uiRef.current?.setPanelValue('Thumbnail', img);
             }
         }
-    ]).current;
+    ]);
 
     useEffect(() => {
         uiRef.current?.animateIn();

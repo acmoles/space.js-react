@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 
 import { Example } from '@/components';
@@ -9,17 +9,21 @@ import { SceneContent } from './server-status/SceneContent.jsx';
 
 const isDebug = /[?&]debug/.test(location.search);
 
-// Factory called once per mount; returned emitter is a Socket (EventEmitter).
 function createSocketSource() {
     const socket = new Socket('wss://hello-websockets-server-status.cyberspace.app');
+
     return {
         emitter: socket,
         cleanup: () => socket.close()
     };
 }
 
+/**
+ * Declarative server-status example backed by the live socket source.
+ */
 export default function ServerStatusExample({ title }) {
     const containerRef = useRef(null);
+    const [overlayEl, setOverlayEl] = useState(null);
 
     useClassName('scroll');
 
@@ -32,10 +36,12 @@ export default function ServerStatusExample({ title }) {
             >
                 <SceneContent
                     containerRef={containerRef}
-                    isDebug={isDebug}
                     createSource={createSocketSource}
+                    isDebug={isDebug}
+                    overlayEl={overlayEl}
                 />
             </Canvas>
+            <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
         </Example>
     );
 }

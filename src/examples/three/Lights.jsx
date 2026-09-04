@@ -1,54 +1,34 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 
-import { LightPanelController, UI } from '@lib/three.js';
+import { UI } from '@lib/three.js';
 import { Example } from '@/components';
 
-function Scene({ containerRef }) {
+import { useLightPanelController } from '../../space/three/index.js';
+
+function Scene({ ui }) {
     const { scene } = useThree();
-    const uiRef = useRef(null);
-    const isActiveRef = useRef(false);
-    const meshRef = useRef();
-    const pointLightRef = useRef();
-    const rectLight1Ref = useRef();
-    const rectLight2Ref = useRef();
-    const rectLight3Ref = useRef();
+    const meshRef = useRef(null);
+    const pointLightRef = useRef(null);
+    const rectLight1Ref = useRef(null);
+    const rectLight2Ref = useRef(null);
+    const rectLight3Ref = useRef(null);
 
     useEffect(() => {
         RectAreaLightUniformsLib.init();
     }, []);
 
     useEffect(() => {
-        if (rectLight1Ref.current) rectLight1Ref.current.lookAt(0, 0, 0);
-        if (rectLight2Ref.current) rectLight2Ref.current.lookAt(0, 0, 0);
-        if (rectLight3Ref.current) rectLight3Ref.current.lookAt(0, 0, 0);
+        rectLight1Ref.current?.lookAt(0, 0, 0);
+        rectLight2Ref.current?.lookAt(0, 0, 0);
+        rectLight3Ref.current?.lookAt(0, 0, 0);
     }, []);
 
-    useEffect(() => {
-        const container = containerRef.current;
-
-        const ui = new UI({ fps: true });
-        ui.animateIn();
-        container.appendChild(ui.element);
-        uiRef.current = ui;
-
-        LightPanelController.init(scene, ui);
-        isActiveRef.current = true;
-
-        return () => {
-            // Clear the active flag first so useFrame stops touching destroyed state
-            isActiveRef.current = false;
-            LightPanelController.destroy();
-            uiRef.current = null;
-            ui.destroy();
-        };
-    }, [scene, containerRef]);
+    useLightPanelController(scene, ui);
 
     useFrame(state => {
-        if (!isActiveRef.current) return;
-
         const time = state.clock.getElapsedTime();
 
         if (meshRef.current) {
@@ -62,8 +42,7 @@ function Scene({ containerRef }) {
             pointLightRef.current.position.z = Math.cos(time * 1.3) * 2;
         }
 
-        LightPanelController.update();
-        uiRef.current.update();
+        ui.update();
     });
 
     return (
@@ -86,8 +65,23 @@ function Scene({ containerRef }) {
     );
 }
 
+/**
+ * Declarative lights example with the original imperative light control UI.
+ */
 export default function Lights({ title }) {
     const containerRef = useRef(null);
+    const [ui] = useState(() => new UI({ fps: true }));
+
+    useEffect(() => {
+        const container = containerRef.current;
+
+        ui.animateIn();
+        container?.appendChild(ui.element);
+
+        return () => {
+            ui.destroy();
+        };
+    }, [ui]);
 
     return (
         <Example title={title} ref={containerRef}>
@@ -96,7 +90,7 @@ export default function Lights({ title }) {
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}
             >
-                <Scene containerRef={containerRef} />
+                <Scene ui={ui} />
             </Canvas>
         </Example>
     );

@@ -1,21 +1,88 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { BoxGeometry } from 'three';
 
-import { PanelItem, Point3D, RadialGraphCanvas, UI } from '@lib/three.js';
+import { Panel, PanelItem, UI } from '@lib/three.js';
 import { Example } from '@/components';
 
-function Scene({ containerRef }) {
-    const { gl: renderer, scene, camera } = useThree();
-    const uiRef = useRef(null);
-    const isActiveRef = useRef(false);
-    const meshRef = useRef();
+import { Point3D, Points3D, useRadialGraphCanvas } from '../../space/three/index.js';
+
+function useUpdatePanel(graphRef) {
+    const panelRef = useRef(null);
+    const storeRef = useRef({
+        listeners: new Set(),
+        version: 0
+    });
+
+    const notify = useCallback(() => {
+        storeRef.current.version += 1;
+        storeRef.current.listeners.forEach(listener => listener());
+    }, []);
+
+    const subscribe = useCallback(listener => {
+        storeRef.current.listeners.add(listener);
+
+        return () => {
+            storeRef.current.listeners.delete(listener);
+        };
+    }, []);
+
+    const getSnapshot = useCallback(() => storeRef.current.version, []);
+
+    useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+    useEffect(() => {
+        const panel = new Panel();
+
+        panel.add(new PanelItem({
+            type: 'link',
+            value: 'Update',
+            callback: value => {
+                console.log('Update callback:', value);
+                graphRef.current?.setArray([0.12, 0.28, 0.41, 0.57, 0.73, 0.66, 0.5, 0.34, 0.22, 0.48]);
+            }
+        }));
+
+        panelRef.current = panel;
+        notify();
+
+        return () => {
+            if (panelRef.current === panel) {
+                panelRef.current = null;
+                notify();
+            }
+
+            panel.destroy?.();
+        };
+    }, [graphRef, notify]);
+
+    return panelRef;
+}
+
+function Scene({ overlayEl, ui }) {
+    const meshRef = useRef(null);
+    const [mesh, setMesh] = useState(null);
 
     const geometry = useMemo(() => {
-        const geo = new BoxGeometry();
-        geo.computeTangents();
-        return geo;
+        const nextGeometry = new BoxGeometry();
+        nextGeometry.computeTangents();
+        return nextGeometry;
+    }, []);
+
+    const graphRef = useRadialGraphCanvas({
+        value: [0.18, 0.32, 0.47, 0.63, 0.78, 0.71, 0.54, 0.39, 0.24, 0.12],
+        start: -45,
+        graphHeight: 40,
+        precision: 2,
+        lookupPrecision: 200
+    });
+
+    const panelRef = useUpdatePanel(graphRef);
+
+    const handleMeshRef = useCallback(nextMesh => {
+        meshRef.current = nextMesh;
+        setMesh(nextMesh);
     }, []);
 
     useEffect(() => {
@@ -24,60 +91,7 @@ function Scene({ containerRef }) {
         };
     }, [geometry]);
 
-    useEffect(() => {
-        const container = containerRef.current;
-        const mesh = meshRef.current;
-        if (!mesh) return;
-
-        const ui = new UI({ fps: true });
-        ui.animateIn();
-        container.appendChild(ui.element);
-        uiRef.current = ui;
-
-        Point3D.init(renderer, scene, camera);
-
-        const graph = new RadialGraphCanvas({
-            value: Array.from({ length: 10 }, () => Math.random()),
-            start: -45,
-            graphHeight: 40,
-            precision: 2,
-            lookupPrecision: 200
-        });
-
-        const point = new Point3D(mesh, { graph });
-        point.setData({
-            name: '127.0.0.1',
-            type: 'localhost'
-        });
-        scene.add(point);
-
-        // panel
-
-        const item = new PanelItem({
-            type: 'link',
-            value: 'Update',
-            callback: value => {
-                console.log('Update callback:', value);
-
-                graph.setArray(Array.from({ length: 10 }, () => Math.random()));
-            }
-        });
-        point.addPanel(item);
-        isActiveRef.current = true;
-
-        return () => {
-            // Clear the active flag first so useFrame stops touching destroyed state
-            isActiveRef.current = false;
-            scene.remove(point);
-            Point3D.destroy();
-            uiRef.current = null;
-            ui.destroy();
-        };
-    }, [renderer, scene, camera, containerRef]);
-
     useFrame(state => {
-        if (!isActiveRef.current) return;
-
         const time = state.clock.getElapsedTime();
 
         if (meshRef.current) {
@@ -85,24 +99,50 @@ function Scene({ containerRef }) {
             meshRef.current.rotation.y = time;
         }
 
-        Point3D.update(time);
-        uiRef.current.update();
+        ui.update();
     });
 
     return (
         <>
             <color attach="background" args={[0x060606]} />
             <hemisphereLight args={[0xffffff, 0x888888, 3]} />
-            <mesh ref={meshRef} geometry={geometry}>
+            <mesh ref={handleMeshRef} geometry={geometry}>
                 <meshNormalMaterial />
             </mesh>
+            {overlayEl && mesh && (
+                <Points3D container={overlayEl}>
+                    <Point3D
+                        object={mesh}
+                        graph={graphRef}
+                        name="127.0.0.1"
+                        panel={panelRef}
+                        type="localhost"
+                    />
+                </Points3D>
+            )}
             <OrbitControls enableDamping />
         </>
     );
 }
 
+/**
+ * Declarative radial-graph example with the original imperative FPS UI.
+ */
 export default function RadialGraph({ title }) {
     const containerRef = useRef(null);
+    const [overlayEl, setOverlayEl] = useState(null);
+    const [ui] = useState(() => new UI({ fps: true }));
+
+    useEffect(() => {
+        const container = containerRef.current;
+
+        ui.animateIn();
+        container?.appendChild(ui.element);
+
+        return () => {
+            ui.destroy();
+        };
+    }, [ui]);
 
     return (
         <Example title={title} ref={containerRef}>
@@ -111,8 +151,9 @@ export default function RadialGraph({ title }) {
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}
             >
-                <Scene containerRef={containerRef} />
+                <Scene overlayEl={overlayEl} ui={ui} />
             </Canvas>
+            <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
         </Example>
     );
 }

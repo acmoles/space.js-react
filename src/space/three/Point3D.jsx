@@ -26,6 +26,14 @@ import { RadialGraphTracker } from '../components/radial/index.js';
 
 import { usePoint3DContext } from './Point3DContext.js';
 
+function resolveMaybeRef(value) {
+    if (value && typeof value === 'object' && 'current' in value) {
+        return value.current;
+    }
+
+    return value;
+}
+
 /**
  * Tracks a Three.js object and renders a 2-D UI overlay.
  *
@@ -34,6 +42,8 @@ import { usePoint3DContext } from './Point3DContext.js';
  * @param {string}       [props.name='']     Label name.
  * @param {string}       [props.type='']     Label sub-title / type.
  * @param {object|null}  [props.graph]       RadialGraphContainer instance.
+ * @param {object|null}  [props.panel]       lib Panel instance whose .element
+ *                                           is portaled into the overlay div.
  * @param {boolean}      [props.noLine]      Suppress the connecting line.
  * @param {boolean}      [props.noPoint]     Suppress the label overlay.
  * @param {boolean}      [props.noTracker]   Suppress tracker corners.
@@ -46,6 +56,7 @@ export function Point3D({
     name = '',
     type = '',
     graph = null,
+    panel = null,
     noLine = false,
     noPoint = false,
     noTracker = false,
@@ -54,15 +65,19 @@ export function Point3D({
     ref
 }) {
     const ctx = usePoint3DContext();
+    const graphValue = resolveMaybeRef(graph);
+    const panelValue = resolveMaybeRef(panel);
 
     // Prop refs — always hold the latest prop so stable api closures stay fresh.
-    const graphRef = useRef(graph);
+    const graphRef = useRef(graphValue);
+    const panelPropRef = useRef(panelValue);
     const namePropRef = useRef(name);
     const typePropRef = useRef(type);
     const onHoverPropRef = useRef(onHoverProp);
     const onClickPropRef = useRef(onClickProp);
 
-    useEffect(() => { graphRef.current = graph; }, [graph]);
+    useEffect(() => { graphRef.current = graphValue; }, [graphValue]);
+    useEffect(() => { panelPropRef.current = panelValue; }, [panelValue]);
     useEffect(() => { onHoverPropRef.current = onHoverProp; }, [onHoverProp]);
     useEffect(() => { onClickPropRef.current = onClickProp; }, [onClickProp]);
     useEffect(() => { namePropRef.current = name; }, [name]);
@@ -158,7 +173,26 @@ export function Point3D({
                 el.removeChild(g.element);
             }
         };
-    }, [ctx]); // graph is stable — accessed via graphRef
+    }, [ctx, graphValue]);
+
+    // Panel element lifecycle — portal lib Panel DOM element into the overlay div.
+    useEffect(() => {
+        const p = panelPropRef.current;
+
+        if (!p?.element) return undefined;
+
+        const el = overlayDivRef.current;
+
+        if (!el) return undefined;
+
+        el.appendChild(p.element);
+
+        return () => {
+            if (el.contains(p.element)) {
+                el.removeChild(p.element);
+            }
+        };
+    }, [panelValue, ctx]);
 
     // --- Stable API object registered with Points3D ---------------------------
     const apiRef = useRef(null);
@@ -166,18 +200,25 @@ export function Point3D({
     useEffect(() => {
         const animateIn = reverse => {
             const g = graphRef.current;
+            const p = panelPropRef.current;
+
             if (!animatedInRef.current) {
                 if (g) {
                     g.animateIn();
                     trackerRef.current?.open();
+                } else if (p) {
+                    p.animateIn(true);
+                    trackerRef.current?.animateIn?.();
                 } else {
                     reticleRef.current?.animateIn();
                     if (!noLine) lineRef.current?.animateIn(reverse);
                 }
+
                 animatedInRef.current = true;
             } else if (g?.animateLabelsIn) {
                 g.animateLabelsIn();
             }
+
             if (pointRef.current && !pointRef.current.animatedIn) {
                 pointRef.current.animateIn();
             }
@@ -185,6 +226,8 @@ export function Point3D({
 
         const animateOut = (fast, cb) => {
             const g = graphRef.current;
+            const p = panelPropRef.current;
+
             if (g) {
                 if (fast) {
                     g.animateOut();
@@ -194,7 +237,16 @@ export function Point3D({
                 } else if (g.animateLabelsOut) {
                     g.animateLabelsOut();
                 }
+
                 pointRef.current?.animateOut(true);
+            } else if (p) {
+                if (fast) {
+                    p.animateOut();
+                    trackerRef.current?.close?.();
+                    trackerRef.current?.animateOut?.();
+                    pointRef.current?.animateOut(true);
+                    animatedInRef.current = false;
+                }
             } else {
                 reticleRef.current?.animateOut();
                 if (!noLine) lineRef.current?.animateOut(fast, cb);
@@ -468,7 +520,10 @@ export function Point3D({
     useImperativeHandle(ref, () => ({
         get animatedIn() { return animatedInRef.current; },
         get isMultiple() { return isMultipleRef.current; },
+        get index() { return indexRef.current; },
+        get instances() { return [{ index: indexRef.current }]; },
         get mesh() { return sphereRef.current; },
+        get panel() { return panelPropRef.current; },
         get point() { return pointRef.current; },
         get selected() { return selectedRef.current; },
         animateIn: reverse => apiRef.current?._onHover({ type: 'over', reverse }),
@@ -479,6 +534,10 @@ export function Point3D({
         setCamera: cam => { cameraRef.current = cam; },
         setData: data => apiRef.current?._setData(data),
         setIndex: i => apiRef.current?._setIndex(i),
+        getPanelIndex: name => panelPropRef.current?.getPanelIndex?.(name),
+        getPanelValue: name => panelPropRef.current?.getPanelValue?.(name),
+        setPanelIndex: (name, index, path) => panelPropRef.current?.setPanelIndex?.(name, index, path),
+        setPanelValue: (name, value, path) => panelPropRef.current?.setPanelValue?.(name, value, path),
         setInitialPosition: () => {
             if (pointRef.current) {
                 pointRef.current.position.x = pointRef.current.target.x;
@@ -500,6 +559,7 @@ export function Point3D({
     // exposed, so we cannot implement full snap — see limitations in index.js.
     const snapFn = useCallback(() => {}, []);
 
+    const hasGraph = !!graphValue;
     const isInstanced = !!object.isInstancedMesh;
     const isPointCloud = !!object.isPoints;
 
@@ -513,14 +573,14 @@ export function Point3D({
             </group>
             {ctx?.container && createPortal(
                 <div ref={overlayDivRef}>
-                    {!graph && (
+                    {!hasGraph && (
                         <ReticleCanvas ref={reticleRef} />
                     )}
-                    {!graph && !noLine && (
+                    {!hasGraph && !noLine && (
                         <LineCanvas ref={lineRef} />
                     )}
                     {!noTracker && (
-                        graph
+                        hasGraph
                             ? <RadialGraphTracker ref={graphTrackerRef} />
                             : (
                                 <div

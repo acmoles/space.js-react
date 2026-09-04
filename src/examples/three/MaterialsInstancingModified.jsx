@@ -1,14 +1,16 @@
-import { useEffect, useRef } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { Color, IcosahedronGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshPhongMaterial } from 'three';
+import { Color, IcosahedronGeometry, InstancedBufferAttribute, Matrix4, MeshPhongMaterial } from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
-import { InstanceOptions, MaterialPanels, MaterialPatches, MaterialsPanel, Panel, PanelItem, Point3D, UI } from '@lib/three.js';
+import { MaterialPanels, MaterialPatches, Panel, PanelItem, UI } from '@lib/three.js';
 import { Example } from '@/components';
 
-const isDebug = /[?&]debug/.test(location.search);
+import { Point3D, Points3D, useMaterialsPanel } from '../../space/three/index.js';
 
+const color = new Color();
+const matrix = new Matrix4();
 const amount = parseInt(location.search.slice(1), 10) || 3;
 const count = Math.pow(amount, 3);
 
@@ -66,21 +68,19 @@ class InstancedMeshPanel extends Panel {
         const mesh = this.mesh;
         const ui = this.ui;
         const materialItems = this.materialItems;
-
-        let point;
-
-        if (ui.constructor.points) {
-            point = ui.constructor.getPoint(mesh);
-        }
+        const point = ui.constructor.getPoint(mesh);
 
         const items = [
             {
                 type: 'list',
                 name: 'Instance',
-                list: InstanceOptions,
+                list: new Map([
+                    ['Mesh', false],
+                    ['Instance', true]
+                ]),
                 value: 'Mesh',
                 callback: (value, item) => {
-                    if (InstanceOptions.get(value)) {
+                    if (value === 'Instance' && point) {
                         const index = point.instances[0].index;
 
                         const instanceItems = [
@@ -94,14 +94,14 @@ class InstancedMeshPanel extends Panel {
                                 max: 1,
                                 step: 0.01,
                                 value: mesh.geometry.attributes.instanceOpacity.getX(index),
-                                callback: val => {
+                                callback: nextValue => {
                                     if (!mesh.material.transparent) {
                                         mesh.material.transparent = true;
                                         mesh.material.needsUpdate = true;
                                     }
 
                                     point.instances.forEach(instance => {
-                                        mesh.geometry.attributes.instanceOpacity.setX(instance.index, val);
+                                        mesh.geometry.attributes.instanceOpacity.setX(instance.index, nextValue);
                                     });
 
                                     mesh.geometry.attributes.instanceOpacity.needsUpdate = true;
@@ -111,20 +111,12 @@ class InstancedMeshPanel extends Panel {
 
                         const instancePanel = new Panel();
                         instancePanel.animateIn(true);
-
-                        instanceItems.forEach(data => {
-                            instancePanel.add(new PanelItem(data));
-                        });
-
+                        instanceItems.forEach(data => instancePanel.add(new PanelItem(data)));
                         item.setContent(instancePanel);
                     } else {
                         const materialPanel = new Panel();
                         materialPanel.animateIn(true);
-
-                        materialItems.forEach(data => {
-                            materialPanel.add(new PanelItem(data));
-                        });
-
+                        materialItems.forEach(data => materialPanel.add(new PanelItem(data)));
                         item.setContent(materialPanel);
                     }
                 }
@@ -139,105 +131,107 @@ class InstancedMeshPanel extends Panel {
 
 MaterialPanels.InstancedMeshPanel = InstancedMeshPanel;
 
-function Scene({ containerRef }) {
-    const { gl: renderer, scene, camera } = useThree();
-    const uiRef = useRef(null);
-    const isActiveRef = useRef(false);
+function Scene({ overlayEl, ui }) {
+    const pointRef = useRef(null);
+    const [mesh, setMesh] = useState(null);
 
-    useEffect(() => {
-        const container = containerRef.current;
+    const geometry = useMemo(() => {
+        let nextGeometry = new IcosahedronGeometry(0.5, 12);
+        nextGeometry = mergeVertices(nextGeometry);
+        nextGeometry.computeTangents();
+        nextGeometry.setAttribute('instanceOpacity', new InstancedBufferAttribute(new Float32Array(count).fill(1), 1));
+        return nextGeometry;
+    }, []);
 
-        // mesh
+    const material = useMemo(() => new MeshPhongMaterial(), []);
 
-        const color = new Color();
+    const panelUi = useMemo(() => ({
+        uvTexture: null,
+        get point() {
+            return pointRef.current;
+        },
+        isDefault: true,
+        constructor: {
+            points: true,
+            getPoint: () => pointRef.current
+        }
+    }), []);
 
-        let geometry = new IcosahedronGeometry(0.5, 12);
+    const panelRef = useMaterialsPanel(mesh, panelUi);
 
-        // Convert to indexed geometry
-        geometry = mergeVertices(geometry);
+    const handleMeshRef = useCallback(nextMesh => {
+        if (nextMesh) {
+            let index = 0;
+            const offset = (amount - 1) / 2;
 
-        geometry.computeTangents();
-
-        const material = new MeshPhongMaterial();
-
-        const mesh = new InstancedMesh(geometry, material, count);
-
-        let i = 0;
-        const offset = (amount - 1) / 2;
-
-        const matrix = new Matrix4();
-
-        for (let x = 0; x < amount; x++) {
-            for (let y = 0; y < amount; y++) {
-                for (let z = 0; z < amount; z++) {
-                    matrix.setPosition(offset - x, offset - y, offset - z);
-
-                    mesh.setMatrixAt(i, matrix);
-                    mesh.setColorAt(i, color);
-
-                    i++;
+            for (let x = 0; x < amount; x++) {
+                for (let y = 0; y < amount; y++) {
+                    for (let z = 0; z < amount; z++) {
+                        matrix.setPosition(offset - x, offset - y, offset - z);
+                        nextMesh.setMatrixAt(index, matrix);
+                        nextMesh.setColorAt(index, color);
+                        index++;
+                    }
                 }
             }
+
+            nextMesh.instanceMatrix.needsUpdate = true;
+            nextMesh.instanceColor.needsUpdate = true;
         }
 
-        scene.add(mesh);
+        setMesh(nextMesh);
+    }, []);
 
-        // Add attributes
-        geometry.setAttribute('instanceOpacity', new InstancedBufferAttribute(new Float32Array(mesh.instanceMatrix.count).fill(1), 1));
-
-        // panel
-
-        const ui = new UI({ fps: true });
-        ui.animateIn();
-        container.appendChild(ui.element);
-        uiRef.current = ui;
-
-        Point3D.init(renderer, scene, camera, {
-            debug: isDebug
-        });
-
-        const point = new Point3D(mesh);
-        scene.add(point);
-
-        const materialPanel = new MaterialsPanel(mesh, point);
-        materialPanel.animateIn(true);
-
-        point.setContent(materialPanel);
-        isActiveRef.current = true;
-
+    useEffect(() => {
         return () => {
-            // Clear the active flag first so useFrame stops touching destroyed state
-            isActiveRef.current = false;
-            scene.remove(point);
-            scene.remove(mesh);
             geometry.dispose();
             material.dispose();
-            Point3D.destroy();
-            uiRef.current = null;
-            ui.destroy();
         };
-    }, [renderer, scene, camera, containerRef]);
+    }, [geometry, material]);
 
-    useFrame(state => {
-        if (!isActiveRef.current) return;
-
-        const time = state.clock.getElapsedTime();
-
-        Point3D.update(time);
-        uiRef.current.update();
+    useFrame(() => {
+        ui.update();
     });
 
     return (
         <>
             <color attach="background" args={[0x060606]} />
             <hemisphereLight args={[0xffffff, 0x888888, 3]} />
+            <instancedMesh ref={handleMeshRef} args={[geometry, material, count]} />
+            {overlayEl && mesh && (
+                <Points3D container={overlayEl} debug={/[?&]debug/.test(location.search)}>
+                    <Point3D
+                        object={mesh}
+                        name={mesh.geometry.type}
+                        type={mesh.material.type}
+                        panel={panelRef}
+                        ref={pointRef}
+                    />
+                </Points3D>
+            )}
             <OrbitControls enableDamping enableZoom={false} enablePan={false} />
         </>
     );
 }
 
+/**
+ * Declarative instanced-materials example with modified Phong opacity support.
+ */
 export default function MaterialsInstancingModified({ title }) {
     const containerRef = useRef(null);
+    const [overlayEl, setOverlayEl] = useState(null);
+    const [ui] = useState(() => new UI({ fps: true }));
+
+    useEffect(() => {
+        const container = containerRef.current;
+
+        ui.animateIn();
+        container?.appendChild(ui.element);
+
+        return () => {
+            ui.destroy();
+        };
+    }, [ui]);
 
     return (
         <Example title={title} ref={containerRef}>
@@ -245,10 +239,11 @@ export default function MaterialsInstancingModified({ title }) {
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 60, near: 1, far: 2000, position: [amount, amount, amount] }}
-                onCreated={({ camera: cam }) => cam.lookAt(0, 0, 0)}
+                onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
             >
-                <Scene containerRef={containerRef} />
+                <Scene overlayEl={overlayEl} ui={ui} />
             </Canvas>
+            <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
         </Example>
     );
 }
