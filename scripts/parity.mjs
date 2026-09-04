@@ -30,23 +30,16 @@
  *   npm install --no-save playwright-core
  */
 
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import http from 'node:http';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+import { EXECUTABLE, WORKTREE, build, ensureReference, launch, listRoutes, openPage, run, serve } from './harness.mjs';
 
-const REV = process.env.PARITY_REV || '5d780b9';
 const SETTLE = Number(process.env.PARITY_SETTLE || 3500);
 const OUT = process.env.PARITY_OUT || '/tmp/parity';
-const WORKTREE = '/tmp/parity-reference';
+const DIST = '/tmp/parity-dist';
 const REFERENCE_PORT = 8099;
 const CURRENT_PORT = 4199;
-
-const EXECUTABLE = ['/usr/bin/chromium', '/usr/bin/google-chrome', '/usr/bin/chromium-browser']
-    .find(candidate => fs.existsSync(candidate));
 
 // Console noise that is expected in the sandbox and must not fail a route.
 const NOISE_PATTERNS = [
@@ -64,77 +57,6 @@ function isNoise(text) {
     return NOISE_PATTERNS.some(re => re.test(text));
 }
 
-function run(command, args, options = {}) {
-    return execFileSync(command, args, { cwd: root, stdio: 'pipe', ...options }).toString();
-}
-
-const MIME_TYPES = {
-    '.css': 'text/css',
-    '.glb': 'model/gltf-binary',
-    '.gltf': 'model/gltf+json',
-    '.html': 'text/html',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.js': 'text/javascript',
-    '.json': 'application/json',
-    '.mjs': 'text/javascript',
-    '.mp3': 'audio/mpeg',
-    '.png': 'image/png',
-    '.svg': 'image/svg+xml',
-    '.webp': 'image/webp',
-    '.woff': 'font/woff',
-    '.woff2': 'font/woff2'
-};
-
-/**
- * Minimal static file server with SPA fallback.
- *
- * Deliberately dependency free: an external server binary that fails to start
- * would serve blank pages for both sides of the comparison, which reads as a
- * perfect zero-pixel match and hides every regression.
- */
-function serve(directory, port) {
-    const server = http.createServer((request, response) => {
-        const requested = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-
-        // Resolve inside `directory` only, so a `..` traversal cannot escape it
-        let file = path.join(directory, path.normalize(requested));
-
-        if (path.relative(directory, file).startsWith('..')) {
-            response.writeHead(403).end();
-            return;
-        }
-
-        if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
-            file = path.join(file, 'index.html');
-        }
-
-        // SPA fallback: unknown extensionless paths are client-side routes
-        if (!fs.existsSync(file) && !path.extname(requested)) {
-            file = path.join(directory, 'index.html');
-        }
-
-        if (!fs.existsSync(file)) {
-            response.writeHead(404).end();
-            return;
-        }
-
-        response.writeHead(200, { 'Content-Type': MIME_TYPES[path.extname(file)] || 'application/octet-stream' });
-        fs.createReadStream(file).pipe(response);
-    });
-
-    return new Promise((resolve, reject) => {
-        server.on('error', reject);
-        server.listen(port, '127.0.0.1', () => resolve(server));
-    });
-}
-
-function listRoutes() {
-    const registry = fs.readFileSync(path.join(root, 'src/examples/registry.js'), 'utf8');
-
-    return [...registry.matchAll(/path: '\/examples\/([^']+)'/g)].map(match => match[1]);
-}
-
 /**
  * Navigate to `url`, wait for the page to settle, then screenshot it.
  * Returns `{ errors, blank }`, where `errors` are console errors that are not
@@ -142,21 +64,7 @@ function listRoutes() {
  * both sides compares as a perfect match, so callers must treat it as failure.
  */
 async function capture(browser, url, file) {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-
-    // The pre-port 3D pages load `three` from unpkg through an import map, and
-    // the sandbox has no external network. Serve the local copy instead so the
-    // reference renders the same build of `three` the port is bundled against.
-    await page.route('https://unpkg.com/three/**', route => {
-        const file = path.join(root, 'node_modules', decodeURIComponent(new URL(route.request().url()).pathname));
-
-        if (!fs.existsSync(file)) {
-            route.abort();
-            return;
-        }
-
-        route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(file) });
-    });
+    const page = await openPage(browser);
 
     const errors = [];
 
@@ -212,26 +120,18 @@ async function main() {
         process.exit(1);
     }
 
-    const { chromium } = await import('playwright-core');
-
     // Pre-port pages, from the revision before the React port
-    if (!fs.existsSync(WORKTREE)) {
-        run('git', ['worktree', 'add', '--detach', WORKTREE, REV]);
-    }
-
-    execFileSync('npx', ['vite', 'build', '--outDir', '/tmp/parity-dist', '--emptyOutDir'], { cwd: root, stdio: 'inherit' });
+    ensureReference();
+    build(DIST);
 
     const referenceServer = await serve(WORKTREE, REFERENCE_PORT);
-    const currentServer = await serve('/tmp/parity-dist', CURRENT_PORT);
+    const currentServer = await serve(DIST, CURRENT_PORT);
 
     const routes = process.argv.slice(2).length ? process.argv.slice(2) : listRoutes();
 
     fs.mkdirSync(OUT, { recursive: true });
 
-    const browser = await chromium.launch({
-        executablePath: EXECUTABLE,
-        args: ['--no-sandbox', '--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--force-device-scale-factor=1']
-    });
+    const browser = await launch();
 
     // Results collected for the summary table: { route, pixels, errors, pass }
     const results = [];

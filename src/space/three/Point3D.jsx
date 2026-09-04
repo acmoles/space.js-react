@@ -239,20 +239,20 @@ export function Point3D({
                 const selected = c.getSelected();
 
                 if (multiple && selected.length > 1) {
-                    if (!c.state.multiple.length) {
+                    if (!c.state.current.multiple.length) {
                         const other = selected.find(u => u !== api);
-                        if (other) c.state.multiple.push(other);
+                        if (other) c.state.current.multiple.push(other);
                     }
-                    c.state.multiple.push(api);
+                    c.state.current.multiple.push(api);
                     if (!noLine) lineRef.current?.deactivate?.();
                     pointRef.current?.deactivate?.();
 
                     // Update combined labels
-                    if (c.state.multiple.length > 1) {
-                        const first = c.state.multiple[0];
-                        const count = c.state.multiple.length;
+                    if (c.state.current.multiple.length > 1) {
+                        const first = c.state.current.multiple[0];
+                        const count = c.state.current.multiple.length;
                         first._setData?.({ name: `${count}\u00a0Objects`, type: '' });
-                        first._setTargetNumbers?.(c.state.multiple.map((_, i) => i + 1));
+                        first._setTargetNumbers?.(c.state.current.multiple.map((_, i) => i + 1));
                         first._setMultiple(true);
                     }
                 } else {
@@ -266,13 +266,13 @@ export function Point3D({
                 trackerRef.current?.animateOut();
 
                 if (isMultipleRef.current) {
-                    c.state.multiple.forEach(u => {
+                    c.state.current.multiple.forEach(u => {
                         if (u !== api) {
                             u._animateOut(true);
                             u._deactivate();
                         }
                     });
-                    c.state.multiple.length = 0;
+                    c.state.current.multiple.length = 0;
                     isMultipleRef.current = false;
                     setNameState(namePropRef.current);
                     setTypeState(typePropRef.current);
@@ -317,22 +317,22 @@ export function Point3D({
             // Called by Points3D raycaster
             _onHover: ({ isPoint, type: hoverType }) => {
                 const c = ctxRef.current;
-                if (!c.state.hoverEnabled && !isPoint) return;
+                if (!c.state.current.hoverEnabled && !isPoint) return;
                 clearTween(timeoutRef.current);
 
                 if (selectedRef.current) {
                     if (hoverType === 'over') trackerRef.current?.show();
                     else trackerRef.current?.hide();
                     if (isPoint && isMultipleRef.current) {
-                        c.state.multiple.forEach(u => {
+                        c.state.current.multiple.forEach(u => {
                             if (u !== api) u._onHover({ isPoint, type: hoverType });
                         });
                     }
                     return;
                 }
 
-                Stage.events.emit('hover', { index: c.state.index, target: api, type: hoverType });
-                onHoverPropRef.current?.({ index: c.state.index, type: hoverType });
+                Stage.events.emit('hover', { index: c.state.current.index, target: api, type: hoverType });
+                onHoverPropRef.current?.({ index: c.state.current.index, type: hoverType });
 
                 if (hoverType === 'over') {
                     if (!animatedInRef.current) setInitialPosition();
@@ -351,8 +351,8 @@ export function Point3D({
 
                 const c = ctxRef.current;
                 const selected = c.getSelected();
-                Stage.events.emit('change', { index: c.state.index, selected, target: api });
-                onClickPropRef.current?.({ index: c.state.index, selected });
+                Stage.events.emit('change', { index: c.state.current.index, selected, target: api });
+                onClickPropRef.current?.({ index: c.state.current.index, selected });
             },
 
             _animateOut: (fast, cb) => animateOut(fast, cb),
@@ -364,7 +364,7 @@ export function Point3D({
                 const c = ctxRef.current;
                 if (!cam || !sphereRef.current || !c) return;
 
-                const hs = c.state.halfScreen;
+                const hs = c.state.current.halfScreen;
                 if (!hs.x) return;
 
                 // Project sphere to screen space
@@ -455,7 +455,7 @@ export function Point3D({
 
         // Lazy camera — the R3F store camera is not available here; it will be
         // set on the first `_update()` frame if not provided via setCamera().
-        const storeCamera = ctxRef.current.state?.camera;
+        const storeCamera = ctxRef.current.state?.current?.camera;
         if (storeCamera) cameraRef.current = storeCamera;
 
         ctxRef.current.register(api);

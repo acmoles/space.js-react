@@ -297,7 +297,13 @@ export default function UiComponentsExample({ title }) {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <Example title={title} ref={exampleRef} className="ui-components-example">
+        <Example title={title} className="ui-components-example">
+            <UI
+                ref={uiRef}
+                instructions={{
+                    content: `${navigator.maxTouchPoints ? 'Tap' : 'Click'} each component to toggle`
+                }}
+            />
             <div className="components">
                 <div className="container" ref={containerRef}>
                     <canvas

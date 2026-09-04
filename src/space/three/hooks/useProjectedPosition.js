@@ -7,13 +7,13 @@
  * call — zero allocations per frame after mount.
  *
  * @example
- * const { project, pos } = useProjectedPosition();
+ * const { project, posRef } = useProjectedPosition();
  * // Inside useFrame or a _update() callback:
  * project(sphereMesh, camera, halfScreen);
- * // Read pos.centerX, pos.centerY, pos.width, pos.height, etc.
+ * // Read posRef.current.centerX, posRef.current.centerY, etc.
  */
 
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { Vector2 } from 'three';
 
 import { getScreenSpaceBox } from '@lib/three/utils/Utils3D.js';
@@ -22,19 +22,17 @@ export function useProjectedPosition() {
     const centerRef = useRef(new Vector2());
     const sizeRef = useRef(new Vector2());
 
-    // Stable mutable scratch object — useMemo with empty deps creates it once
-    // per component mount without triggering the react-hooks/refs "accessing
-    // .current during render" rule that useRef().current would trigger.
-    const pos = useMemo(() => ({
+    const posRef = useRef({
         centerX: 0,
         centerY: 0,
         width: 12,
         height: 12,
         halfWidth: 6,
         halfHeight: 6
-    }), []);
+    });
 
     const project = (mesh, camera, halfScreen) => {
+        const pos = posRef.current;
         const box = getScreenSpaceBox(mesh, camera);
         box.getCenter(centerRef.current).multiply(halfScreen);
         box.getSize(sizeRef.current).multiply(halfScreen);
@@ -47,5 +45,5 @@ export function useProjectedPosition() {
         pos.halfHeight = Math.round(pos.height / 2);
     };
 
-    return { pos, project };
+    return { posRef, project };
 }

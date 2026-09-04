@@ -242,7 +242,7 @@ The home page (`/`) is an index of every example, and each example is available 
 index.html            Vite entry point
 lib/                  Space.js library source (published package)
 public/assets/        Example assets
-scripts/parity.mjs    Visual parity harness
+scripts/               Parity harnesses
 src/
   main.jsx            React entry point
   App.jsx             Routes
@@ -274,6 +274,15 @@ reports the number of differing pixels:
 npm install --no-save playwright-core   # once
 npm run parity                          # every route
 npm run parity -- tween magnetic        # specific routes
+```
+
+A pixel count tells you *that* a route differs. To see *what* differs, the
+layout harness walks the rendered tree of both pages and dumps tag names,
+class names, bounding boxes, typography, colour and opacity, ready to `diff`:
+
+```sh
+npm run domparity -- details_info
+diff /tmp/domparity/details_info-reference.txt /tmp/domparity/details_info-current.txt
 ```
 
 #### ui

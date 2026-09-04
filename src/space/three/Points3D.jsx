@@ -54,10 +54,8 @@ export function Points3D({
         return r;
     }, []);
 
-    // Single mutable coordination bag — useMemo with [] creates it once per
-    // mount. Mutations never trigger re-renders (unlike useState), which is
-    // exactly what we want for this scratch-pad object.
-    const s = useMemo(() => ({
+    // Single mutable coordination bag — stable for the component lifetime.
+    const sRef = useRef({
         enabled: true,
         hoverEnabled: true,
         hover: null,
@@ -82,7 +80,7 @@ export function Points3D({
         isDragging: false,
         lastRaycast: 0,
         raycastInterval: 1 / 10
-    }), []);
+    });
 
     const registry = useRef({ objects: [], points: [] });
     const canvasRef = useRef(null);
@@ -110,11 +108,11 @@ export function Points3D({
         const c = cursor ?? '';
         const ui = registry.current.points.find(p => p._lastCursor);
         const next = (!c && ui) ? ui._lastCursor : c;
-        if (next !== s.lastCursor) {
-            s.lastCursor = next;
+        if (next !== sRef.current.lastCursor) {
+            sRef.current.lastCursor = next;
             document.documentElement.style.cursor = next;
         }
-    }, [s]);
+    }, []);
 
     const getSelected = useCallback(
         () => registry.current.points.filter(p => p._selected),
@@ -140,7 +138,7 @@ export function Points3D({
         registry.current.points.forEach(p => {
             if (p._isMultiple) {
                 p._onClick();
-            } else if (p === s.hover && p._pointIsOpen) {
+            } else if (p === sRef.current.hover && p._pointIsOpen) {
                 p._onClick();
             } else if (p._animatedIn) {
                 p._animateOut(true);
@@ -149,12 +147,12 @@ export function Points3D({
         });
 
         const selected = getSelected();
-        if (!selected.length && s.hover) {
-            s.hover._onHover({ type: 'out' });
-            s.hover = null;
+        if (!selected.length && sRef.current.hover) {
+            sRef.current.hover._onHover({ type: 'out' });
+            sRef.current.hover = null;
             setCursor();
         }
-    }, [getSelected, s, setCursor]);
+    }, [getSelected, setCursor]);
 
     const register = useCallback(pointApi => {
         registry.current.objects.push(pointApi._trackerMesh);
@@ -169,13 +167,13 @@ export function Points3D({
             objects.splice(i, 1);
             points.splice(i, 1);
         }
-        if (pointApi === s.hover) {
-            s.hover._onHover({ type: 'out' });
-            s.hover = null;
+        if (pointApi === sRef.current.hover) {
+            sRef.current.hover._onHover({ type: 'out' });
+            sRef.current.hover = null;
             setCursor();
         }
         setIndexes();
-    }, [s, setCursor, setIndexes]);
+    }, [setCursor, setIndexes]);
 
     // --- Canvas / resize ---
 
@@ -183,25 +181,25 @@ export function Points3D({
         const onResize = () => {
             const w = document.documentElement.clientWidth;
             const h = document.documentElement.clientHeight;
-            s.width = w;
-            s.height = h;
-            s.dpr = window.devicePixelRatio;
-            s.halfScreen.set(w / 2, h / 2);
+            sRef.current.width = w;
+            sRef.current.height = h;
+            sRef.current.dpr = window.devicePixelRatio;
+            sRef.current.halfScreen.set(w / 2, h / 2);
 
             if (canvasRef.current) {
-                canvasRef.current.width = Math.round(w * s.dpr);
-                canvasRef.current.height = Math.round(h * s.dpr);
+                canvasRef.current.width = Math.round(w * sRef.current.dpr);
+                canvasRef.current.height = Math.round(h * sRef.current.dpr);
                 canvasRef.current.style.width = `${w}px`;
                 canvasRef.current.style.height = `${h}px`;
-                if (ctxRef.current) ctxRef.current.scale(s.dpr, s.dpr);
+                if (ctxRef.current) ctxRef.current.scale(sRef.current.dpr, sRef.current.dpr);
             }
 
-            s.windowSnapMarginTop = w < breakpoint ? 20 : 30;
-            s.windowSnapMarginLeft = w < breakpoint ? 20 : 30;
+            sRef.current.windowSnapMarginTop = w < breakpoint ? 20 : 30;
+            sRef.current.windowSnapMarginLeft = w < breakpoint ? 20 : 30;
 
             if (dividerSnap) {
                 const cs = getComputedStyle(dividerSnap);
-                s.windowSnapMarginLeft += parseFloat(cs.left) || 0;
+                sRef.current.windowSnapMarginLeft += parseFloat(cs.left) || 0;
             }
 
             getSnappedSorted().forEach((p, i) => {
@@ -220,98 +218,98 @@ export function Points3D({
         onResize();
 
         return () => window.removeEventListener('resize', onResize);
-    }, [breakpoint, dividerSnap, getMoved, getSnappedSorted, s]);
+    }, [breakpoint, dividerSnap, getMoved, getSnappedSorted]);
 
     // --- Pointer / keyboard events ---
 
     useEffect(() => {
         const onPointerMove = e => {
-            if (!s.enabled) return;
+            if (!sRef.current.enabled) return;
 
             if (e) {
-                s.mouse.set(e.clientX, e.clientY);
-                s.coords.set(
-                    (e.clientX / s.width) * 2 - 1,
-                    1 - (e.clientY / s.height) * 2
+                sRef.current.mouse.set(e.clientX, e.clientY);
+                sRef.current.coords.set(
+                    (e.clientX / sRef.current.width) * 2 - 1,
+                    1 - (e.clientY / sRef.current.height) * 2
                 );
             }
 
             // Always read the latest camera from the store so setCamera() works.
             const { camera } = store.getState();
             const { objects, points } = registry.current;
-            const hit0 = document.elementFromPoint(s.mouse.x, s.mouse.y);
+            const hit0 = document.elementFromPoint(sRef.current.mouse.x, sRef.current.mouse.y);
 
             if (hit0 instanceof HTMLCanvasElement) {
-                raycaster.setFromCamera(s.coords, camera);
+                raycaster.setFromCamera(sRef.current.coords, camera);
                 const hit = raycaster.intersectObjects(objects)[0];
 
                 if (hit) {
-                    s.index = hit.instanceId !== undefined ? hit.instanceId : hit.index;
+                    sRef.current.index = hit.instanceId !== undefined ? hit.instanceId : hit.index;
                     const obj = points[objects.indexOf(hit.object)];
 
-                    if (!s.hover || s.index !== s.lastIndex) {
-                        s.lastIndex = s.index;
-                        s.hover = obj;
+                    if (!sRef.current.hover || sRef.current.index !== sRef.current.lastIndex) {
+                        sRef.current.lastIndex = sRef.current.index;
+                        sRef.current.hover = obj;
                         obj._onHover({ type: 'over' });
                         setCursor('pointer');
-                    } else if (s.hover !== obj) {
-                        s.hover._onHover({ type: 'out' });
-                        s.hover = obj;
+                    } else if (sRef.current.hover !== obj) {
+                        sRef.current.hover._onHover({ type: 'out' });
+                        sRef.current.hover = obj;
                         obj._onHover({ type: 'over' });
                         setCursor('pointer');
                     }
-                } else if (s.hover) {
-                    s.hover._onHover({ type: 'out' });
-                    s.hover = null;
+                } else if (sRef.current.hover) {
+                    sRef.current.hover._onHover({ type: 'out' });
+                    sRef.current.hover = null;
                     setCursor();
                 }
-            } else if (s.hover) {
-                s.hover._onHover({ type: 'out' });
-                s.hover = null;
+            } else if (sRef.current.hover) {
+                sRef.current.hover._onHover({ type: 'out' });
+                sRef.current.hover = null;
                 setCursor();
             }
 
-            s.delta.subVectors(s.mouse, s.lastMouse);
+            sRef.current.delta.subVectors(sRef.current.mouse, sRef.current.lastMouse);
         };
 
         pmoveRef.current = onPointerMove;
 
         const onPointerDown = e => {
-            if (!s.enabled) return;
-            s.lastTime = performance.now();
-            s.lastMouse.set(e.clientX, e.clientY);
+            if (!sRef.current.enabled) return;
+            sRef.current.lastTime = performance.now();
+            sRef.current.lastMouse.set(e.clientX, e.clientY);
             onPointerMove(e);
-            if (s.hover) s.click = s.hover;
+            if (sRef.current.hover) sRef.current.click = sRef.current.hover;
         };
 
         const onPointerUp = e => {
-            if (!s.enabled) return;
-            if (performance.now() - s.lastTime > 250 || s.delta.length() > 50) {
-                s.click = null;
+            if (!sRef.current.enabled) return;
+            if (performance.now() - sRef.current.lastTime > 250 || sRef.current.delta.length() > 50) {
+                sRef.current.click = null;
                 return;
             }
 
             const cursorHolder = registry.current.points.find(p => p._lastCursor);
 
-            if (s.click && s.click === s.hover) {
+            if (sRef.current.click && sRef.current.click === sRef.current.hover) {
                 if (!e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
                     registry.current.points.forEach(p => {
-                        if (p !== s.click && p._animatedIn) {
+                        if (p !== sRef.current.click && p._animatedIn) {
                             p._animateOut(true);
                             p._deactivate();
                         }
                     });
                 }
-                s.click._onClick(e.shiftKey);
-            } else if (s.openColor && !s.openColor.element?.contains(e.target)) {
+                sRef.current.click._onClick(e.shiftKey);
+            } else if (sRef.current.openColor && !sRef.current.openColor.element?.contains(e.target)) {
                 Stage.events.emit('color_picker', { open: false });
             } else if (cursorHolder?._graphOnPointerUp) {
                 cursorHolder._graphOnPointerUp();
-            } else if (document.elementFromPoint(s.mouse.x, s.mouse.y) instanceof HTMLCanvasElement) {
+            } else if (document.elementFromPoint(sRef.current.mouse.x, sRef.current.mouse.y) instanceof HTMLCanvasElement) {
                 animateOutAll();
             }
 
-            s.click = null;
+            sRef.current.click = null;
         };
 
         const onKeyUp = e => {
@@ -333,14 +331,14 @@ export function Points3D({
                 } else {
                     animateOutAll();
                 }
-            } else if (e.keyCode === 27 && !s.isDragging) {
+            } else if (e.keyCode === 27 && !sRef.current.isDragging) {
                 animateOutAll();
             }
         };
 
-        const onColorPicker = ({ open, target }) => { s.openColor = open ? target : null; };
+        const onColorPicker = ({ open, target }) => { sRef.current.openColor = open ? target : null; };
         const onInvert = () => registry.current.points.forEach(p => p._theme?.());
-        const onThumbnailDragging = ({ dragging }) => { s.isDragging = dragging; };
+        const onThumbnailDragging = ({ dragging }) => { sRef.current.isDragging = dragging; };
 
         Stage.events.on('color_picker', onColorPicker);
         Stage.events.on('invert', onInvert);
@@ -359,7 +357,7 @@ export function Points3D({
             window.removeEventListener('pointermove', onPointerMove);
             window.removeEventListener('pointerup', onPointerUp);
         };
-    }, [animateOutAll, raycaster, s, setCursor, store]);
+    }, [animateOutAll, raycaster, setCursor, store]);
 
     // --- Frame loop: clear canvas → update all instances → throttled raycast ---
 
@@ -373,9 +371,9 @@ export function Points3D({
         registry.current.points.forEach(p => p._update());
 
         const t = clock.elapsedTime;
-        if (!navigator.maxTouchPoints && t - s.lastRaycast > s.raycastInterval) {
+        if (!navigator.maxTouchPoints && t - sRef.current.lastRaycast > sRef.current.raycastInterval) {
             pmoveRef.current?.();
-            s.lastRaycast = t;
+            sRef.current.lastRaycast = t;
         }
     });
 
@@ -393,9 +391,9 @@ export function Points3D({
         register,
         setCursor,
         setIndexes,
-        state: s,
+        state: sRef,
         unregister
-    }), [animateOutAll, container, debug, getCanvasCtx, getMoved, getSelected, getSnapped, getSnappedSorted, register, s, setCursor, setIndexes, unregister]);
+    }), [animateOutAll, container, debug, getCanvasCtx, getMoved, getSelected, getSnapped, getSnappedSorted, register, setCursor, setIndexes, unregister]);
 
     return (
         <>
