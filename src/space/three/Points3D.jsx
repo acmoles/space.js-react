@@ -230,12 +230,19 @@ export function Points3D({
                 if (ctxRef.current) ctxRef.current.scale(sRef.current.dpr, sRef.current.dpr);
             }
 
-            sRef.current.windowSnapMarginTop = w < breakpoint ? 20 : 30;
-            sRef.current.windowSnapMarginLeft = w < breakpoint ? 20 : 30;
+            if (w < breakpoint) {
+                sRef.current.windowSnapMarginTop = 20;
+                sRef.current.windowSnapMarginLeft = 20;
+            } else {
+                sRef.current.windowSnapMarginTop = 30;
+                sRef.current.windowSnapMarginLeft = 30;
 
-            if (dividerSnap) {
-                const cs = getComputedStyle(dividerSnap);
-                sRef.current.windowSnapMarginLeft += parseFloat(cs.left) || 0;
+                // Above the breakpoint the details panel is beside the scene, so
+                // snapped points start after the divider line
+                if (dividerSnap) {
+                    const cs = getComputedStyle(dividerSnap);
+                    sRef.current.windowSnapMarginLeft += parseFloat(cs.left) || 0;
+                }
             }
 
             getSnappedSorted().forEach((p, i) => {
