@@ -1,49 +1,39 @@
 import { useEffect, useRef } from 'react';
 
-import { Panel, PanelItem } from '@lib/index.js';
-
 import { Example } from '@/components';
 
+import { Panel } from '../../space/components/panels/Panel.jsx';
+
+/**
+ * Panel test — a single-item panel used for visual regression testing.
+ * Mirrors `test_panel.html`.
+ */
 export default function TestPanelExample({ title }) {
-    const ref = useRef(null);
+    const panelRef = useRef(null);
+
+    const items = useRef([
+        // Uncomment to test different item types:
+        // { name: 'FPS' }
+        // { type: 'spacer' }
+        // { type: 'divider' }
+        // { type: 'link' }
+        // { type: 'thumbnail' }
+        // { type: 'graph' }
+        // { type: 'meter' }
+        // { type: 'list' }
+        // { type: 'slider' }
+        // { type: 'toggle' }
+        // { type: 'content' }
+        { type: 'color' }
+    ]).current;
 
     useEffect(() => {
-        const container = ref.current;
-
-        const panel = new Panel();
-        const item = new PanelItem({
-            // name: 'FPS'
-            // type: 'spacer'
-            // type: 'divider'
-            // type: 'link'
-            // type: 'thumbnail'
-            // type: 'graph'
-            // type: 'meter'
-            // type: 'list'
-            // type: 'slider'
-            // type: 'toggle'
-            // type: 'content'
-            type: 'color'
-        });
-        panel.add(item);
-        panel.animateIn();
-        container.appendChild(panel.element);
-
-        let raf;
-
-        function animate() {
-            raf = requestAnimationFrame(animate);
-
-            panel.update();
-        }
-
-        raf = requestAnimationFrame(animate);
-
-        return () => {
-            cancelAnimationFrame(raf);
-            panel.destroy();
-        };
+        panelRef.current?.animateIn();
     }, []);
 
-    return <Example title={title} ref={ref} center />;
+    return (
+        <Example title={title} center>
+            <Panel ref={panelRef} items={items} />
+        </Example>
+    );
 }

@@ -99,14 +99,12 @@ export function Point3D({
     const posRef = useRef({ centerX: 0, centerY: 0, halfHeight: 6, halfWidth: 6, height: 12, width: 12 });
     const vRef = useRef(new Vector2());
 
-    // React state — only what must drive re-renders of child props
-    const [canvasCtx, setCanvasCtx] = useState(null);
+    // React state — only what must drive re-renders of child props.
+    // Name and type are initialised from props; _setData() updates them
+    // imperatively (from callbacks, not effect bodies — no cascading render).
     const [nameState, setNameState] = useState(name);
     const [targetNumbers, setTargetNumbers] = useState([1]);
     const [typeState, setTypeState] = useState(type);
-
-    useEffect(() => { setNameState(name); }, [name]);
-    useEffect(() => { setTypeState(type); }, [type]);
 
     // Stable Three.js objects (created once, disposed on unmount)
     const [sphereRadius] = useState(() => {
@@ -127,33 +125,40 @@ export function Point3D({
         }
     }, []);
 
-    // Canvas context — obtained lazily after Points3D commits its canvas.
+    // Canvas context — wire imperatively so no setState cascade is needed.
+    // Both effects re-run when ctx (the context value) changes, which happens
+    // once the Points3D canvas is committed to the container portal.
     useEffect(() => {
         const c = ctx.getCanvasCtx();
-        if (c) setCanvasCtx(c);
+        if (!c) return;
+        reticleRef.current?.setContext(c);
+        lineRef.current?.setContext(c);
     }, [ctx]);
 
     // Graph element lifecycle — append/remove graph.element from our overlay div.
     useEffect(() => {
         const g = graphRef.current;
-        if (!g || !overlayDivRef.current || !canvasCtx) return undefined;
+        const el = overlayDivRef.current; // capture before async cleanup
+        if (!g || !el) return undefined;
+
+        const c = ctx.getCanvasCtx();
+        if (!c) return undefined;
 
         const handleCursor = ({ cursor }) => {
             ctxRef.current.setCursor(cursor);
         };
 
         g.events.on('cursor', handleCursor);
-        g.setContext(canvasCtx);
-        overlayDivRef.current.appendChild(g.element);
+        g.setContext(c);
+        el.appendChild(g.element);
 
         return () => {
             g.events.off('cursor', handleCursor);
-            if (overlayDivRef.current?.contains(g.element)) {
-                overlayDivRef.current.removeChild(g.element);
+            if (el?.contains(g.element)) {
+                el.removeChild(g.element);
             }
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canvasCtx]); // graph is stable — accessed via graphRef
+    }, [ctx]); // graph is stable — accessed via graphRef
 
     // --- Stable API object registered with Points3D ---------------------------
     const apiRef = useRef(null);
@@ -509,10 +514,10 @@ export function Point3D({
             {ctx?.container && createPortal(
                 <div ref={overlayDivRef}>
                     {!graph && (
-                        <ReticleCanvas context={canvasCtx} ref={reticleRef} />
+                        <ReticleCanvas ref={reticleRef} />
                     )}
                     {!graph && !noLine && (
-                        <LineCanvas context={canvasCtx} ref={lineRef} />
+                        <LineCanvas ref={lineRef} />
                     )}
                     {!noTracker && (
                         graph

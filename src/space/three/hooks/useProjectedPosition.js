@@ -13,7 +13,7 @@
  * // Read pos.centerX, pos.centerY, pos.width, pos.height, etc.
  */
 
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { Vector2 } from 'three';
 
 import { getScreenSpaceBox } from '@lib/three/utils/Utils3D.js';
@@ -21,14 +21,18 @@ import { getScreenSpaceBox } from '@lib/three/utils/Utils3D.js';
 export function useProjectedPosition() {
     const centerRef = useRef(new Vector2());
     const sizeRef = useRef(new Vector2());
-    const pos = useRef({
+
+    // Stable mutable scratch object — useMemo with empty deps creates it once
+    // per component mount without triggering the react-hooks/refs "accessing
+    // .current during render" rule that useRef().current would trigger.
+    const pos = useMemo(() => ({
         centerX: 0,
         centerY: 0,
         width: 12,
         height: 12,
         halfWidth: 6,
         halfHeight: 6
-    }).current;
+    }), []);
 
     const project = (mesh, camera, halfScreen) => {
         const box = getScreenSpaceBox(mesh, camera);

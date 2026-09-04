@@ -256,13 +256,11 @@ async function main() {
 
         const consoleErrors = [...current.errors];
 
-        // A blank page on either side makes the pixel count meaningless
-        if (reference.blank) {
-            consoleErrors.push('reference page rendered nothing');
-        }
-
-        if (current.blank) {
-            consoleErrors.push('current page rendered nothing');
+        // A blank page on one side only makes the pixel count meaningless.
+        // Some pages legitimately render nothing (console-only test pages), so
+        // blank on both sides is not a failure.
+        if (reference.blank !== current.blank) {
+            consoleErrors.push(reference.blank ? 'reference page rendered nothing' : 'current page rendered nothing');
         }
 
         const pixels = compare(

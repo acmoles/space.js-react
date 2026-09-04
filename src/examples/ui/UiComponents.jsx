@@ -1,7 +1,5 @@
 import { useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
 
-import { UI } from '@lib/index.js';
-
 import { DetailsButton, MuteButton } from '../../space/components/details/index.js';
 import {
     LineCanvas,
@@ -12,6 +10,7 @@ import {
     Tracker
 } from '../../space/components/indicators/index.js';
 import { Link, NavLink } from '../../space/components/nav/index.js';
+import { UI } from '../../space/components/ui/UI.jsx';
 import { useAnimation, useTicker } from '../../space/motion/index.js';
 import { useResize } from '../../space/hooks/index.js';
 
@@ -156,33 +155,14 @@ export default function UiComponentsExample({ title }) {
     const canvasRef    = useRef(null);
     const ctxRef       = useRef(null);
 
-    // ── UI component (kept imperative) ────────────────────────────────────────
-    const exampleRef = useRef(null);
-    const uiRef      = useRef(null);
+    // ── UI ref (declarative) ──────────────────────────────────────────────────
+    const uiRef = useRef(null);
 
     // ── DetailsButton counter state (body-click driven) ───────────────────────
     // Tracked in a ref so body-click handler doesn't need state re-renders
     const db3nRef  = useRef(1);
     const db4nRef  = useRef(1);
     const db56nRef = useRef(1);
-
-    // ── Mount: UI ─────────────────────────────────────────────────────────────
-    useEffect(() => {
-        // TODO(rev2): swap for the declarative <UI> composite once it lands
-        const ui = new UI({
-            instructions: {
-                content: `${navigator.maxTouchPoints ? 'Tap' : 'Click'} each component to toggle`
-            }
-        });
-        uiRef.current = ui;
-        ui.instructions.animateIn();
-
-        if (exampleRef.current) {
-            exampleRef.current.appendChild(ui.element);
-        }
-
-        return () => ui.destroy?.();
-    }, []);
 
     // ── Load: animate all items in ────────────────────────────────────────────
     useEffect(() => {
@@ -195,6 +175,7 @@ export default function UiComponentsExample({ title }) {
 
         const animateIn = () => {
             uiRef.current?.animateIn();
+            uiRef.current?.animateInstructionsIn();
             allItems.forEach((ref, i) => ref.current?.animateIn(i * 50));
         };
 

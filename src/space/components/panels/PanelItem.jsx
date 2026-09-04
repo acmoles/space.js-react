@@ -23,7 +23,8 @@ import './PanelItem.css';
  * @param {function} [props.onChange]    Called when the item value changes.
  * @param {object}   [props.ref]  Exposes `animateIn(delay, fast)`,
  *                                `animateOut(index, total, delay, callback)`,
- *                                `enable()`, `disable()`.
+ *                                `enable()`, `disable()`,
+ *                                `getPanelValue(name)`, `setPanelValue(name, value)`.
  * @example
  * <PanelItem data={{ type: 'slider', name: 'Speed', min: 0, max: 10, value: 5 }} onChange={e => console.log(e)} />
  */
@@ -62,11 +63,33 @@ export function PanelItem({ data, onChange, ref }) {
             container.stop();
             if (containerRef.current) containerRef.current.style.pointerEvents = 'none';
             container.animate({ opacity: 0.35 }, 500, 'easeInOutSine');
+        },
+        // Panel value API — allows Panel.setPanelValue to delegate to items by name
+        getPanelValue(name) {
+            if (data.name !== name) return undefined;
+            return viewRef.current?.getValue?.() ?? graphRef.current?.getValue?.();
+        },
+        setPanelValue(name, value) {
+            if (data.name !== name) return;
+            viewRef.current?.setValue?.(value, false);
+            graphRef.current?.setValue?.(value);
+        },
+        getPanelIndex(name) {
+            if (data.name !== name) return undefined;
+            return viewRef.current?.getIndex?.();
+        },
+        setPanelIndex(name, index) {
+            if (data.name !== name) return;
+            viewRef.current?.setIndex?.(index, false);
         }
     }), [root, container, containerRef, rootRef]);
 
     const handleChange = e => {
-        if (data.callback) data.callback(e.value, null);
+        // Pass the view/graph ref as the second argument — mirrors the original
+        // PanelItem API where callbacks receive `(value, item)` and can call
+        // `item.update()`, `item.setContent()`, `item.toggleContent()`, etc.
+        const itemHandle = viewRef.current || graphRef.current;
+        if (data.callback) data.callback(e.value, itemHandle);
         if (onChange) onChange(e);
     };
 

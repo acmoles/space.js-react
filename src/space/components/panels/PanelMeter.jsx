@@ -191,8 +191,25 @@ export function PanelMeter({
             fps.count++;
             updateValue(fps.fps);
         } else if (callback) {
-            const newVal = callback(valueRef.current, null);
-            if (newVal !== undefined) {
+            // Pass a proxy item matching the original PanelItem/GraphItem API so
+            // callbacks written for the imperative library work unchanged.
+            let wasUpdated = false;
+            const callbackItem = {
+                update(v) {
+                    if (v !== undefined) {
+                        if (ghostRef.current !== undefined) ghostRef.current = valueRef.current;
+                        updateValue(v);
+                    } else {
+                        needsUpdateRef.current = true; // redraw current value
+                    }
+                    wasUpdated = true;
+                }
+            };
+            const newVal = callback(valueRef.current, callbackItem);
+            if (wasUpdated) {
+                // item.update() handled display; treat return value as new state only
+                if (newVal !== undefined) valueRef.current = newVal;
+            } else if (newVal !== undefined) {
                 if (ghostRef.current !== undefined) ghostRef.current = valueRef.current;
                 updateValue(newVal);
             }

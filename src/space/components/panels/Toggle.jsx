@@ -32,12 +32,23 @@ export function Toggle({ name, value: initialValue = false, onChange, children, 
     // Stable ref for latest value used in event handler
     const valueRef = useRef(value);
 
+    // Dynamic content — set imperatively via setContent()
+    const dynContentRef = useRef(null);
+    const [dynContent, setDynContent] = useState(null);
+
     useImperativeHandle(ref, () => ({
         setValue(v, notify = true) {
             valueRef.current = v;
             setValueState(v);
             circle.stop().animate({ opacity: v ? 1 : 0.15 }, 200, 'easeOutCubic');
             emitChange(v, notify);
+        },
+        hasContent() {
+            return dynContentRef.current !== null;
+        },
+        setContent(node) {
+            dynContentRef.current = node;
+            setDynContent(node);
         },
         toggleContent(show) {
             setShowContent(show);
@@ -58,9 +69,9 @@ export function Toggle({ name, value: initialValue = false, onChange, children, 
                 <span className="content">{name}</span>
                 <span ref={circleRef} className="circle">●</span>
             </div>
-            {children && (
+            {(children || dynContent) && (
                 <div className="group" style={{ display: showContent ? '' : 'none' }}>
-                    {children}
+                    {dynContent ?? children}
                 </div>
             )}
         </div>

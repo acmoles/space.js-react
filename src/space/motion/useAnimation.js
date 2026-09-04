@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { clearTween, tween } from '@lib/tween/Tween.js';
 
 import { applyStyle, createStyleState, getStyleValue } from './style.js';
+import { startTicker } from './ticker.js';
 
 /**
  * Animates an element from a React component.
@@ -54,6 +55,8 @@ export function useAnimation(initial) {
                     complete = delay;
                     delay = 0;
                 }
+
+                startTicker();
 
                 return new Promise(resolve => {
                     const from = {};

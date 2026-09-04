@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useImperativeHandle, useState } from 'react';
 
 import './Content.css';
 
@@ -9,25 +9,33 @@ import './Content.css';
  * @param {object}   props
  * @param {function} [props.onChange] Called on mount and whenever a child emits a change.
  * @param {React.ReactNode} [props.children] Sub-panel content.
+ * @param {object}   [props.ref] Exposes `setContent(node)`.
  * @example
  * <Content onChange={e => console.log(e)}>
  *   <Panel items={[...]} />
  * </Content>
  */
-export function Content({ onChange, children }) {
-    // Mirror the original: emit once on mount
-    const [emitted] = useState(() => {
-        if (onChange) onChange({ target: null });
-        return true;
-    });
+export function Content({ onChange, children, ref }) {
+    const [dynContent, setDynContent] = useState(null);
 
-    void emitted;
+    useImperativeHandle(ref, () => ({
+        setContent(node) {
+            setDynContent(node);
+        }
+    }), []);
+
+    // Mirror the original: emit once on mount so callbacks can populate content
+    useEffect(() => {
+        if (onChange) onChange({ target: null });
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const content = dynContent ?? children;
 
     return (
         <div className="content">
-            {children && (
+            {content && (
                 <div className="group">
-                    {children}
+                    {content}
                 </div>
             )}
         </div>

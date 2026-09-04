@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 import { clearTween, tween } from '@lib/tween/Tween.js';
 
+import { startTicker } from './ticker.js';
+
 /**
  * Animates plain numbers rather than styles, for values that drive canvas
  * drawing or SVG attributes.
@@ -45,6 +47,8 @@ export function useMotion(initial) {
                 }
 
                 return new Promise(resolve => {
+                    startTicker();
+
                     tween(values, props, duration, ease, delay, () => {
                         if (complete) {
                             complete();

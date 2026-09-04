@@ -1,110 +1,110 @@
-import { useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 
-import { Panel, PanelItem, brightness, getKeyByValue } from '@lib/index.js';
+import { brightness, getKeyByValue } from '@lib/index.js';
 
 import { Example } from '@/components';
 
+import { Panel } from '../../space/components/panels/Panel.jsx';
+
+/**
+ * Standalone Panel example — a full-featured panel centered in the viewport.
+ * Mirrors `panel.html`.
+ */
 export default function PanelExample({ title }) {
-    const ref = useRef(null);
+    const panelRef = useRef(null);
 
-    useEffect(() => {
-        const container = ref.current;
+    const backgroundColor = getComputedStyle(document.querySelector(':root'))
+        .getPropertyValue('--bg-color').trim();
 
-        const panel = new Panel();
-        panel.animateIn();
-        container.appendChild(panel.element);
+    const originalBodyBg = useRef(document.body.style.backgroundColor).current;
 
-        const backgroundColor = getComputedStyle(document.querySelector(':root')).getPropertyValue('--bg-color').trim();
+    const toggleOptions = new Map([
+        ['Dark', false],
+        ['Light', true]
+    ]);
 
-        const originalBodyBg = document.body.style.backgroundColor;
+    const selectOptions = new Map([
+        ['Never', 1],
+        ['Gonna', 2],
+        ['Give', 3],
+        ['You', 4],
+        ['Up', 5]
+    ]);
 
-        const toggleOptions = new Map([
-            ['Dark', false],
-            ['Light', true]
-        ]);
+    const contentOptions = new Map([
+        ['Content A', 1],
+        ['Content B', 2],
+        ['Empty', 3]
+    ]);
 
-        const selectOptions = new Map([
-            ['Never', 1],
-            ['Gonna', 2],
-            ['Give', 3],
-            ['You', 4],
-            ['Up', 5]
-        ]);
+    const image = useRef(null);
+    if (!image.current) {
+        image.current = new Image();
+        image.current.crossOrigin = 'anonymous';
+        image.current.src = 'https://space.js.org/assets/meta/share.png';
+    }
+    const img = image.current;
 
-        const contentOptions = new Map([
-            ['Content A', 1],
-            ['Content B', 2],
-            ['Empty', 3]
-        ]);
+    const items = useRef([
+        {
+            type: 'color',
+            name: 'Color',
+            value: backgroundColor,
+            callback: value => {
+                document.body.style.backgroundColor = `#${value.getHexString()}`;
+                panelRef.current?.invert(brightness(value) > 0.6);
+            }
+        },
+        {
+            type: 'list',
+            name: 'List Toggle',
+            list: toggleOptions,
+            value: getKeyByValue(toggleOptions, false),
+            callback: value => {
+                console.log('ListToggle callback:', value);
 
-        const image = new Image();
-        image.crossOrigin = 'anonymous';
-        image.src = 'https://space.js.org/assets/meta/share.png';
+                const light = toggleOptions.get(value);
 
-        const items = [
-            {
-                type: 'color',
-                name: 'Color',
-                value: backgroundColor,
-                callback: value => {
-                    document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                    // Light colour is inverted
-                    panel.invert(brightness(value) > 0.6);
+                if (light) {
+                    panelRef.current?.setPanelValue('Color', 0xffffff);
+                } else {
+                    panelRef.current?.setPanelValue('Color', backgroundColor);
                 }
-            },
-            {
-                type: 'list',
-                name: 'List Toggle',
-                list: toggleOptions,
-                value: getKeyByValue(toggleOptions, false),
-                callback: value => {
-                    console.log('ListToggle callback:', value);
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'list',
+            name: 'List Select',
+            list: selectOptions,
+            value: 'Never',
+            callback: value => {
+                console.log('ListSelect callback:', value);
 
-                    const light = toggleOptions.get(value);
+                const roll = selectOptions.get(value);
 
-                    if (light) {
-                        panel.setPanelValue('Color', 0xffffff);
-                    } else {
-                        panel.setPanelValue('Color', backgroundColor);
-                    }
+                if (roll === 5) {
+                    open('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
                 }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'list',
-                name: 'List Select',
-                list: selectOptions,
-                value: 'Never',
-                callback: value => {
-                    console.log('ListSelect callback:', value);
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'list',
+            name: 'List Content',
+            list: contentOptions,
+            value: 'Content A',
+            callback: (value, item) => {
+                console.log('ListSelect with content callback:', value);
 
-                    const roll = selectOptions.get(value);
-
-                    if (roll === 5) {
-                        open('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-                    }
-                }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'list',
-                name: 'List Content',
-                list: contentOptions,
-                value: 'Content A',
-                callback: (value, item) => {
-                    console.log('ListSelect with content callback:', value);
-
-                    switch (value) {
-                        case 'Content A': {
-                            const nestedPanel = new Panel();
-                            nestedPanel.animateIn(true);
-
-                            [
+                switch (value) {
+                    case 'Content A': {
+                        item.setContent(createElement(Panel, {
+                            items: [
                                 {
                                     type: 'divider'
                                 },
@@ -112,26 +112,20 @@ export default function PanelExample({ title }) {
                                     type: 'color',
                                     name: 'Nested Color 1',
                                     value: backgroundColor,
-                                    callback: value => {
-                                        document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                                        // Light colour is inverted
-                                        panel.invert(brightness(value) > 0.6);
+                                    callback: colorValue => {
+                                        document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
+                                        panelRef.current?.invert(brightness(colorValue) > 0.6);
                                     }
                                 }
-                            ].forEach(data => {
-                                nestedPanel.add(new PanelItem(data));
-                            });
-
-                            item.setContent(nestedPanel);
-                            item.toggleContent(true);
-                            break;
-                        }
-                        case 'Content B': {
-                            const nestedPanel = new Panel();
-                            nestedPanel.animateIn(true);
-
-                            [
+                            ],
+                            autoAnimateIn: true
+                        }));
+                        item.toggleContent(true);
+                        break;
+                    }
+                    case 'Content B': {
+                        item.setContent(createElement(Panel, {
+                            items: [
                                 {
                                     type: 'divider'
                                 },
@@ -142,43 +136,39 @@ export default function PanelExample({ title }) {
                                     max: 1,
                                     step: 0.01,
                                     value: 0.5,
-                                    callback: value => {
-                                        console.log('Slider callback:', value);
+                                    callback: sliderValue => {
+                                        console.log('Slider callback:', sliderValue);
                                     }
                                 }
-                            ].forEach(data => {
-                                nestedPanel.add(new PanelItem(data));
-                            });
-
-                            item.setContent(nestedPanel);
-                            item.toggleContent(true);
-                            break;
-                        }
-                        default: {
-                            item.toggleContent(false);
-                            break;
-                        }
+                            ],
+                            autoAnimateIn: true
+                        }));
+                        item.toggleContent(true);
+                        break;
+                    }
+                    default: {
+                        item.toggleContent(false);
+                        break;
                     }
                 }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'slider',
-                name: 'Slider',
-                min: 0,
-                max: 1,
-                step: 0.01,
-                value: 0,
-                callback: (value, item) => {
-                    console.log('Slider with content callback:', value);
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'slider',
+            name: 'Slider',
+            min: 0,
+            max: 1,
+            step: 0.01,
+            value: 0,
+            callback: (value, item) => {
+                console.log('Slider with content callback:', value);
 
-                    if (!item.hasContent()) {
-                        const nestedPanel = new Panel();
-                        nestedPanel.animateIn(true);
-
-                        [
+                if (!item.hasContent()) {
+                    item.setContent(createElement(Panel, {
+                        items: [
                             {
                                 type: 'divider'
                             },
@@ -186,42 +176,36 @@ export default function PanelExample({ title }) {
                                 type: 'color',
                                 name: 'Nested Color 2',
                                 value: backgroundColor,
-                                callback: value => {
-                                    document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                                    // Light colour is inverted
-                                    panel.invert(brightness(value) > 0.6);
+                                callback: colorValue => {
+                                    document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
+                                    panelRef.current?.invert(brightness(colorValue) > 0.6);
                                 }
                             }
-                        ].forEach(data => {
-                            nestedPanel.add(new PanelItem(data));
-                        });
-
-                        item.setContent(nestedPanel);
-                    }
-
-                    if (value > 0) {
-                        item.toggleContent(true);
-                    } else {
-                        item.toggleContent(false);
-                    }
+                        ],
+                        autoAnimateIn: true
+                    }));
                 }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'toggle',
-                name: 'Toggle',
-                value: false,
-                callback: (value, item) => {
-                    console.log('Toggle with content callback:', value);
 
-                    if (!item.hasContent()) {
-                        const nestedPanel = new Panel();
-                        nestedPanel.animateIn(true);
+                if (value > 0) {
+                    item.toggleContent(true);
+                } else {
+                    item.toggleContent(false);
+                }
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'toggle',
+            name: 'Toggle',
+            value: false,
+            callback: (value, item) => {
+                console.log('Toggle with content callback:', value);
 
-                        [
+                if (!item.hasContent()) {
+                    item.setContent(createElement(Panel, {
+                        items: [
                             {
                                 type: 'divider'
                             },
@@ -229,115 +213,87 @@ export default function PanelExample({ title }) {
                                 type: 'color',
                                 name: 'Nested Color 3',
                                 value: backgroundColor,
-                                callback: value => {
-                                    document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                                    // Light colour is inverted
-                                    panel.invert(brightness(value) > 0.6);
+                                callback: colorValue => {
+                                    document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
+                                    panelRef.current?.invert(brightness(colorValue) > 0.6);
                                 }
                             }
-                        ].forEach(data => {
-                            nestedPanel.add(new PanelItem(data));
-                        });
-
-                        item.setContent(nestedPanel);
-                    }
-
-                    if (value > 0) {
-                        item.toggleContent(true);
-                    } else {
-                        item.toggleContent(false);
-                    }
+                        ],
+                        autoAnimateIn: true
+                    }));
                 }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'content',
-                callback: (value, item) => {
-                    const nestedPanel = new Panel();
-                    nestedPanel.animateIn(true);
 
-                    [
+                if (value > 0) {
+                    item.toggleContent(true);
+                } else {
+                    item.toggleContent(false);
+                }
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'content',
+            callback: (value, item) => {
+                item.setContent(createElement(Panel, {
+                    items: [
                         {
                             type: 'color',
                             name: 'Nested Color 4',
                             value: backgroundColor,
-                            callback: value => {
-                                document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                                // Light colour is inverted
-                                panel.invert(brightness(value) > 0.6);
+                            callback: colorValue => {
+                                document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
+                                panelRef.current?.invert(brightness(colorValue) > 0.6);
                             }
                         }
-                    ].forEach(data => {
-                        nestedPanel.add(new PanelItem(data));
-                    });
-
-                    item.setContent(nestedPanel);
-                }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'thumbnail',
-                name: 'Thumbnail',
-                value: image,
-                callback: value => {
-                    console.log('Thumbnail callback:', value);
-                }
-            },
-            {
-                type: 'spacer'
-            },
-            {
-                type: 'link',
-                value: 'Reset',
-                callback: value => {
-                    console.log('Link callback:', value);
-
-                    panel.setPanelValue('Color', backgroundColor);
-                    panel.setPanelValue('List Toggle', false);
-                    panel.setPanelValue('List Select', 1);
-                    panel.setPanelValue('List Content', 1);
-                    panel.setPanelValue('Nested Color 1', backgroundColor);
-                    panel.setPanelValue('Nested', 0.5);
-                    panel.setPanelValue('Slider', 0);
-                    panel.setPanelValue('Nested Color 2', backgroundColor);
-                    panel.setPanelValue('Toggle', false);
-                    panel.setPanelValue('Nested Color 3', backgroundColor);
-                    panel.setPanelValue('Nested Color 4', backgroundColor);
-                    panel.setPanelValue('Thumbnail', image);
-                    // panel.setPanelValue('Thumbnail', null);
-                }
+                    ],
+                    autoAnimateIn: true
+                }));
             }
-        ];
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'thumbnail',
+            name: 'Thumbnail',
+            value: img,
+            callback: value => {
+                console.log('Thumbnail callback:', value);
+            }
+        },
+        {
+            type: 'spacer'
+        },
+        {
+            type: 'link',
+            value: 'Reset',
+            callback: () => {
+                console.log('Link callback: Reset');
 
-        items.forEach(data => {
-            panel.add(new PanelItem(data));
-        });
-
-        // Call after adding
-        panel.animateIn();
-
-        let raf;
-
-        function animate() {
-            raf = requestAnimationFrame(animate);
-
-            panel.update();
+                panelRef.current?.setPanelValue('Color', backgroundColor);
+                panelRef.current?.setPanelValue('List Toggle', false);
+                panelRef.current?.setPanelValue('List Select', 1);
+                panelRef.current?.setPanelValue('List Content', 1);
+                panelRef.current?.setPanelValue('Slider', 0);
+                panelRef.current?.setPanelValue('Toggle', false);
+                panelRef.current?.setPanelValue('Thumbnail', img);
+            }
         }
+    ]).current;
 
-        raf = requestAnimationFrame(animate);
+    useEffect(() => {
+        panelRef.current?.animateIn();
 
         return () => {
-            cancelAnimationFrame(raf);
-            panel.destroy();
             document.body.style.backgroundColor = originalBodyBg;
         };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return <Example title={title} center ref={ref} />;
+    return (
+        <Example title={title} center>
+            <Panel ref={panelRef} items={items} />
+        </Example>
+    );
 }

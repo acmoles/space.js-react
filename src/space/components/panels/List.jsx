@@ -38,6 +38,10 @@ export function List({ list, value, onChange, children, ref }) {
     const itemRefs = useRef([]);
     const selectRef = useRef(null);
 
+    // Dynamic content — set imperatively via setContent() (mirrors Slider pattern)
+    const dynContentRef = useRef(null);
+    const [dynContent, setDynContent] = useState(null);
+
     const emitChange = useCallback(newIndex => {
         if (onChange) {
             onChange({ path: [], index: newIndex, value: keys.current[newIndex], target: null });
@@ -77,6 +81,13 @@ export function List({ list, value, onChange, children, ref }) {
                 selectRef.current?.setList(keys.current);
             }
         },
+        hasContent() {
+            return dynContentRef.current !== null;
+        },
+        setContent(node) {
+            dynContentRef.current = node;
+            setDynContent(node);
+        },
         toggleContent(show) {
             setShowContent(show);
         }
@@ -111,9 +122,9 @@ export function List({ list, value, onChange, children, ref }) {
                     ))
                 )}
             </div>
-            {children && (
+            {(children || dynContent) && (
                 <div className="group" style={{ display: showContent ? '' : 'none' }}>
-                    {children}
+                    {dynContent ?? children}
                 </div>
             )}
         </div>

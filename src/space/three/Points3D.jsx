@@ -18,7 +18,7 @@
  */
 
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useFrame, useStore } from '@react-three/fiber';
 import { Raycaster, Vector2 } from 'three';
 
@@ -48,14 +48,16 @@ export function Points3D({
     const store = useStore();
 
     // Stable Three.js objects — never recreated across renders.
-    const [raycaster] = useState(() => {
+    const raycaster = useMemo(() => {
         const r = new Raycaster();
         r.layers.enable(31);
         return r;
-    });
+    }, []);
 
-    // Single mutable state bag — mutations do NOT trigger React re-renders.
-    const [s] = useState(() => ({
+    // Single mutable coordination bag — useMemo with [] creates it once per
+    // mount. Mutations never trigger re-renders (unlike useState), which is
+    // exactly what we want for this scratch-pad object.
+    const s = useMemo(() => ({
         enabled: true,
         hoverEnabled: true,
         hover: null,
@@ -80,7 +82,7 @@ export function Points3D({
         isDragging: false,
         lastRaycast: 0,
         raycastInterval: 1 / 10
-    }));
+    }), []);
 
     const registry = useRef({ objects: [], points: [] });
     const canvasRef = useRef(null);

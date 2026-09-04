@@ -1,119 +1,118 @@
-import { useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 
-import { Panel, PanelItem, UI, brightness, getKeyByValue } from '@lib/index.js';
+import { brightness, getKeyByValue } from '@lib/index.js';
 
 import { Example } from '@/components';
 
+import { Panel } from '../../space/components/panels/Panel.jsx';
+import { UI } from '../../space/components/ui/UI.jsx';
+
+/**
+ * FPS Panel example — renders the UI with fps panel open and a full set of
+ * panel controls including nested content. Mirrors `fps_panel.html`.
+ */
 export default function FpsPanelExample({ title }) {
-    const ref = useRef(null);
+    const uiRef = useRef(null);
 
-    useEffect(() => {
-        const container = ref.current;
+    const backgroundColor = getComputedStyle(document.querySelector(':root'))
+        .getPropertyValue('--bg-color').trim();
 
-        const ui = new UI({
-            fps: true,      // Hover or tap to open
-            fpsOpen: true   // Always open
-        });
-        ui.animateIn();
-        container.appendChild(ui.element);
+    const originalBodyBg = useRef(document.body.style.backgroundColor).current;
 
-        const backgroundColor = getComputedStyle(document.querySelector(':root')).getPropertyValue('--bg-color').trim();
+    const toggleOptions = new Map([
+        ['Dark', false],
+        ['Light', true]
+    ]);
 
-        const originalBodyBg = document.body.style.backgroundColor;
+    const selectOptions = new Map([
+        ['Never', 1],
+        ['Gonna', 2],
+        ['Give', 3],
+        ['You', 4],
+        ['Up', 5]
+    ]);
 
-        const toggleOptions = new Map([
-            ['Dark', false],
-            ['Light', true]
-        ]);
+    const contentOptions = new Map([
+        ['Content A', 1],
+        ['Content B', 2],
+        ['Empty', 3]
+    ]);
 
-        const selectOptions = new Map([
-            ['Never', 1],
-            ['Gonna', 2],
-            ['Give', 3],
-            ['You', 4],
-            ['Up', 5]
-        ]);
+    const image = useRef(null);
+    if (!image.current) {
+        image.current = new Image();
+        image.current.crossOrigin = 'anonymous';
+        image.current.src = 'https://space.js.org/assets/meta/share.png';
+    }
+    const img = image.current;
 
-        const contentOptions = new Map([
-            ['Content A', 1],
-            ['Content B', 2],
-            ['Empty', 3]
-        ]);
+    // Items defined once; callbacks close over uiRef (populated after mount)
+    const panelItems = useRef([
+        {
+            name: 'FPS'
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'color',
+            name: 'Color',
+            value: backgroundColor,
+            callback: value => {
+                document.body.style.backgroundColor = `#${value.getHexString()}`;
+                uiRef.current?.invert(brightness(value) > 0.6);
+            }
+        },
+        {
+            type: 'list',
+            name: 'List Toggle',
+            list: toggleOptions,
+            value: getKeyByValue(toggleOptions, false),
+            callback: value => {
+                console.log('ListToggle callback:', value);
 
-        const image = new Image();
-        image.crossOrigin = 'anonymous';
-        image.src = 'https://space.js.org/assets/meta/share.png';
+                const light = toggleOptions.get(value);
 
-        const items = [
-            {
-                name: 'FPS'
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'color',
-                name: 'Color',
-                value: backgroundColor,
-                callback: value => {
-                    document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                    // Light colour is inverted
-                    ui.invert(brightness(value) > 0.6);
+                if (light) {
+                    uiRef.current?.setPanelValue('Color', 0xffffff);
+                } else {
+                    uiRef.current?.setPanelValue('Color', backgroundColor);
                 }
-            },
-            {
-                type: 'list',
-                name: 'List Toggle',
-                list: toggleOptions,
-                value: getKeyByValue(toggleOptions, false),
-                callback: value => {
-                    console.log('ListToggle callback:', value);
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'list',
+            name: 'List Select',
+            list: selectOptions,
+            value: 'Never',
+            callback: value => {
+                console.log('ListSelect callback:', value);
 
-                    const light = toggleOptions.get(value);
+                const roll = selectOptions.get(value);
 
-                    if (light) {
-                        ui.setPanelValue('Color', 0xffffff);
-                    } else {
-                        ui.setPanelValue('Color', backgroundColor);
-                    }
+                if (roll === 5) {
+                    open('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
                 }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'list',
-                name: 'List Select',
-                list: selectOptions,
-                value: 'Never',
-                callback: value => {
-                    console.log('ListSelect callback:', value);
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'list',
+            name: 'List Content',
+            list: contentOptions,
+            value: 'Content A',
+            callback: (value, item) => {
+                console.log('ListSelect with content callback:', value);
 
-                    const roll = selectOptions.get(value);
-
-                    if (roll === 5) {
-                        open('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-                    }
-                }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'list',
-                name: 'List Content',
-                list: contentOptions,
-                value: 'Content A',
-                callback: (value, item) => {
-                    console.log('ListSelect with content callback:', value);
-
-                    switch (value) {
-                        case 'Content A': {
-                            const nestedPanel = new Panel();
-                            nestedPanel.animateIn(true);
-
-                            [
+                switch (value) {
+                    case 'Content A': {
+                        item.setContent(createElement(Panel, {
+                            items: [
                                 {
                                     type: 'divider'
                                 },
@@ -121,26 +120,20 @@ export default function FpsPanelExample({ title }) {
                                     type: 'color',
                                     name: 'Nested Color 1',
                                     value: backgroundColor,
-                                    callback: value => {
-                                        document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                                        // Light colour is inverted
-                                        ui.invert(brightness(value) > 0.6);
+                                    callback: colorValue => {
+                                        document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
+                                        uiRef.current?.invert(brightness(colorValue) > 0.6);
                                     }
                                 }
-                            ].forEach(data => {
-                                nestedPanel.add(new PanelItem(data));
-                            });
-
-                            item.setContent(nestedPanel);
-                            item.toggleContent(true);
-                            break;
-                        }
-                        case 'Content B': {
-                            const nestedPanel = new Panel();
-                            nestedPanel.animateIn(true);
-
-                            [
+                            ],
+                            autoAnimateIn: true
+                        }));
+                        item.toggleContent(true);
+                        break;
+                    }
+                    case 'Content B': {
+                        item.setContent(createElement(Panel, {
+                            items: [
                                 {
                                     type: 'divider'
                                 },
@@ -151,43 +144,39 @@ export default function FpsPanelExample({ title }) {
                                     max: 1,
                                     step: 0.01,
                                     value: 0.5,
-                                    callback: value => {
-                                        console.log('Slider callback:', value);
+                                    callback: sliderValue => {
+                                        console.log('Slider callback:', sliderValue);
                                     }
                                 }
-                            ].forEach(data => {
-                                nestedPanel.add(new PanelItem(data));
-                            });
-
-                            item.setContent(nestedPanel);
-                            item.toggleContent(true);
-                            break;
-                        }
-                        default: {
-                            item.toggleContent(false);
-                            break;
-                        }
+                            ],
+                            autoAnimateIn: true
+                        }));
+                        item.toggleContent(true);
+                        break;
+                    }
+                    default: {
+                        item.toggleContent(false);
+                        break;
                     }
                 }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'slider',
-                name: 'Slider',
-                min: 0,
-                max: 1,
-                step: 0.01,
-                value: 0,
-                callback: (value, item) => {
-                    console.log('Slider with content callback:', value);
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'slider',
+            name: 'Slider',
+            min: 0,
+            max: 1,
+            step: 0.01,
+            value: 0,
+            callback: (value, item) => {
+                console.log('Slider with content callback:', value);
 
-                    if (!item.hasContent()) {
-                        const nestedPanel = new Panel();
-                        nestedPanel.animateIn(true);
-
-                        [
+                if (!item.hasContent()) {
+                    item.setContent(createElement(Panel, {
+                        items: [
                             {
                                 type: 'divider'
                             },
@@ -195,42 +184,36 @@ export default function FpsPanelExample({ title }) {
                                 type: 'color',
                                 name: 'Nested Color 2',
                                 value: backgroundColor,
-                                callback: value => {
-                                    document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                                    // Light colour is inverted
-                                    ui.invert(brightness(value) > 0.6);
+                                callback: colorValue => {
+                                    document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
+                                    uiRef.current?.invert(brightness(colorValue) > 0.6);
                                 }
                             }
-                        ].forEach(data => {
-                            nestedPanel.add(new PanelItem(data));
-                        });
-
-                        item.setContent(nestedPanel);
-                    }
-
-                    if (value > 0) {
-                        item.toggleContent(true);
-                    } else {
-                        item.toggleContent(false);
-                    }
+                        ],
+                        autoAnimateIn: true
+                    }));
                 }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'toggle',
-                name: 'Toggle',
-                value: false,
-                callback: (value, item) => {
-                    console.log('Toggle with content callback:', value);
 
-                    if (!item.hasContent()) {
-                        const nestedPanel = new Panel();
-                        nestedPanel.animateIn(true);
+                if (value > 0) {
+                    item.toggleContent(true);
+                } else {
+                    item.toggleContent(false);
+                }
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'toggle',
+            name: 'Toggle',
+            value: false,
+            callback: (value, item) => {
+                console.log('Toggle with content callback:', value);
 
-                        [
+                if (!item.hasContent()) {
+                    item.setContent(createElement(Panel, {
+                        items: [
                             {
                                 type: 'divider'
                             },
@@ -238,116 +221,87 @@ export default function FpsPanelExample({ title }) {
                                 type: 'color',
                                 name: 'Nested Color 3',
                                 value: backgroundColor,
-                                callback: value => {
-                                    document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                                    // Light colour is inverted
-                                    ui.invert(brightness(value) > 0.6);
+                                callback: colorValue => {
+                                    document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
+                                    uiRef.current?.invert(brightness(colorValue) > 0.6);
                                 }
                             }
-                        ].forEach(data => {
-                            nestedPanel.add(new PanelItem(data));
-                        });
-
-                        item.setContent(nestedPanel);
-                    }
-
-                    if (value > 0) {
-                        item.toggleContent(true);
-                    } else {
-                        item.toggleContent(false);
-                    }
+                        ],
+                        autoAnimateIn: true
+                    }));
                 }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'content',
-                callback: (value, item) => {
-                    const nestedPanel = new Panel();
-                    nestedPanel.animateIn(true);
 
-                    [
+                if (value > 0) {
+                    item.toggleContent(true);
+                } else {
+                    item.toggleContent(false);
+                }
+            }
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'content',
+            callback: (value, item) => {
+                item.setContent(createElement(Panel, {
+                    items: [
                         {
                             type: 'color',
                             name: 'Nested Color 4',
                             value: backgroundColor,
-                            callback: value => {
-                                document.body.style.backgroundColor = `#${value.getHexString()}`;
-
-                                // Light colour is inverted
-                                ui.invert(brightness(value) > 0.6);
+                            callback: colorValue => {
+                                document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
+                                uiRef.current?.invert(brightness(colorValue) > 0.6);
                             }
                         }
-                    ].forEach(data => {
-                        nestedPanel.add(new PanelItem(data));
-                    });
-
-                    item.setContent(nestedPanel);
-                }
-            },
-            {
-                type: 'divider'
-            },
-            {
-                type: 'thumbnail',
-                name: 'Thumbnail',
-                value: image,
-                callback: value => {
-                    console.log('Thumbnail callback:', value);
-                }
-            },
-            {
-                type: 'spacer'
-            },
-            {
-                type: 'link',
-                value: 'Reset',
-                callback: value => {
-                    console.log('Link callback:', value);
-
-                    ui.setPanelValue('Color', backgroundColor);
-                    ui.setPanelValue('List Toggle', false);
-                    ui.setPanelValue('List Select', 1);
-                    ui.setPanelValue('List Content', 1);
-                    ui.setPanelValue('Nested Color 1', backgroundColor);
-                    ui.setPanelValue('Nested', 0.5);
-                    ui.setPanelValue('Slider', 0);
-                    ui.setPanelValue('Nested Color 2', backgroundColor);
-                    ui.setPanelValue('Toggle', false);
-                    ui.setPanelValue('Nested Color 3', backgroundColor);
-                    ui.setPanelValue('Nested Color 4', backgroundColor);
-                    ui.setPanelValue('Thumbnail', image);
-                    // ui.setPanelValue('Thumbnail', null);
-                }
+                    ],
+                    autoAnimateIn: true
+                }));
             }
-        ];
+        },
+        {
+            type: 'divider'
+        },
+        {
+            type: 'thumbnail',
+            name: 'Thumbnail',
+            value: img,
+            callback: value => {
+                console.log('Thumbnail callback:', value);
+            }
+        },
+        {
+            type: 'spacer'
+        },
+        {
+            type: 'link',
+            value: 'Reset',
+            callback: () => {
+                console.log('Link callback: Reset');
 
-        items.forEach(data => {
-            ui.addPanel(new PanelItem(data));
-        });
-
-        // Call after adding to show the fps panel right away
-        // ui.animateIn();
-        ui.header.info.animateIn();
-
-        let raf;
-
-        function animate() {
-            raf = requestAnimationFrame(animate);
-
-            ui.update();
+                uiRef.current?.setPanelValue('Color', backgroundColor);
+                uiRef.current?.setPanelValue('List Toggle', false);
+                uiRef.current?.setPanelValue('List Select', 1);
+                uiRef.current?.setPanelValue('List Content', 1);
+                uiRef.current?.setPanelValue('Slider', 0);
+                uiRef.current?.setPanelValue('Toggle', false);
+                uiRef.current?.setPanelValue('Thumbnail', img);
+            }
         }
+    ]).current;
 
-        raf = requestAnimationFrame(animate);
+    useEffect(() => {
+        uiRef.current?.animateIn();
 
         return () => {
-            cancelAnimationFrame(raf);
-            ui.destroy();
             document.body.style.backgroundColor = originalBodyBg;
         };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return <Example title={title} ref={ref} />;
+    return (
+        <Example title={title}>
+            <UI ref={uiRef} fps fpsOpen panelItems={panelItems} />
+        </Example>
+    );
 }
