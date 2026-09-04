@@ -30,8 +30,9 @@
  *   npm install --no-save playwright-core
  */
 
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -67,10 +68,64 @@ function run(command, args, options = {}) {
     return execFileSync(command, args, { cwd: root, stdio: 'pipe', ...options }).toString();
 }
 
+const MIME_TYPES = {
+    '.css': 'text/css',
+    '.glb': 'model/gltf-binary',
+    '.gltf': 'model/gltf+json',
+    '.html': 'text/html',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.js': 'text/javascript',
+    '.json': 'application/json',
+    '.mjs': 'text/javascript',
+    '.mp3': 'audio/mpeg',
+    '.png': 'image/png',
+    '.svg': 'image/svg+xml',
+    '.webp': 'image/webp',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2'
+};
+
+/**
+ * Minimal static file server with SPA fallback.
+ *
+ * Deliberately dependency free: an external server binary that fails to start
+ * would serve blank pages for both sides of the comparison, which reads as a
+ * perfect zero-pixel match and hides every regression.
+ */
 function serve(directory, port) {
-    return spawn('npx', ['--yes', 'sirv-cli', directory, '--port', String(port), '--single', '--quiet'], {
-        cwd: root,
-        stdio: 'ignore'
+    const server = http.createServer((request, response) => {
+        const requested = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+
+        // Resolve inside `directory` only, so a `..` traversal cannot escape it
+        let file = path.join(directory, path.normalize(requested));
+
+        if (path.relative(directory, file).startsWith('..')) {
+            response.writeHead(403).end();
+            return;
+        }
+
+        if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
+            file = path.join(file, 'index.html');
+        }
+
+        // SPA fallback: unknown extensionless paths are client-side routes
+        if (!fs.existsSync(file) && !path.extname(requested)) {
+            file = path.join(directory, 'index.html');
+        }
+
+        if (!fs.existsSync(file)) {
+            response.writeHead(404).end();
+            return;
+        }
+
+        response.writeHead(200, { 'Content-Type': MIME_TYPES[path.extname(file)] || 'application/octet-stream' });
+        fs.createReadStream(file).pipe(response);
+    });
+
+    return new Promise((resolve, reject) => {
+        server.on('error', reject);
+        server.listen(port, '127.0.0.1', () => resolve(server));
     });
 }
 
@@ -82,11 +137,26 @@ function listRoutes() {
 
 /**
  * Navigate to `url`, wait for the page to settle, then screenshot it.
- * Returns an array of console error strings that are not noise, collected
- * during the page lifetime.
+ * Returns `{ errors, blank }`, where `errors` are console errors that are not
+ * noise and `blank` is true when the page rendered nothing — a blank page on
+ * both sides compares as a perfect match, so callers must treat it as failure.
  */
 async function capture(browser, url, file) {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+
+    // The pre-port 3D pages load `three` from unpkg through an import map, and
+    // the sandbox has no external network. Serve the local copy instead so the
+    // reference renders the same build of `three` the port is bundled against.
+    await page.route('https://unpkg.com/three/**', route => {
+        const file = path.join(root, 'node_modules', decodeURIComponent(new URL(route.request().url()).pathname));
+
+        if (!fs.existsSync(file)) {
+            route.abort();
+            return;
+        }
+
+        route.fulfill({ status: 200, contentType: 'text/javascript', body: fs.readFileSync(file) });
+    });
 
     const errors = [];
 
@@ -110,10 +180,19 @@ async function capture(browser, url, file) {
 
     await page.goto(url, { waitUntil: 'load' }).catch(() => {});
     await page.waitForTimeout(SETTLE);
+
+    const blank = await page
+        .evaluate(() => {
+            const root = document.getElementById('root') || document.body;
+
+            return !root || root.childElementCount === 0;
+        })
+        .catch(() => true);
+
     await page.screenshot({ path: file });
     await page.close();
 
-    return errors;
+    return { errors, blank };
 }
 
 function compare(reference, current, diff) {
@@ -142,10 +221,8 @@ async function main() {
 
     execFileSync('npx', ['vite', 'build', '--outDir', '/tmp/parity-dist', '--emptyOutDir'], { cwd: root, stdio: 'inherit' });
 
-    const referenceServer = serve(WORKTREE, REFERENCE_PORT);
-    const currentServer = serve('/tmp/parity-dist', CURRENT_PORT);
-
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    const referenceServer = await serve(WORKTREE, REFERENCE_PORT);
+    const currentServer = await serve('/tmp/parity-dist', CURRENT_PORT);
 
     const routes = process.argv.slice(2).length ? process.argv.slice(2) : listRoutes();
 
@@ -164,18 +241,29 @@ async function main() {
 
         // Capture reference (original page) — we intentionally ignore its
         // console errors since the pre-port pages may use non-React patterns.
-        await capture(
+        const reference = await capture(
             browser,
             `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`,
             path.join(OUT, `${name}-reference.png`)
         );
 
         // Capture current React port — errors here count against the route.
-        const consoleErrors = await capture(
+        const current = await capture(
             browser,
             `http://127.0.0.1:${CURRENT_PORT}/examples/${route}`,
             path.join(OUT, `${name}-current.png`)
         );
+
+        const consoleErrors = [...current.errors];
+
+        // A blank page on either side makes the pixel count meaningless
+        if (reference.blank) {
+            consoleErrors.push('reference page rendered nothing');
+        }
+
+        if (current.blank) {
+            consoleErrors.push('current page rendered nothing');
+        }
 
         const pixels = compare(
             path.join(OUT, `${name}-reference.png`),
@@ -201,8 +289,8 @@ async function main() {
 
     await browser.close();
 
-    referenceServer.kill();
-    currentServer.kill();
+    referenceServer.close();
+    currentServer.close();
 
     // Summary table
     const colRoute = Math.max(5, ...results.map(r => r.route.length));
