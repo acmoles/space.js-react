@@ -40,7 +40,7 @@ export function useLightPanelController(scene, ui, enabled = true) {
     useFrame(() => {
         const instance = resolveUi(ui);
 
-        if (enabled && instance) {
+        if (enabled && instance && LightPanelController.lights) {
             LightPanelController.update();
         }
     });

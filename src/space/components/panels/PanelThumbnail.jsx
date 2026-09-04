@@ -15,6 +15,7 @@ function getPanelWidth() {
 }
 
 function imageToCanvas(image) {
+    if (!image.width || !image.height) return null;
     const canvas = document.createElement('canvas');
     canvas.width = image.width;
     canvas.height = image.height;
@@ -32,6 +33,7 @@ function normalizeValue(v) {
     if ((v instanceof Image && !v.src.startsWith('data:')) || v instanceof ImageBitmap) return imageToCanvas(v);
     if (v && v.nodeName) {
         if (v instanceof HTMLCanvasElement) {
+            if (!v.width || !v.height) return null;
             const c = document.createElement('canvas');
             c.width = v.width; c.height = v.height;
             c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
@@ -110,10 +112,25 @@ export function PanelThumbnail({
     };
 
     const applyValue = v => {
-        if ((v instanceof Image && !v.src.startsWith('data:')) || v instanceof ImageBitmap) {
+        if (v instanceof Image && !v.src.startsWith('data:')) {
+            const converted = imageToCanvas(v);
+            if (converted) {
+                v = converted;
+            } else {
+                // Image not yet loaded — show it as <img> and update when it loads
+                valueRef.current = v;
+                setImgSrc({ type: 'img', src: v.src });
+                return;
+            }
+        } else if (v instanceof ImageBitmap) {
             v = imageToCanvas(v);
         } else if (v && v.nodeName) {
             if (v instanceof HTMLCanvasElement) {
+                if (!v.width || !v.height) {
+                    valueRef.current = null;
+                    setImgSrc(null);
+                    return;
+                }
                 const c = document.createElement('canvas');
                 c.width = v.width; c.height = v.height;
                 c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
@@ -231,14 +248,32 @@ export function PanelThumbnail({
         }
     }, []);
 
+    // When initialValue is an Image that wasn't loaded at render time, convert it
+    // to a canvas snapshot once it finishes loading and update the display.
+    useEffect(() => {
+        if (!(initialValue instanceof Image) || initialValue.src.startsWith('data:')) return;
+        if (initialValue.complete && initialValue.naturalWidth) return; // already loaded
+        const onLoad = () => {
+            const canvas = imageToCanvas(initialValue);
+            if (canvas) {
+                valueRef.current = canvas;
+                setImgSrc({ type: 'canvas', canvas });
+            }
+        };
+        initialValue.addEventListener('load', onLoad);
+        return () => initialValue.removeEventListener('load', onLoad);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Render canvas content
     const canvasRef = useRef(null);
     useEffect(() => {
         if (imgSrc && imgSrc.type === 'canvas' && canvasRef.current) {
+            const src = imgSrc.canvas;
+            if (!src || !src.width || !src.height) return;
             const ctx = canvasRef.current.getContext('2d');
-            canvasRef.current.width = imgSrc.canvas.width;
-            canvasRef.current.height = imgSrc.canvas.height;
-            ctx.drawImage(imgSrc.canvas, 0, 0, canvasRef.current.width, canvasRef.current.height);
+            canvasRef.current.width = src.width;
+            canvasRef.current.height = src.height;
+            ctx.drawImage(src, 0, 0, canvasRef.current.width, canvasRef.current.height);
         }
     }, [imgSrc]);
 

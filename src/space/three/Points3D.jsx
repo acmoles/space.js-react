@@ -17,8 +17,7 @@
  * </Canvas>
  */
 
-import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useStore } from '@react-three/fiber';
 import { Raycaster, Vector2 } from 'three';
 
@@ -174,6 +173,43 @@ export function Points3D({
         }
         setIndexes();
     }, [setCursor, setIndexes]);
+
+    // --- Overlay canvas: created synchronously (useLayoutEffect) so it is owned
+    //     by the react-dom renderer and exists before children's useEffect runs.
+    //     This avoids the "Canvas/Div not part of THREE namespace" error that
+    //     react-dom.createPortal triggers inside an R3F Canvas tree.
+
+    useLayoutEffect(() => {
+        if (!container) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.style.left = '0';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        container.appendChild(canvas);
+        canvasRef.current = canvas;
+
+        // Set initial dimensions so the canvas is ready for the first frame.
+        const w = document.documentElement.clientWidth;
+        const h = document.documentElement.clientHeight;
+        const dpr = window.devicePixelRatio;
+        const s = sRef.current;
+        s.width = w;
+        s.height = h;
+        s.dpr = dpr;
+        s.halfScreen.set(w / 2, h / 2);
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
+
+        return () => {
+            canvasRef.current = null;
+            ctxRef.current = null;
+            if (container.contains(canvas)) container.removeChild(canvas);
+        };
+    }, [container]);
 
     // --- Canvas / resize ---
 
@@ -396,17 +432,8 @@ export function Points3D({
     }), [animateOutAll, container, debug, getCanvasCtx, getMoved, getSelected, getSnapped, getSnappedSorted, register, setCursor, setIndexes, unregister]);
 
     return (
-        <>
-            <Point3DContext value={ctxValue}>
-                {children}
-            </Point3DContext>
-            {container && createPortal(
-                <canvas
-                    ref={canvasRef}
-                    style={{ left: 0, pointerEvents: 'none', position: 'absolute', top: 0 }}
-                />,
-                container
-            )}
-        </>
+        <Point3DContext value={ctxValue}>
+            {children}
+        </Point3DContext>
     );
 }

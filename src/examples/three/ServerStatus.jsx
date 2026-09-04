@@ -14,7 +14,7 @@ function createSocketSource() {
 
     return {
         emitter: socket,
-        cleanup: () => socket.close()
+        cleanup: () => socket.destroy()
     };
 }
 

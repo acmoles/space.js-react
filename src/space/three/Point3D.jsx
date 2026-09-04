@@ -13,7 +13,7 @@
  * </Points3D>
  */
 
-import { createPortal } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { MeshBasicMaterial, Vector2 } from 'three';
 
@@ -32,6 +32,83 @@ function resolveMaybeRef(value) {
     }
 
     return value;
+}
+
+/**
+ * Renders the 2-D overlay markup (reticle, line, tracker, point label) into a
+ * plain DOM div that is owned by the react-dom renderer.  Rendered via
+ * ReactDOM.createRoot() from outside the R3F Canvas to avoid the "X is not
+ * part of the THREE namespace" reconciler error.
+ */
+function Point3DOverlay({
+    hasGraph,
+    isInstanced,
+    isPointCloud,
+    noLine,
+    noPoint,
+    noTracker,
+    nameState,
+    typeState,
+    targetNumbers,
+    onHover,
+    onMount,
+    onUiHide,
+    onUiLock,
+    onUiShow,
+    onUiUnlock,
+    snapFn,
+    reticleRef,
+    lineRef,
+    graphTrackerRef,
+    trackerContainerRef,
+    trackerRef,
+    pointRef
+}) {
+    // Wire the shared canvas context into reticle and line after the ReactDOM
+    // root commits this component (refs are set at this point).
+    useEffect(() => {
+        onMount?.();
+    }, [onMount]); // onMount is a stable useCallback — fires effectively once per mount
+    return (
+        <>
+            {!hasGraph && (
+                <ReticleCanvas ref={reticleRef} />
+            )}
+            {!hasGraph && !noLine && (
+                <LineCanvas ref={lineRef} />
+            )}
+            {!noTracker && (
+                hasGraph
+                    ? <RadialGraphTracker ref={graphTrackerRef} />
+                    : (
+                        <div
+                            ref={trackerContainerRef}
+                            style={{ pointerEvents: 'none', position: 'absolute' }}
+                        >
+                            <Tracker
+                                noCorners={isInstanced || isPointCloud}
+                                ref={trackerRef}
+                                style={{ height: '100%', left: 0, position: 'absolute', top: 0, width: '100%' }}
+                            />
+                        </div>
+                    )
+            )}
+            {!noPoint && (
+                <Point
+                    data={{ name: nameState, type: typeState }}
+                    onHover={onHover}
+                    onUiHide={onUiHide}
+                    onUiLock={onUiLock}
+                    onUiShow={onUiShow}
+                    onUiUnlock={onUiUnlock}
+                    ref={pointRef}
+                    snapFn={snapFn}
+                    targetNumbers={targetNumbers}
+                    trackerRef={trackerRef}
+                />
+            )}
+        </>
+    );
 }
 
 /**
@@ -92,10 +169,12 @@ export function Point3D({
     const sphereRef = useRef(null);
 
     // Overlay refs
+    const apiRef = useRef(null);
     const cameraRef = useRef(null);
     const graphTrackerRef = useRef(null);
     const lineRef = useRef(null);
     const overlayDivRef = useRef(null);
+    const overlayRootRef = useRef(null);
     const pointRef = useRef(null);
     const reticleRef = useRef(null);
     const trackerContainerRef = useRef(null);
@@ -139,6 +218,91 @@ export function Point3D({
             sphereRef.current.layers.set(31);
         }
     }, []);
+
+    // Stable callbacks passed down to Point so it never sees a new function ref.
+    // Declared here (before the overlay effects) so they are not in TDZ when the
+    // overlay update effect's deps array is evaluated.
+    const handlePointHover = useCallback(({ isPoint, type: hoverType }) => {
+        apiRef.current?._onHover({ isPoint, type: hoverType });
+    }, []);
+
+    const handleUiHide = useCallback(() => trackerRef.current?.hide(), []);
+    const handleUiLock = useCallback(() => trackerRef.current?.lock(), []);
+    const handleUiShow = useCallback(() => trackerRef.current?.show(), []);
+    const handleUiUnlock = useCallback(() => trackerRef.current?.unlock(), []);
+    // snapFn: Point calls this during drag but Point.originPosition is not
+    // exposed, so we cannot implement full snap — see limitations in index.js.
+    const snapFn = useCallback(() => {}, []);
+
+    // Called by Point3DOverlay's useEffect after the ReactDOM root commits its
+    // first render, ensuring refs (reticleRef, lineRef) are set before setContext.
+    const handleOverlayMount = useCallback(() => {
+        const c = ctxRef.current?.getCanvasCtx?.();
+        if (!c) return;
+        reticleRef.current?.setContext(c);
+        lineRef.current?.setContext(c);
+    }, []);
+
+    // Overlay DOM root — created imperatively and rendered by react-dom so that
+    // DOM markup (div, canvas, etc.) never passes through R3F's reconciler.
+    // Effect runs when `container` (= ctx.container) becomes available.
+    const container = ctx?.container ?? null;
+    const hasGraph = !!graphValue;
+    const isInstanced = !!object.isInstancedMesh;
+    const isPointCloud = !!object.isPoints;
+
+    useEffect(() => {
+        if (!container) return;
+
+        const div = document.createElement('div');
+        container.appendChild(div);
+        overlayDivRef.current = div;
+
+        const root = createRoot(div);
+        overlayRootRef.current = root;
+
+        return () => {
+            overlayRootRef.current = null;
+            root.unmount();
+            if (container.contains(div)) container.removeChild(div);
+            overlayDivRef.current = null;
+        };
+    }, [container]);
+
+    // Re-render the overlay root on every dep change.  `container` is included
+    // so the initial render fires right after the mount effect creates the root
+    // (both effects have `container` as a dep and run in declaration order).
+    useEffect(() => {
+        overlayRootRef.current?.render(
+            <Point3DOverlay
+                hasGraph={hasGraph}
+                isInstanced={isInstanced}
+                isPointCloud={isPointCloud}
+                noLine={noLine}
+                noPoint={noPoint}
+                noTracker={noTracker}
+                nameState={nameState}
+                typeState={typeState}
+                targetNumbers={targetNumbers}
+                onHover={handlePointHover}
+                onMount={handleOverlayMount}
+                onUiHide={handleUiHide}
+                onUiLock={handleUiLock}
+                onUiShow={handleUiShow}
+                onUiUnlock={handleUiUnlock}
+                snapFn={snapFn}
+                reticleRef={reticleRef}
+                lineRef={lineRef}
+                graphTrackerRef={graphTrackerRef}
+                trackerContainerRef={trackerContainerRef}
+                trackerRef={trackerRef}
+                pointRef={pointRef}
+            />
+        );
+    }, [container, hasGraph, isInstanced, isPointCloud, noLine, noPoint, noTracker,
+        nameState, typeState, targetNumbers,
+        handlePointHover, handleOverlayMount, handleUiHide, handleUiLock, handleUiShow, handleUiUnlock, snapFn]);
+    // Refs (reticleRef etc.) are stable objects — intentionally omitted from deps.
 
     // Canvas context — wire imperatively so no setState cascade is needed.
     // Both effects re-run when ctx (the context value) changes, which happens
@@ -195,7 +359,6 @@ export function Point3D({
     }, [panelValue, ctx]);
 
     // --- Stable API object registered with Points3D ---------------------------
-    const apiRef = useRef(null);
 
     useEffect(() => {
         const animateIn = reverse => {
@@ -546,72 +709,12 @@ export function Point3D({
         }
     }), []);
 
-    // Stable callbacks passed down to Point so it never sees a new function ref.
-    const handlePointHover = useCallback(({ isPoint, type: hoverType }) => {
-        apiRef.current?._onHover({ isPoint, type: hoverType });
-    }, []);
-
-    const handleUiHide = useCallback(() => trackerRef.current?.hide(), []);
-    const handleUiLock = useCallback(() => trackerRef.current?.lock(), []);
-    const handleUiShow = useCallback(() => trackerRef.current?.show(), []);
-    const handleUiUnlock = useCallback(() => trackerRef.current?.unlock(), []);
-    // snapFn: Point calls this during drag but Point.originPosition is not
-    // exposed, so we cannot implement full snap — see limitations in index.js.
-    const snapFn = useCallback(() => {}, []);
-
-    const hasGraph = !!graphValue;
-    const isInstanced = !!object.isInstancedMesh;
-    const isPointCloud = !!object.isPoints;
-
     return (
-        <>
-            <group ref={groupRef}>
-                <mesh ref={sphereRef} visible={false}>
-                    <sphereGeometry args={[sphereRadius, 8, 6]} />
-                    <primitive attach="material" object={sphereMaterial} />
-                </mesh>
-            </group>
-            {ctx?.container && createPortal(
-                <div ref={overlayDivRef}>
-                    {!hasGraph && (
-                        <ReticleCanvas ref={reticleRef} />
-                    )}
-                    {!hasGraph && !noLine && (
-                        <LineCanvas ref={lineRef} />
-                    )}
-                    {!noTracker && (
-                        hasGraph
-                            ? <RadialGraphTracker ref={graphTrackerRef} />
-                            : (
-                                <div
-                                    ref={trackerContainerRef}
-                                    style={{ pointerEvents: 'none', position: 'absolute' }}
-                                >
-                                    <Tracker
-                                        noCorners={isInstanced || isPointCloud}
-                                        ref={trackerRef}
-                                        style={{ height: '100%', left: 0, position: 'absolute', top: 0, width: '100%' }}
-                                    />
-                                </div>
-                            )
-                    )}
-                    {!noPoint && (
-                        <Point
-                            data={{ name: nameState, type: typeState }}
-                            onHover={handlePointHover}
-                            onUiHide={handleUiHide}
-                            onUiLock={handleUiLock}
-                            onUiShow={handleUiShow}
-                            onUiUnlock={handleUiUnlock}
-                            ref={pointRef}
-                            snapFn={snapFn}
-                            targetNumbers={targetNumbers}
-                            trackerRef={trackerRef}
-                        />
-                    )}
-                </div>,
-                ctx.container
-            )}
-        </>
+        <group ref={groupRef}>
+            <mesh ref={sphereRef} visible={false}>
+                <sphereGeometry args={[sphereRadius, 8, 6]} />
+                <primitive attach="material" object={sphereMaterial} />
+            </mesh>
+        </group>
     );
 }
