@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { Color, IcosahedronGeometry, InstancedBufferAttribute, Matrix4, MeshPhongMaterial } from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -132,7 +132,7 @@ class InstancedMeshPanel extends Panel {
 
 MaterialPanels.InstancedMeshPanel = InstancedMeshPanel;
 
-function Scene({ overlayEl, ui }) {
+function Scene({ overlayEl }) {
     const pointRef = useRef(null);
     const [mesh, setMesh] = useState(null);
 
@@ -190,10 +190,6 @@ function Scene({ overlayEl, ui }) {
         };
     }, [geometry, material]);
 
-    useFrame(() => {
-        ui.current?.update();
-    });
-
     return (
         <>
             <color attach="background" args={[0x060606]} />
@@ -235,7 +231,7 @@ export default function MaterialsInstancingModified({ title }) {
                 camera={{ fov: 60, near: 1, far: 2000, position: [amount, amount, amount] }}
                 onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
             >
-                <Scene overlayEl={overlayEl} ui={uiRef} />
+                <Scene overlayEl={overlayEl} />
             </Canvas>
             <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
         </Example>

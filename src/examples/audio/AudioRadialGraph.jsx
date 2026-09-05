@@ -236,7 +236,6 @@ export default function AudioRadialGraphExample({ title }) {
 
             g.markDirty();
             g.update();
-            uiRef.current?.update();
         }
 
         // ── Panel items ──────────────────────────────────────────────────────

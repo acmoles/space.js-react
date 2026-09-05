@@ -8,7 +8,7 @@ import { UI } from '@/space/index.js';
 
 import { Point3D, Points3D, useMaterialsPanel } from '../../space/three/index.js';
 
-function Scene({ overlayEl, ui }) {
+function Scene({ overlayEl }) {
     const pointRef = useRef(null);
     const meshRef = useRef(null);
     const [mesh, setMesh] = useState(null);
@@ -51,8 +51,6 @@ function Scene({ overlayEl, ui }) {
             meshRef.current.rotation.x = time / 2;
             meshRef.current.rotation.y = time;
         }
-
-        ui.current?.update();
     });
 
     return (
@@ -97,7 +95,7 @@ export default function Materials({ title }) {
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}
             >
-                <Scene overlayEl={overlayEl} ui={uiRef} />
+                <Scene overlayEl={overlayEl} />
             </Canvas>
             <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
         </Example>

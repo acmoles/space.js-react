@@ -41,8 +41,6 @@ function Scene({ ui }) {
             pointLightRef.current.position.y = Math.cos(time * 1.5) * 2;
             pointLightRef.current.position.z = Math.cos(time * 1.3) * 2;
         }
-
-        ui.current?.update();
     });
 
     return (
