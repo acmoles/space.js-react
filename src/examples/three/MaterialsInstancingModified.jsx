@@ -4,8 +4,9 @@ import { OrbitControls } from '@react-three/drei';
 import { Color, IcosahedronGeometry, InstancedBufferAttribute, Matrix4, MeshPhongMaterial } from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
-import { MaterialPanels, MaterialPatches, Panel, PanelItem, UI } from '@lib/three.js';
+import { MaterialPanels, MaterialPatches, Panel, PanelItem } from '@lib/three.js';
 import { Example } from '@/components';
+import { UI } from '@/space/index.js';
 
 import { Point3D, Points3D, useMaterialsPanel } from '../../space/three/index.js';
 
@@ -190,7 +191,7 @@ function Scene({ overlayEl, ui }) {
     }, [geometry, material]);
 
     useFrame(() => {
-        ui.update();
+        ui.current?.update();
     });
 
     return (
@@ -218,30 +219,23 @@ function Scene({ overlayEl, ui }) {
  * Declarative instanced-materials example with modified Phong opacity support.
  */
 export default function MaterialsInstancingModified({ title }) {
-    const containerRef = useRef(null);
+    const uiRef = useRef(null);
     const [overlayEl, setOverlayEl] = useState(null);
-    const [ui] = useState(() => new UI({ fps: true }));
 
     useEffect(() => {
-        const container = containerRef.current;
-
-        ui.animateIn();
-        container?.appendChild(ui.element);
-
-        return () => {
-            ui.destroy();
-        };
-    }, [ui]);
+        uiRef.current?.animateIn();
+    }, []);
 
     return (
-        <Example title={title} ref={containerRef}>
+        <Example title={title}>
+            <UI fps ref={uiRef} />
             <Canvas
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 60, near: 1, far: 2000, position: [amount, amount, amount] }}
                 onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
             >
-                <Scene overlayEl={overlayEl} ui={ui} />
+                <Scene overlayEl={overlayEl} ui={uiRef} />
             </Canvas>
             <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
         </Example>

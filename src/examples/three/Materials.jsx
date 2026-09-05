@@ -3,8 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { BoxGeometry } from 'three';
 
-import { UI } from '@lib/three.js';
 import { Example } from '@/components';
+import { UI } from '@/space/index.js';
 
 import { Point3D, Points3D, useMaterialsPanel } from '../../space/three/index.js';
 
@@ -52,7 +52,7 @@ function Scene({ overlayEl, ui }) {
             meshRef.current.rotation.y = time;
         }
 
-        ui.update();
+        ui.current?.update();
     });
 
     return (
@@ -79,32 +79,25 @@ function Scene({ overlayEl, ui }) {
 }
 
 /**
- * Declarative materials example with the original imperative FPS UI.
+ * Declarative materials example with the FPS UI.
  */
 export default function Materials({ title }) {
-    const containerRef = useRef(null);
+    const uiRef = useRef(null);
     const [overlayEl, setOverlayEl] = useState(null);
-    const [ui] = useState(() => new UI({ fps: true }));
 
     useEffect(() => {
-        const container = containerRef.current;
-
-        ui.animateIn();
-        container?.appendChild(ui.element);
-
-        return () => {
-            ui.destroy();
-        };
-    }, [ui]);
+        uiRef.current?.animateIn();
+    }, []);
 
     return (
-        <Example title={title} ref={containerRef}>
+        <Example title={title}>
+            <UI fps ref={uiRef} />
             <Canvas
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}
             >
-                <Scene overlayEl={overlayEl} ui={ui} />
+                <Scene overlayEl={overlayEl} ui={uiRef} />
             </Canvas>
             <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
         </Example>

@@ -261,11 +261,28 @@ examples/mars/        Standalone demos (mars, about, cyberspace), built
                       separately with Rollup
 ```
 
-The UI itself is being re-implemented as declarative React components under
+The UI itself is re-implemented as declarative React components under
 `src/space/`, documented in [src/space/README.md](src/space/README.md).
 Components own their markup, styles and animation, and motion runs through the
 library's own tween engine and easing functions so timings and curves are
 identical to the vanilla version.
+
+One area is deliberately left in its vanilla form: the panels and graphs that
+are attached to a `Point3D`. The three.js panel definitions under
+`lib/three/panels/` — 60-odd files describing the contents of the light and
+material inspectors — build their items from the vanilla `Panel` and
+`PanelItem`, and `MaterialPanels` entries such as the `InstancedMeshPanel` in
+`3d_materials_instancing_modified` subclass `Panel` directly, exactly as the
+pre-port example did. `Point3D` in turn reads properties off the panel and graph
+objects it is given (`element`, `events`, `graphHeight`, `middle`, `halfWidth`,
+`startAngle`).
+
+Passing React-rendered equivalents through that interface was tried and backed
+out: it required rendering each component into a detached `createRoot` and
+hand-writing an adapter that re-derived those values, which duplicated the
+components' internal sizing maths and would drift silently. The vanilla objects
+are used instead, behind the hooks in `src/space/three/hooks/`, until `Point3D`
+itself accepts its panel and graph as React children.
 
 Ports are checked against the pre-port pages with the parity harness, which
 renders a route and the original page side by side in headless Chromium and

@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 
-import { UI } from '@lib/three.js';
 import { Example } from '@/components';
+import { UI } from '@/space/index.js';
 
 import { useLightPanelController } from '../../space/three/index.js';
 
@@ -42,7 +42,7 @@ function Scene({ ui }) {
             pointLightRef.current.position.z = Math.cos(time * 1.3) * 2;
         }
 
-        ui.update();
+        ui.current?.update();
     });
 
     return (
@@ -66,31 +66,24 @@ function Scene({ ui }) {
 }
 
 /**
- * Declarative lights example with the original imperative light control UI.
+ * Declarative lights example with the light control panel.
  */
 export default function Lights({ title }) {
-    const containerRef = useRef(null);
-    const [ui] = useState(() => new UI({ fps: true }));
+    const uiRef = useRef(null);
 
     useEffect(() => {
-        const container = containerRef.current;
-
-        ui.animateIn();
-        container?.appendChild(ui.element);
-
-        return () => {
-            ui.destroy();
-        };
-    }, [ui]);
+        uiRef.current?.animateIn();
+    }, []);
 
     return (
-        <Example title={title} ref={containerRef}>
+        <Example title={title}>
+            <UI fps ref={uiRef} />
             <Canvas
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}
             >
-                <Scene ui={ui} />
+                <Scene ui={uiRef} />
             </Canvas>
         </Example>
     );
