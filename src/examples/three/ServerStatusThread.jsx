@@ -1,14 +1,6 @@
-import { useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-
 import { EventEmitter } from '@lib/three.js';
 
-import { Example } from '@/components';
-import { useClassName } from '@/hooks';
-
-import { SceneContent } from './server-status/SceneContent.jsx';
-
-const isDebug = /[?&]debug/.test(location.search);
+import { ServerStatusScene } from './server-status/ServerStatusScene.jsx';
 
 class WorkerEmitter extends EventEmitter {
     constructor(workerUrl) {
@@ -50,26 +42,5 @@ function createThreadSource() {
  * Declarative server-status example backed by the worker adapter.
  */
 export default function ServerStatusThread({ title }) {
-    const containerRef = useRef(null);
-    const [overlayEl, setOverlayEl] = useState(null);
-
-    useClassName('scroll');
-
-    return (
-        <Example title={title} ref={containerRef}>
-            <Canvas
-                gl={{ antialias: true }}
-                dpr={window.devicePixelRatio}
-                camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}
-            >
-                <SceneContent
-                    containerRef={containerRef}
-                    createSource={createThreadSource}
-                    isDebug={isDebug}
-                    overlayEl={overlayEl}
-                />
-            </Canvas>
-            <div ref={setOverlayEl} style={{ inset: 0, pointerEvents: 'none', position: 'absolute' }} />
-        </Example>
-    );
+    return <ServerStatusScene title={title} createSource={createThreadSource} />;
 }

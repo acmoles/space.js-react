@@ -278,6 +278,13 @@ export function UI({
         },
 
         /**
+         * Returns the top-line DOM element of the DividerLine rendered inside
+         * the Details panel. Used by Points3D as a layout snap boundary.
+         * Returns null when `details.dividerLine` is not set.
+         */
+        getDividerTopElement: () => detailsRef.current?.dividerTopElement ?? null,
+
+        /**
          * No-op. Per-frame work is handled by `useTicker` inside each child.
          * External `requestAnimationFrame` loops are not required.
          */
@@ -293,6 +300,7 @@ export function UI({
                     ref={detailsRef}
                     data={details}
                     breakpoint={breakpoint}
+                    style={details.style}
                     onClick={() => {
                         if (stateRef.current.detailsOpen) handleToggleDetails(false);
                     }}

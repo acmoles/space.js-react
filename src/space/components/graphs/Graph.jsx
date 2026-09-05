@@ -878,7 +878,14 @@ export function Graph({
                     }
                 }
             }
-        }
+        },
+
+        /** Replace the full data array without triggering a re-render. */
+        setArray: val => setArray(val),
+        /** Replace the full ghost array without triggering a re-render. */
+        setGhostArray: val => setGhostArray(val),
+        /** Update the y-axis scale. */
+        setRange: r => setRange(r)
     }), [noMarker, lookupPrecision]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ─── Render ───────────────────────────────────────────────────────────────

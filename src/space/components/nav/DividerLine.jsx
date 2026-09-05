@@ -37,8 +37,13 @@ export function DividerLine({ left, ref }) {
         animateOut: () => {
             top.stop().animate({ scaleY: 0 }, 500, 'easeOutQuint');
             bottom.stop().animate({ scaleY: 0 }, 500, 'easeOutQuint');
-        }
-    }), [top, bottom]);
+        },
+        /**
+         * The top-line DOM element. Used by Points3D as a snap boundary so
+         * that the 3D point tracker avoids overlapping the divider.
+         */
+        get topElement() { return topRef.current; }
+    }), [top, bottom, topRef]);
 
     return (
         <div className="divider-line">

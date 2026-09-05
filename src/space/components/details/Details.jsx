@@ -35,6 +35,12 @@ function AnimatedChild({ children, index, register }) {
 /**
  * Recursively renders the `content` data schema used by Details.
  *
+ * Content items may carry optional ref fields for imperative access by the
+ * owning component:
+ *   - `item.contentRef`  – forwarded to the text content `<div>`.
+ *   - `item.meterRef`    – forwarded to the `<Meter>` component.
+ *   - `item.graphRef`    – forwarded to the `<Graph>` / `<GraphSegments>` component.
+ *
  * @param {string|object} item
  * @param {string} key React key prefix.
  * @returns {React.ReactNode}
@@ -78,17 +84,18 @@ function renderContentItem(item, key) {
             {item.content !== undefined && (
                 <div
                     className="content"
+                    ref={item.contentRef ?? null}
                     style={{ width: 'fit-content' }}
                     dangerouslySetInnerHTML={{ __html: item.content }}
                 />
             )}
             {item.graph !== undefined && (
                 item.graph.segments
-                    ? <GraphSegments {...item.graph} />
-                    : <Graph {...item.graph} />
+                    ? <GraphSegments {...item.graph} ref={item.graphRef ?? null} />
+                    : <Graph {...item.graph} ref={item.graphRef ?? null} />
             )}
             {item.meter !== undefined && (
-                <Meter {...item.meter} />
+                <Meter {...item.meter} ref={item.meterRef ?? null} />
             )}
             {Array.isArray(item.links) && item.links.map((link, i) => (
                 <DetailsLink
@@ -116,11 +123,12 @@ function renderContentItem(item, key) {
  * @param {Array|object|string} [props.data.content] Content schema items.
  * @param {number} [props.breakpoint=0] Pixel width below which narrow padding applies.
  * @param {function} [props.onClick] Called when the background overlay is clicked.
- * @param {object} [props.ref] Exposes `animateIn` and `animateOut`.
+ * @param {object}  [props.style]   Inline style applied to the root `.details` element.
+ * @param {object} [props.ref] Exposes `animateIn`, `animateOut`, and `dividerTopElement`.
  * @example
  * <Details data={{ title: 'Apollo', content: 'Info text' }} ref={detailsRef} />
  */
-export function Details({ data, breakpoint = 0, onClick, ref }) {
+export function Details({ data, breakpoint = 0, onClick, style, ref }) {
     const width = (data && data.width) || '100vw';
 
     const [rootRef, root] = useAnimation({ visibility: 'hidden', opacity: 0 });
@@ -185,6 +193,15 @@ export function Details({ data, breakpoint = 0, onClick, ref }) {
                     callback();
                 }
             });
+        },
+
+        /**
+         * The top-line DOM element of the DividerLine divider. Forwarded for
+         * use as the `dividerSnap` prop on `Points3D`. Null when `dividerLine`
+         * is not enabled in `data`.
+         */
+        get dividerTopElement() {
+            return dividerRef.current?.topElement ?? null;
         }
     }), [root, bg, data]);
 
@@ -198,7 +215,7 @@ export function Details({ data, breakpoint = 0, onClick, ref }) {
     const contentStartIndex = hasTitle ? 1 : 0;
 
     return (
-        <div ref={rootRef} className="details">
+        <div ref={rootRef} className="details" style={style}>
             {data && data.background && (
                 <div
                     ref={bgRef}

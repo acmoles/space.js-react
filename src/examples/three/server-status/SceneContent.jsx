@@ -4,6 +4,10 @@
  * Receives a `createSource` factory that returns `{ emitter, cleanup }`.
  * The emitter is an EventEmitter (Socket or Thread) that fires
  * 'details', 'data', and 'status' events.
+ *
+ * UI state is owned by the parent (ServerStatusScene). This component only
+ * manages the 3D scene (cameras, OrbitControls, mesh, radial graphs, Points3D)
+ * and writes to the `uiRefs` bag for per-tick imperative UI updates.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -16,7 +20,6 @@ import {
     RadialGraphContainer,
     RadialGraphSegmentsCanvas,
     Stage,
-    UI,
     clearTween,
     delayedCall,
     lerpCameras,
@@ -28,6 +31,8 @@ import { Point3D, Points3D, usePoint3DContext } from '../../../space/three/index
 
 import { Data } from './utils.js';
 import { GraphData, TimestampData } from './data.js';
+
+// ─── Camera helpers ───────────────────────────────────────────────────────────
 
 function resizeCameras(cameraCtrl, worldCamera, width, height) {
     cameraCtrl.offsetX = -width / 4;
@@ -50,9 +55,20 @@ function resizeCameras(cameraCtrl, worldCamera, width, height) {
     cameraCtrl.pointCamera.updateProjectionMatrix();
 }
 
+// ─── Panel (3D point tracker) ─────────────────────────────────────────────────
+
+/**
+ * Creates the RadialGraphContainer (shown inside the 3D point tracker bubble)
+ * and the Panel with List/Link items for the point HUD.
+ *
+ * @param {object}   ctrl          Mutable ctrl bag.
+ * @param {function} setPointConfig React state setter that triggers Point3D mount.
+ */
 function initPanel(ctrl, setPointConfig) {
-    const { view, ui } = ctrl;
+    const { view } = ctrl;
     const object = view;
+
+    // ── Radial graphs ────────────────────────────────────────────────────────
 
     object.graph = new RadialGraphContainer({
         start: -45,
@@ -108,6 +124,8 @@ function initPanel(ctrl, setPointConfig) {
 
     object.graph.setIndex(1);
 
+    // ── Panel items ──────────────────────────────────────────────────────────
+
     const graphOptions = new Map([
         ['Latency', 0],
         ['Load', 1],
@@ -136,12 +154,14 @@ function initPanel(ctrl, setPointConfig) {
             callback: (value, item) => {
                 clearTween(ctrl.scenePanelCtrlTimeout);
 
-                ui.toggleDetails(!ui.details.animatedIn);
+                // `ctrl.detailsOpen` is kept in sync by onDetailsEvent.
+                const ui = ctrl.uiRef?.current;
+                ui?.toggleDetails(!ctrl.detailsOpen);
                 object.point?.animateOut(true);
                 object.point?.deactivate();
 
                 ctrl.scenePanelCtrlTimeout = delayedCall(300, () => {
-                    item.setValue(ui.details.animatedIn ? 'Map' : 'Details', false);
+                    item.setValue(ctrl.detailsOpen ? 'Map' : 'Details', false);
                 });
             }
         }
@@ -163,245 +183,95 @@ function initPanel(ctrl, setPointConfig) {
     });
 }
 
-function handleDetails({
-    projectDomain,
-    networkName,
-    networkOrg,
-    serverVersion,
-    restartTime,
-    serverUptime,
-    memUsed,
-    memTotal,
-    memUsedPercentage,
-    swapUsed,
-    swapTotal,
-    swapUsedPercentage,
-    storageUsed,
-    storageTotal,
-    storageUsedPercentage,
-    processorName,
-    numProcessingUnits
-}, ctrl, container, setPointConfig, setDividerSnap) {
+// ─── Data event handlers ──────────────────────────────────────────────────────
+
+/**
+ * First 'details' event: initialise Data class, build radial graphs, create the
+ * React UI via `onDetailsReceived`, and schedule `Stage.events.emit('start')`.
+ *
+ * Subsequent 'details' events (reconnection): call `onDetailsReconnect` so the
+ * parent can update mem/swap/storage in the React Details panel.
+ */
+function handleDetails(data, ctrl, setPointConfig, onDetailsReceived, onDetailsReconnect) {
+    const {
+        projectDomain,
+        networkName,
+        networkOrg,
+        serverVersion,
+        restartTime,
+        serverUptime,
+        memUsed,
+        memTotal,
+        memUsedPercentage,
+        swapUsed,
+        swapTotal,
+        swapUsedPercentage,
+        storageUsed,
+        storageTotal,
+        storageUsedPercentage,
+        processorName,
+        numProcessingUnits
+    } = data;
+
     ctrl.restartTime = restartTime;
 
-    if (!ctrl.ui) {
-        const ui = new UI({
-            fps: true,
-            detailsButton: true,
-            details: {
-                dividerLine: true,
-                width: 'max(50vw, 250px)',
-                title: 'server-status'.replace(/[\s.-]+/g, '_'),
-                content: [
-                    {
-                        content: '<p>A simple status API endpoint built on Express, like the Apache status page.</p>',
-                        links: [
-                            {
-                                title: 'Source code',
-                                link: 'https://github.com/pschroen/hello-websockets-server-status'
-                            }
-                        ],
-                        width: '100%'
-                    },
-                    {
-                        group: [
-                            {
-                                title: 'Server version',
-                                content: serverVersion,
-                                width: 110
-                            },
-                            {
-                                title: 'Uptime',
-                                content: serverUptime,
-                                width: 200
-                            },
-                            {
-                                title: 'Latency',
-                                meter: {
-                                    suffix: 'ms',
-                                    range: 150,
-                                    value: 0,
-                                    width: 70,
-                                    noRange: true
-                                },
-                                width: 70
-                            }
-                        ]
-                    },
-                    {
-                        group: [
-                            {
-                                title: 'Network',
-                                content: `${projectDomain}<br>${networkName}<br>${networkOrg}`,
-                                width: 330
-                            },
-                            {
-                                title: 'Clients',
-                                content: '',
-                                width: 70
-                            }
-                        ]
-                    },
-                    {
-                        group: [
-                            {
-                                title: 'Latency',
-                                content: '0ms (avg)',
-                                width: 200,
-                                meter: {
-                                    range: 300,
-                                    value: 0,
-                                    width: 200,
-                                    ghost: true,
-                                    noText: true
-                                }
-                            },
-                            {
-                                title: '',
-                                graph: {
-                                    suffix: 'ms',
-                                    resolution: 160,
-                                    range: 300,
-                                    width: 200,
-                                    height: 48,
-                                    ghost: true,
-                                    noMarker: true
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        group: [
-                            {
-                                title: 'Processor',
-                                content: processorName,
-                                width: 330
-                            },
-                            {
-                                title: 'vCPUs',
-                                content: numProcessingUnits,
-                                width: 70
-                            }
-                        ]
-                    },
-                    {
-                        group: [
-                            {
-                                title: 'Load',
-                                content: '0% (1min avg)',
-                                width: 200,
-                                meter: {
-                                    range: 400,
-                                    value: 0,
-                                    width: 200,
-                                    ghost: true,
-                                    noText: true
-                                }
-                            },
-                            {
-                                title: '',
-                                graph: {
-                                    suffix: '%',
-                                    resolution: 22,
-                                    lookupPrecision: [100, 0],
-                                    segments: [12, 10],
-                                    ratio: [0.9, 0.1],
-                                    range: 400,
-                                    width: 200,
-                                    height: 48,
-                                    noMarker: true
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        group: [
-                            {
-                                title: 'Mem',
-                                content: `${memUsed} / ${memTotal} (${memUsedPercentage}%)`,
-                                width: 200,
-                                meter: {
-                                    range: 100,
-                                    value: memUsedPercentage,
-                                    width: 200,
-                                    noText: true
-                                }
-                            },
-                            {
-                                title: 'Swap',
-                                content: `${swapUsed} / ${swapTotal} (${swapUsedPercentage}%)`,
-                                width: 200,
-                                meter: {
-                                    range: 100,
-                                    value: swapUsedPercentage,
-                                    width: 200,
-                                    noText: true
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        group: [
-                            {
-                                title: 'Storage',
-                                content: `${storageUsed} / ${storageTotal} (${storageUsedPercentage}%)`,
-                                width: 200,
-                                meter: {
-                                    range: 100,
-                                    value: storageUsedPercentage,
-                                    width: 200,
-                                    noText: true
-                                }
-                            }
-                        ]
-                    }
-                ]
-            }
-        });
-
-        ui.css({ position: 'static' });
-        ui.details.css({ minWidth: 220 });
-        ui.animateIn();
-        container.appendChild(ui.element);
-
-        ui.detailsUptime = ui.details.content[2].children[1];
-        ui.detailsLatencyMeter = ui.details.content[3].children[1];
-        ui.detailsNumClients = ui.details.content[5].children[1];
-        ui.detailsLatencyAvg = ui.details.content[6].children[1];
-        ui.detailsLatencyAvgMeter = ui.details.content[6].children[2];
-        ui.detailsLatencyGraph = ui.details.content[7].children[1];
-        ui.detailsLoadAvg = ui.details.content[10].children[1];
-        ui.detailsLoadAvgMeter = ui.details.content[10].children[2];
-        ui.detailsLoadAvgGraph = ui.details.content[11].children[1];
-        ui.detailsMem = ui.details.content[12].children[1];
-        ui.detailsMemMeter = ui.details.content[12].children[2];
-        ui.detailsSwap = ui.details.content[13].children[1];
-        ui.detailsSwapMeter = ui.details.content[13].children[2];
-        ui.detailsStorage = ui.details.content[14].children[1];
-        ui.detailsStorageMeter = ui.details.content[14].children[2];
-
-        ctrl.ui = ui;
+    if (!ctrl.uiMounted) {
+        // ── First connection ─────────────────────────────────────────────────
 
         Data.init({ projectDomain, networkName });
         initPanel(ctrl, setPointConfig);
-        setDividerSnap(ui.details.dividerLine);
 
-        Stage.events.emit('start');
-        window.addEventListener('keyup', ctrl.onKeyUp);
+        // Hand the formatted details to the parent so it can render <UI>.
+        // Stage.events.emit('start') is deferred until dividerTopEl is set.
+        ctrl.pendingStart = true;
+
+        onDetailsReceived({
+            projectDomain,
+            networkName,
+            networkOrg,
+            serverVersion,
+            serverUptime,
+            memUsed,
+            memTotal,
+            memUsedPercentage,
+            swapUsed,
+            swapTotal,
+            swapUsedPercentage,
+            storageUsed,
+            storageTotal,
+            storageUsedPercentage,
+            processorName,
+            numProcessingUnits
+        });
+
+        ctrl.uiMounted = true;
     } else {
-        ctrl.ui.detailsMem.html(`${memUsed} / ${memTotal} (${memUsedPercentage}%)`);
-        ctrl.ui.detailsMemMeter.update(memUsedPercentage);
-        ctrl.ui.detailsSwap.html(`${swapUsed} / ${swapTotal} (${swapUsedPercentage}%)`);
-        ctrl.ui.detailsSwapMeter.update(swapUsedPercentage);
-        ctrl.ui.detailsStorage.html(`${storageUsed} / ${storageTotal} (${storageUsedPercentage}%)`);
-        ctrl.ui.detailsStorageMeter.update(storageUsedPercentage);
+        // ── Reconnection: update dynamic values ──────────────────────────────
+        onDetailsReconnect({
+            memUsed,
+            memTotal,
+            memUsedPercentage,
+            swapUsed,
+            swapTotal,
+            swapUsedPercentage,
+            storageUsed,
+            storageTotal,
+            storageUsedPercentage
+        });
     }
 }
 
-function handleData({ timestampData, latencyAvgData, loadAvgData, clientsData }, ctrl) {
+/**
+ * 'data' event: populate historical graph arrays in both the 3D radial graphs
+ * (imperative vanilla RadialGraphSegmentsCanvas) and the 2D Details panel
+ * (imperative React Graph handles via uiRefs).
+ */
+function handleData({ timestampData, latencyAvgData, loadAvgData, clientsData }, ctrl, uiRefs) {
     ctrl.timestampData = new TimestampData();
     ctrl.timestampData.setArrays(timestampData);
     ctrl.timestampData.addMarker([ctrl.restartTime, 'Restart']);
+
+    // ── Latency avg ──────────────────────────────────────────────────────────
 
     ctrl.latencyAvgData = new GraphData();
     ctrl.latencyAvgData.setArrays(latencyAvgData);
@@ -412,18 +282,26 @@ function handleData({ timestampData, latencyAvgData, loadAvgData, clientsData },
     ctrl.view.latencyAvgGraph.setArray([...ctrl.latencyAvgData.smallArrayReversed, ...ctrl.latencyAvgData.largeArrayReversed]);
     ctrl.view.latencyAvgGraph.setRange(latencyAvgMax);
 
+    // ── Load avg ─────────────────────────────────────────────────────────────
+
     ctrl.loadAvgData = new GraphData();
     ctrl.loadAvgData.setArrays(loadAvgData);
 
     const loadAvgMax = Math.max(400, ctrl.loadAvgData.getMax());
 
-    ctrl.ui.detailsLoadAvgGraph.setGhostArray([...ctrl.loadAvgData.smallGhostArray, ...ctrl.loadAvgData.realtimeGhostArray]);
-    ctrl.ui.detailsLoadAvgGraph.setArray([...ctrl.loadAvgData.smallArray, ...ctrl.loadAvgData.realtimeArray]);
-    ctrl.ui.detailsLoadAvgGraph.setRange(loadAvgMax);
+    // 2D Details graph (React GraphSegments via uiRefs)
+    if (uiRefs.loadAvgGraph.current) {
+        uiRefs.loadAvgGraph.current.setGhostArray([...ctrl.loadAvgData.smallGhostArray, ...ctrl.loadAvgData.realtimeGhostArray]);
+        uiRefs.loadAvgGraph.current.setArray([...ctrl.loadAvgData.smallArray, ...ctrl.loadAvgData.realtimeArray]);
+        uiRefs.loadAvgGraph.current.setRange(loadAvgMax);
+    }
 
+    // 3D radial graph (vanilla RadialGraphSegmentsCanvas)
     ctrl.view.loadAvgGraph.setGhostArray([...ctrl.loadAvgData.smallGhostArrayReversed, ...ctrl.loadAvgData.largeGhostArrayReversed]);
     ctrl.view.loadAvgGraph.setArray([...ctrl.loadAvgData.smallArrayReversed, ...ctrl.loadAvgData.largeArrayReversed]);
     ctrl.view.loadAvgGraph.setRange(loadAvgMax);
+
+    // ── Clients ──────────────────────────────────────────────────────────────
 
     ctrl.clientsData = new GraphData();
     ctrl.clientsData.setArrays(clientsData);
@@ -437,7 +315,12 @@ function handleData({ timestampData, latencyAvgData, loadAvgData, clientsData },
     refresh(ctrl);
 }
 
-function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg, numClients }, ctrl) {
+/**
+ * 'status' event: push per-tick scalar updates to UI refs and 3D radial graphs.
+ */
+function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg, numClients }, ctrl, uiRefs) {
+    // ── Timestamp ────────────────────────────────────────────────────────────
+
     if (ctrl.timestampData && currentTime !== undefined) {
         ctrl.timestampData.update(currentTime);
 
@@ -446,18 +329,26 @@ function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg,
         }
     }
 
-    if (serverUptime !== undefined) {
-        ctrl.ui.detailsUptime.html(serverUptime);
+    // ── Uptime ───────────────────────────────────────────────────────────────
+
+    if (serverUptime !== undefined && uiRefs.uptime.current) {
+        uiRefs.uptime.current.innerHTML = serverUptime;
     }
+
+    // ── Latency ──────────────────────────────────────────────────────────────
 
     if (latency !== undefined) {
-        ctrl.ui.detailsLatencyMeter.update(latency);
-        ctrl.ui.detailsLatencyGraph.update(latency);
+        uiRefs.latencyMeter.current?.update(latency);
+        uiRefs.latencyGraph.current?.update(latency);
     }
 
+    // ── Latency avg ──────────────────────────────────────────────────────────
+
     if (ctrl.latencyAvgData && latencyAvg !== undefined) {
-        ctrl.ui.detailsLatencyAvg.html(`${latencyAvg}ms (avg)`);
-        ctrl.ui.detailsLatencyAvgMeter.update(latencyAvg);
+        if (uiRefs.latencyAvgText.current) {
+            uiRefs.latencyAvgText.current.innerHTML = `${latencyAvg}ms (avg)`;
+        }
+        uiRefs.latencyAvgMeter.current?.update(latencyAvg);
 
         ctrl.latencyAvgData.update(latencyAvg);
 
@@ -476,21 +367,34 @@ function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg,
         }
     }
 
+    // ── Load avg ─────────────────────────────────────────────────────────────
+
     if (ctrl.loadAvgData && loadAvg !== undefined) {
-        ctrl.ui.detailsLoadAvg.html(`${loadAvg}% (1min avg)`);
-        ctrl.ui.detailsLoadAvgMeter.update(loadAvg);
+        if (uiRefs.loadAvgText.current) {
+            uiRefs.loadAvgText.current.innerHTML = `${loadAvg}% (1min avg)`;
+        }
+        uiRefs.loadAvgMeter.current?.update(loadAvg);
 
         ctrl.loadAvgData.update(loadAvg);
 
-        ctrl.ui.detailsLoadAvgGraph.ghostArray.splice(-10, 10, ...ctrl.loadAvgData.realtimeGhostArray);
-        ctrl.ui.detailsLoadAvgGraph.array.splice(-10, 10, ...ctrl.loadAvgData.realtimeArray);
-        ctrl.ui.detailsLoadAvgGraph.needsUpdate = true;
+        // Realtime segment: splice last 10 slots
+        if (uiRefs.loadAvgGraph.current) {
+            uiRefs.loadAvgGraph.current.setGhostArray([
+                ...ctrl.loadAvgData.smallGhostArray,
+                ...ctrl.loadAvgData.realtimeGhostArray
+            ]);
+            uiRefs.loadAvgGraph.current.setArray([
+                ...ctrl.loadAvgData.smallArray,
+                ...ctrl.loadAvgData.realtimeArray
+            ]);
+        }
+
+        // 3D radial graph — realtime update
+        ctrl.view.loadAvgGraph.ghostArray.splice(-90, 90, ...ctrl.loadAvgData.largeGhostArrayReversed);
+        ctrl.view.loadAvgGraph.array.splice(-90, 90, ...ctrl.loadAvgData.largeArrayReversed);
+        ctrl.view.loadAvgGraph.needsUpdate = true;
 
         if (ctrl.loadAvgData.smallCounter === 0) {
-            ctrl.ui.detailsLoadAvgGraph.ghostArray.splice(0, 12, ...ctrl.loadAvgData.smallGhostArray);
-            ctrl.ui.detailsLoadAvgGraph.array.splice(0, 12, ...ctrl.loadAvgData.smallArray);
-            ctrl.ui.detailsLoadAvgGraph.graphNeedsUpdate = true;
-
             ctrl.view.loadAvgGraph.ghostArray.splice(0, 12, ...ctrl.loadAvgData.smallGhostArrayReversed);
             ctrl.view.loadAvgGraph.array.splice(0, 12, ...ctrl.loadAvgData.smallArrayReversed);
             ctrl.view.loadAvgGraph.needsUpdate = true;
@@ -503,12 +407,15 @@ function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg,
             ctrl.view.loadAvgGraph.needsUpdate = true;
             ctrl.view.loadAvgGraph.graphNeedsUpdate = true;
         }
-
-        ctrl.ui.detailsLoadAvgGraph.update();
     }
 
+    // ── Clients ──────────────────────────────────────────────────────────────
+
     if (ctrl.clientsData && numClients !== undefined) {
-        ctrl.ui.detailsNumClients.html(numClients);
+        if (uiRefs.clientsText.current) {
+            uiRefs.clientsText.current.innerHTML = numClients;
+        }
+
         ctrl.clientsData.update(numClients);
 
         if (ctrl.clientsData.smallCounter === 0) {
@@ -527,6 +434,9 @@ function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg,
     }
 }
 
+/**
+ * Refreshes timestamp-based labels and date-change markers on the 3D graphs.
+ */
 function refresh(ctrl) {
     ctrl.view.latencyAvgGraph.setData([[], ctrl.timestampData.labelsArrayReversed]);
     ctrl.view.loadAvgGraph.setData([[], ctrl.timestampData.labelsArrayReversed]);
@@ -542,6 +452,8 @@ function refresh(ctrl) {
     ctrl.view.clientsGraph.setMarkers(markers, true);
     markers.length = 0;
 }
+
+// ─── TrackedPoint (sub-component) ────────────────────────────────────────────
 
 function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef }) {
     const ctx = usePoint3DContext();
@@ -570,7 +482,44 @@ function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef }) {
     );
 }
 
-export function SceneContent({ containerRef, createSource, isDebug, overlayEl }) {
+// ─── SceneContent ─────────────────────────────────────────────────────────────
+
+/**
+ * R3F scene for the Server Status examples. Manages cameras, OrbitControls,
+ * the rotating cube mesh, and the 3D point tracker (Points3D / Point3D).
+ *
+ * All React UI (Details panel, FPS, details button) lives in the parent
+ * `ServerStatusScene` component outside the Canvas.
+ *
+ * @param {object}      props
+ * @param {object}      props.containerRef        Ref to the Example root element.
+ * @param {function}    props.createSource         `() => { emitter, cleanup }`.
+ * @param {boolean}     [props.isDebug=false]      Show tracker-sphere wireframes.
+ * @param {Element|null} props.overlayEl           DOM element for Points3D portals.
+ * @param {object}      props.uiRef               React `<UI>` imperative handle.
+ * @param {object}      props.uiRefsRef           Ref holder whose `.current` is
+ *                                                 the bag of DOM/component refs for
+ *                                                 per-tick imperative UI updates.
+ * @param {Element|null} props.dividerTopEl        Top-line DOM element of the
+ *                                                 DividerLine (snap boundary for
+ *                                                 Points3D). Null until the React
+ *                                                 UI has committed.
+ * @param {function}    props.onDetailsReceived    Called with formatted details on
+ *                                                 first 'details' event.
+ * @param {function}    props.onDetailsReconnect   Called with mem/swap/storage on
+ *                                                 subsequent 'details' events.
+ */
+export function SceneContent({
+    containerRef,
+    createSource,
+    isDebug,
+    overlayEl,
+    uiRef,
+    uiRefsRef,
+    dividerTopEl,
+    onDetailsReceived,
+    onDetailsReconnect
+}) {
     const store = useStore();
     const size = useThree(s => s.size);
     const ctrlRef = useRef({});
@@ -578,7 +527,6 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
     const groupRef = useRef(null);
     const pointRef = useRef(null);
     const pointConfigRef = useRef(null);
-    const [dividerSnap, setDividerSnap] = useState(null);
     const [mesh, setMesh] = useState(null);
     const [pointConfig, setPointConfig] = useState(null);
 
@@ -603,6 +551,8 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
         pointConfigRef.current = pointConfig;
     }, [pointConfig]);
 
+    // ── Camera resize ─────────────────────────────────────────────────────────
+
     useEffect(() => {
         const ctrl = ctrlRef.current;
 
@@ -612,6 +562,22 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
         const { width, height } = size;
         resizeCameras(ctrl.cameraCtrl, worldCamera, width, height);
     }, [size, store]);
+
+    // ── When the divider top element becomes available, start the scene ───────
+    // This fires after the parent renders the React <UI> (which commits the
+    // DividerLine DOM element) and the parent passes the element down as a prop.
+
+    useEffect(() => {
+        const ctrl = ctrlRef.current;
+
+        if (dividerTopEl && ctrl.pendingStart) {
+            ctrl.pendingStart = false;
+            Stage.events.emit('start');
+            window.addEventListener('keyup', ctrl.onKeyUp);
+        }
+    }, [dividerTopEl]);
+
+    // ── Main init effect ──────────────────────────────────────────────────────
 
     useEffect(() => {
         const { camera: worldCamera, gl } = store.getState();
@@ -624,6 +590,12 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
         view.mesh = meshRef.current;
         view.point = pointAdapter;
         ctrl.view = view;
+
+        // Keep a stable ref so initPanel callbacks can call uiRef.current
+        ctrl.uiRef = uiRef;
+        ctrl.detailsOpen = false;
+
+        // ── Cameras ───────────────────────────────────────────────────────────
 
         const mapCamera = worldCamera.clone();
         const pointCamera = worldCamera.clone();
@@ -655,10 +627,14 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
         };
         ctrl.cameraCtrl = cameraCtrl;
 
+        // ── Touch prevention ──────────────────────────────────────────────────
+
         const onTouchStart = e => {
             e.preventDefault();
         };
         gl.domElement.addEventListener('touchstart', onTouchStart);
+
+        // ── Keyboard shortcut (Ctrl+7/8/9 — change graph) ────────────────────
 
         ctrl.onKeyUp = e => {
             if (e.ctrlKey && e.keyCode >= 55 && e.keyCode <= 57) {
@@ -668,7 +644,11 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
             }
         };
 
+        // ── Details ↔ camera transition ───────────────────────────────────────
+
         const onDetailsEvent = ({ open }) => {
+            ctrl.detailsOpen = open;
+
             let targetCamera;
 
             if (open) {
@@ -717,6 +697,9 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
         };
         ctrl.onDetailsEvent = onDetailsEvent;
 
+        // ── Start handler: registers details event and starts ticker ──────────
+        // Emitted after the React UI has committed and dividerTopEl is set.
+
         const onStart = () => {
             Stage.events.on('details', onDetailsEvent);
             ticker.start();
@@ -724,29 +707,34 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
         ctrl.onStart = onStart;
         Stage.events.on('start', onStart);
 
+        // ── Data source ───────────────────────────────────────────────────────
+
         const { emitter, cleanup: sourceCleanup } = createSource();
         ctrl.emitter = emitter;
         ctrl.sourceCleanup = sourceCleanup;
 
         emitter.on('details', data => {
             if (!ctrl.destroyed) {
-                handleDetails(data, ctrl, containerRef.current, setPointConfig, setDividerSnap);
+                handleDetails(data, ctrl, setPointConfig, onDetailsReceived, onDetailsReconnect);
             }
         });
         emitter.on('data', data => {
             if (!ctrl.destroyed) {
-                handleData(data, ctrl);
+                handleData(data, ctrl, uiRefsRef.current);
             }
         });
         emitter.on('status', data => {
             if (!ctrl.destroyed) {
-                handleStatus(data, ctrl);
+                handleStatus(data, ctrl, uiRefsRef.current);
             }
         });
 
         resizeCameras(cameraCtrl, worldCamera, width, height);
 
+        // ── Cleanup ───────────────────────────────────────────────────────────
+
         return () => {
+            // Guard all subsequent callbacks (StrictMode double-invoke safe).
             ctrl.destroyed = true;
             ctrlRef.current = {};
 
@@ -772,11 +760,14 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
             ctrl.pointsCtx = null;
             ctrl.view?.panel?.destroy?.();
             ctrl.view?.graph?.destroy?.();
-            ctrl.ui?.destroy?.();
+            // Note: no ctrl.ui to destroy — the React <UI> is owned by the
+            // parent (ServerStatusScene) and cleaned up with the component tree.
 
             currentCamera.clearViewOffset?.();
         };
-    }, [containerRef, createSource, pointAdapter, store]);
+    }, [containerRef, createSource, pointAdapter, store, uiRef, uiRefsRef, onDetailsReceived, onDetailsReconnect]);
+
+    // ── Per-frame ─────────────────────────────────────────────────────────────
 
     useFrame(({ camera: worldCamera, clock }) => {
         const ctrl = ctrlRef.current;
@@ -798,13 +789,11 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
             ctrl.view.mesh.rotation.x = time / 2;
             ctrl.view.mesh.rotation.y = time;
         }
-
-        if (ctrl.ui) {
-            ctrl.ui.update();
-            ctrl.ui.detailsLatencyGraph?.update();
-            ctrl.ui.detailsLoadAvgGraph?.update();
-        }
+        // React Graph/GraphSegments/Meter components update themselves via
+        // useTicker — no ui.update() call needed here.
     });
+
+    // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <>
@@ -822,7 +811,7 @@ export function SceneContent({ containerRef, createSource, isDebug, overlayEl })
                 </mesh>
             </group>
             {overlayEl && mesh && pointConfig && (
-                <Points3D container={overlayEl} debug={isDebug} dividerSnap={dividerSnap}>
+                <Points3D container={overlayEl} debug={isDebug} dividerSnap={dividerTopEl}>
                     <TrackedPoint
                         ctrlRef={ctrlRef}
                         mesh={mesh}

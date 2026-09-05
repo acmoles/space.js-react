@@ -242,7 +242,7 @@ The home page (`/`) is an index of every example, and each example is available 
 index.html            Vite entry point
 lib/                  Space.js library source (published package)
 public/assets/        Example assets
-scripts/               Parity harnesses
+scripts/              Parity and smoke harnesses
 src/
   main.jsx            React entry point
   App.jsx             Routes
@@ -257,7 +257,8 @@ src/
     motion/           Style engine, useAnimation, useMotion, useTicker
     three/            React Three Fiber components and hooks
   styles/             Global styles
-examples/mars/        Standalone demo, built separately with Rollup
+examples/mars/        Standalone demos (mars, about, cyberspace), built
+                      separately with Rollup
 ```
 
 The UI itself is being re-implemented as declarative React components under
