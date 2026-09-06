@@ -672,7 +672,16 @@ export function Point3D({
                 const g = resolveGraph();
                 if (g) {
                     const sz = Math.min(pos.width, pos.height);
-                    g.position?.set(pos.centerX, pos.centerY);
+
+                    // The vanilla graph exposes a `position` vector, the React
+                    // container a `setPosition` method.  Support both so a
+                    // point can be migrated to <Point3DGraph> independently.
+                    if (g.setPosition) {
+                        g.setPosition(pos.centerX, pos.centerY);
+                    } else {
+                        g.position?.set(pos.centerX, pos.centerY);
+                    }
+
                     g.setSize?.(sz, sz);
                     if (graphTrackerRef.current && g.graphHeight !== undefined) {
                         graphTrackerRef.current.setGraphHeight(-g.graphHeight * 2);
