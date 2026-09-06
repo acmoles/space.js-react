@@ -311,6 +311,16 @@ npm run smoke                           # every route
 npm run smoke -- panel fps_panel        # specific routes
 ```
 
+Ten routes report `reference page rendered nothing` and are counted as
+failures even though they show zero differing pixels. This is expected in a
+sandbox and is not a regression. Nine of them are the console-only `test_*`
+pages, which deliberately render no markup and only log; the tenth is
+`details_server_status`, whose original page builds its UI inside a websocket
+handler and so mounts nothing when `wss://hello-websockets-server-status.cyberspace.app`
+is unreachable. In both cases the two screenshots are blank and identical, so
+the zero pixel count is vacuous rather than evidence of parity — these routes
+need network access, or a manual check, to be verified properly.
+
 #### ui
 
 [logo](https://space.js.org/examples/logo.html) (interface)  
