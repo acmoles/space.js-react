@@ -56,9 +56,10 @@ let markerIdCounter = 0;
  * @param {function} [props.onMarkerAdd]
  * @param {function} [props.onMarkerRemove]
  * @param {function} [props.onMarkerClick]
- * @param {object} [props.ref] Exposes `setContext`, `setPosition`, `setSize`,
- *   `setEnabled`, `setArray`, `setGhostArray`, `setRange`, `setMarkers`,
- *   `addMarker`, `removeMarker`, `update`, `animateIn`, `animateOut`.
+ * @param {object} [props.ref] Exposes `graphHeight`, `middle`, `halfWidth`,
+ *   `startAngle`, `setContext`, `setPosition`, `setSize`, `setEnabled`,
+ *   `setArray`, `setGhostArray`, `setRange`, `setMarkers`, `addMarker`,
+ *   `removeMarker`, `update`, `animateIn`, `animateOut`.
  * @example
  * const graphRef = useRef();
  * const ctx = canvasElement.getContext('2d');
@@ -643,6 +644,22 @@ export function RadialGraphCanvas({
         const s = sRef.current;
 
         return {
+            get graphHeight() {
+                return graphHeight;
+            },
+
+            get middle() {
+                return s.middle;
+            },
+
+            get halfWidth() {
+                return s.halfWidth;
+            },
+
+            get startAngle() {
+                return s.startAngle;
+            },
+
             setContext(context) {
                 s.context = context;
                 refreshGradients();

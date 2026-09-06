@@ -18,9 +18,10 @@ import { TwoPI, degToRad } from '@lib/utils/Utils.js';
  *   `RadialGraphCanvas` or `RadialGraphSegmentsCanvas`.
  * @param {function} [props.onCursor] Called with `{ cursor, target }` when any
  *   child emits a cursor-change event.
- * @param {object} [props.ref] Exposes `setSize`, `setIndex`, `setContext`,
- *   `setArray`, `setGhostArray`, `update`, `animateIn`, `animateOut`,
- *   `animateLabelsIn`, `animateLabelsOut`, `setPosition`, `getSize`.
+ * @param {object} [props.ref] Exposes `graphHeight`, `middle`, `halfWidth`,
+ *   `startAngle`, `setSize`, `setIndex`, `setContext`, `setArray`,
+ *   `setGhostArray`, `update`, `animateIn`, `animateOut`, `animateLabelsIn`,
+ *   `animateLabelsOut`, `setPosition`, `getSize`.
  * @param {React.ReactNode} [props.children]
  * @example
  * const containerRef = useRef();
@@ -78,6 +79,22 @@ export function RadialGraphContainer({
         const graphs = () => graphRefs;
 
         return {
+            get graphHeight() {
+                return graphHeight;
+            },
+
+            get middle() {
+                return s.middle;
+            },
+
+            get halfWidth() {
+                return s.halfWidth;
+            },
+
+            get startAngle() {
+                return s.startAngle;
+            },
+
             /** Sets the offset of the container's centre inside the shared canvas. */
             setPosition(x, y) {
                 s.position.x = x;
