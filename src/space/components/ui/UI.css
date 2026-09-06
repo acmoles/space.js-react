@@ -1,0 +1,35 @@
+.ui {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    color: var(--ui-color);
+    pointer-events: none;
+}
+
+/* ── Button anchors ─────────────────────────────────────────────────── */
+
+.ui-details-button {
+    position: fixed;
+    left: 19px;
+    bottom: 18px;
+}
+
+.ui-details-button.narrow {
+    left: 9px;
+    bottom: 8px;
+}
+
+.ui-mute-button,
+.ui-audio-button {
+    position: fixed;
+    right: 22px;
+    bottom: 20px;
+}
+
+.ui-mute-button.narrow,
+.ui-audio-button.narrow {
+    right: 12px;
+    bottom: 10px;
+}

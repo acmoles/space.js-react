@@ -1,0 +1,18 @@
+.link {
+    position: relative;
+    padding: 10px;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.link .line {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    background-color: var(--ui-color);
+}

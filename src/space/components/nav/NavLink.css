@@ -1,0 +1,14 @@
+.link {
+    float: left;
+    padding: 10px;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.link .letter {
+    display: inline-block;
+}

@@ -1,0 +1,14 @@
+.close-button {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin-left: -45px;
+    margin-top: -45px;
+    cursor: pointer;
+}
+
+.close-stroke {
+    fill: none;
+    stroke: var(--ui-color);
+    stroke-width: 1.5px;
+}

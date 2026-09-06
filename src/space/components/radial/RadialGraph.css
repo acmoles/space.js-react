@@ -1,0 +1,43 @@
+.radial-graph {
+    position: relative;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+}
+
+.radial-graph > canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+
+.radial-graph .info {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.radial-graph .marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    line-height: var(--ui-title-line-height);
+    white-space: nowrap;
+    z-index: 1;
+    pointer-events: auto;
+    opacity: 0;
+}
+
+.radial-graph .marker.draggable {
+    cursor: move;
+}

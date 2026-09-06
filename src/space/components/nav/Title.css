@@ -1,0 +1,7 @@
+.title {
+    width: fit-content;
+}
+
+.title .letter {
+    display: inline-block;
+}

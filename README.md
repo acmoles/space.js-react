@@ -226,6 +226,101 @@ scene.environmentIntensity = 1.2;
 
 ### Examples
 
+This repository is a React 19 + [Vite](https://vite.dev/) single page application. Every example from the original vanilla version has been ported to a route, with the 3D examples rendered with [React Three Fiber](https://r3f.docs.pmnd.rs/).
+
+```sh
+npm install
+npm run dev      # development server
+npm run build    # production build to dist/
+npm run preview  # preview the production build
+npm run lint
+```
+
+The home page (`/`) is an index of every example, and each example is available at the route matching its original file name, for example `/examples/fps` and `/examples/three/3d_lights`.
+
+```
+index.html            Vite entry point
+lib/                  Space.js library source (published package)
+public/assets/        Example assets
+scripts/              Parity and smoke harnesses
+src/
+  main.jsx            React entry point
+  App.jsx             Routes
+  components/         Shared app components
+  examples/           One component per example, grouped by category
+    registry.js       Example metadata used by the router and index page
+  hooks/              Shared app hooks
+  pages/              Index page
+  space/              Declarative React implementation of the UI library
+    components/       Components, grouped by family
+    hooks/            useEventListener, useResize, useMagnetic
+    motion/           Style engine, useAnimation, useMotion, useTicker
+    three/            React Three Fiber components and hooks
+  styles/             Global styles
+examples/mars/        Standalone demos (mars, about, cyberspace), built
+                      separately with Rollup
+```
+
+The UI itself is re-implemented as declarative React components under
+`src/space/`, documented in [src/space/README.md](src/space/README.md).
+Components own their markup, styles and animation, and motion runs through the
+library's own tween engine and easing functions so timings and curves are
+identical to the vanilla version.
+
+One area is deliberately left in its vanilla form: the panels and graphs that
+are attached to a `Point3D`. The three.js panel definitions under
+`lib/three/panels/` — 60-odd files describing the contents of the light and
+material inspectors — build their items from the vanilla `Panel` and
+`PanelItem`, and `MaterialPanels` entries such as the `InstancedMeshPanel` in
+`3d_materials_instancing_modified` subclass `Panel` directly, exactly as the
+pre-port example did. `Point3D` in turn reads properties off the panel and graph
+objects it is given (`element`, `events`, `graphHeight`, `middle`, `halfWidth`,
+`startAngle`).
+
+Passing React-rendered equivalents through that interface was tried and backed
+out: it required rendering each component into a detached `createRoot` and
+hand-writing an adapter that re-derived those values, which duplicated the
+components' internal sizing maths and would drift silently. The vanilla objects
+are used instead, behind the hooks in `src/space/three/hooks/`, until `Point3D`
+itself accepts its panel and graph as React children.
+
+Ports are checked against the pre-port pages with the parity harness, which
+renders a route and the original page side by side in headless Chromium and
+reports the number of differing pixels:
+
+```sh
+npm install --no-save playwright-core   # once
+npm run parity                          # every route
+npm run parity -- tween magnetic        # specific routes
+```
+
+A pixel count tells you *that* a route differs. To see *what* differs, the
+layout harness walks the rendered tree of both pages and dumps tag names,
+class names, bounding boxes, typography, colour and opacity, ready to `diff`:
+
+```sh
+npm run domparity -- details_info
+diff /tmp/domparity/details_info-reference.txt /tmp/domparity/details_info-current.txt
+```
+
+Neither harness catches a route that renders correctly but throws while it
+animates, so the smoke test opens every route and fails on any uncaught error:
+
+```sh
+npm run smoke                           # every route
+npm run smoke -- panel fps_panel        # specific routes
+```
+
+Ten routes report `reference page rendered nothing` and are counted as
+failures even though they show zero differing pixels. This is expected in a
+sandbox and is not a regression. Nine of them are the console-only `test_*`
+pages, which deliberately render no markup and only log; the tenth is
+`details_server_status`, whose original page builds its UI inside a websocket
+handler and so mounts nothing when `wss://hello-websockets-server-status.cyberspace.app`
+is unreachable. In both cases the two screenshots are blank and identical, so
+the zero pixel count is vacuous rather than evidence of parity — these routes
+need network access, or a manual check, to be verified properly.
+
 #### ui
 
 [logo](https://space.js.org/examples/logo.html) (interface)  

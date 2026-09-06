@@ -1,3 +1,8 @@
 examples
 eslint.config.js
 space.js.png
+index.html
+vite.config.js
+dist
+public
+src

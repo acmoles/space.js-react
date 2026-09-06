@@ -1,4 +1,6 @@
 .DS_Store
 node_modules
 package-lock.json
-**/public/assets/js/*.js
+dist
+dist-*
+screenshots

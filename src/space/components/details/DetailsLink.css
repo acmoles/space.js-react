@@ -1,0 +1,14 @@
+/* global.css already provides .details .link and .details .link .line font rules */
+
+.details .link {
+    width: fit-content;
+    white-space: nowrap;
+}
+
+.details .link .content {
+    display: inline-block;
+}
+
+.details .link .line {
+    display: inline-block;
+}
