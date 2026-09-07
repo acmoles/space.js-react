@@ -14,4 +14,3 @@ export { Point3DOverlayContext, usePoint3DOverlayContext } from './Point3DOverla
 export { useLightPanelController } from './hooks/useLightPanelController.js';
 export { useMaterialsPanel } from './hooks/useMaterialsPanel.js';
 export { useProjectedPosition } from './hooks/useProjectedPosition.js';
-export { useRadialGraphCanvas } from './hooks/useRadialGraphCanvas.js';

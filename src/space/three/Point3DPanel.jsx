@@ -7,10 +7,8 @@
  * `<Point3D>`, which animates it in and out as the tracked object is hovered
  * and selected, and routes `getPanelValue` / `setPanelValue` calls to it.
  *
- * Prefer this over the imperative `panel` prop of `<Point3D>`.  That prop
- * remains for panels whose contents are defined by the vanilla
- * `lib/three/panels/` inspectors, which build their rows from the vanilla
- * `Panel` and `PanelItem` primitives.
+ * Item descriptors are plain data, so the three.js material, light and
+ * texture inspectors in `src/space/three/panels/` compose directly:
  *
  * @example
  * <Point3D object={mesh} name="Server-1">
@@ -18,6 +16,11 @@
  *         items={[{ type: 'slider', name: 'Speed', min: 0, max: 10, value: 5 }]}
  *         onChange={handleChange}
  *     />
+ * </Point3D>
+ *
+ * @example
+ * <Point3D object={mesh} name={mesh.geometry.type}>
+ *     <Point3DPanel items={materialsPanelItems(mesh, panelUi)} />
  * </Point3D>
  */
 
