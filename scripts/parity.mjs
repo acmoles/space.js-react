@@ -125,8 +125,15 @@ function compare(reference, current, diff) {
     try {
         return Number(run('compare', ['-metric', 'AE', reference, current, diff]).trim());
     } catch (error) {
-        // `compare` exits non-zero when the images differ, with the count on stderr
-        const count = Number(error.stderr ? error.stderr.toString().trim() : '');
+        // `compare` exits non-zero when the images differ, with the count on
+        // stderr.  An empty/absent stderr means it never ran (ImageMagick is
+        // not installed), which must not be mistaken for "0 differing pixels" —
+        // `Number('')` is 0, which would turn every route into a false pass.
+        const stderr = error.stderr ? error.stderr.toString().trim() : '';
+
+        if (!stderr) return null;
+
+        const count = Number(stderr.split(/\s+/)[0]);
 
         return Number.isNaN(count) ? null : count;
     }
@@ -136,6 +143,17 @@ async function main() {
     if (!EXECUTABLE) {
         console.error('No Chromium executable found.');
         process.exit(1);
+    }
+
+    // Fail fast rather than spend ~15 minutes capturing screenshots that cannot
+    // be compared.
+    try {
+        run('compare', ['-version']);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            console.error('ImageMagick `compare` not found — install it, otherwise pixel parity cannot be measured.');
+            process.exit(1);
+        }
     }
 
     // Pre-port pages, from the revision before the React port
@@ -216,13 +234,14 @@ async function main() {
             path.join(OUT, `${name}-hover-diff.png`)
         );
 
+        // `null` means the comparison could not be made, which is not a pass.
         const pass = pixels === 0 && hoverPixels === 0 && consoleErrors.length === 0;
 
         results.push({ route, pixels, hoverPixels, errors: consoleErrors, pass });
 
         // Per-route immediate output (backwards-compatible format)
-        if (pixels === null) {
-            console.log(`${route}: captured (install ImageMagick for a pixel count)`);
+        if (pixels === null || hoverPixels === null) {
+            console.log(`${route}: ✗ NOT COMPARED — install ImageMagick (\`compare\`) to measure pixel parity`);
         } else {
             console.log(`${route}: ${pixels} differing pixels, ${hoverPixels} on hover`);
         }

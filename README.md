@@ -297,10 +297,17 @@ renders a route and the original page side by side in headless Chromium and
 reports the number of differing pixels:
 
 ```sh
+sudo apt-get install -y imagemagick     # once — the harness shells out to `compare`
 npm install --no-save playwright-core   # once
 npm run parity                          # every route
 npm run parity -- tween magnetic        # specific routes
 ```
+
+ImageMagick is required, and the harness now exits immediately if `compare` is
+missing. It previously treated a failed `compare` invocation as a count of
+zero, because `Number('')` is `0`, so **every route reported `0 differing
+pixels` and passed** in environments without ImageMagick. Any parity result
+recorded before that fix should be treated as unverified.
 
 Each route is compared twice: once idle, and once with the pointer at the centre
 of the viewport. Much of this UI — `Point3D` panels, radial graphs, trackers —
@@ -323,6 +330,14 @@ animates, so the smoke test opens every route and fails on any uncaught error:
 npm run smoke                           # every route
 npm run smoke -- panel fps_panel        # specific routes
 ```
+
+With `compare` actually available, most routes do **not** currently reach pixel
+parity: only 6 of 56 pass. To tell a real difference from animation noise, the
+same reference page can be captured twice and diffed against itself. The 3D
+routes are deterministic (0 px reference-vs-reference), so their diffs are real
+regressions; animated 2D routes such as `test_meter` and `test_radial_graph`
+have a genuine noise floor of hundreds to tens of thousands of pixels and need a
+tolerance or a paused clock before their numbers mean anything.
 
 Ten routes report `reference page rendered nothing` and are counted as
 failures even though they show zero differing pixels. This is expected in a

@@ -15,8 +15,6 @@ import { useFrame, useStore, useThree } from '@react-three/fiber';
 import { MathUtils } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
-    Panel,
-    PanelItem,
     Stage,
     clearTween,
     delayedCall,
@@ -26,7 +24,7 @@ import {
 } from '@lib/three.js';
 
 import { RadialGraphSegmentsCanvas } from '../../../space/components/radial/index.js';
-import { Point3D, Point3DGraph, Points3D, usePoint3DContext } from '../../../space/three/index.js';
+import { Point3D, Point3DGraph, Point3DPanel, Points3D, usePoint3DContext } from '../../../space/three/index.js';
 
 import { Data } from './utils.js';
 import { GraphData, TimestampData } from './data.js';
@@ -58,7 +56,7 @@ function resizeCameras(cameraCtrl, worldCamera, width, height) {
 
 /**
  * Creates the RadialGraphContainer (shown inside the 3D point tracker bubble)
- * and the Panel with List/Link items for the point HUD.
+ * and the List/Link item descriptors for the point HUD panel.
  *
  * @param {object}   ctrl          Mutable ctrl bag.
  * @param {function} setPointConfig React state setter that triggers Point3D mount.
@@ -72,10 +70,10 @@ function initPanel(ctrl, setPointConfig) {
     // even though the refs are only populated after TrackedPoint mounts.
 
     Object.defineProperties(object, {
-        latencyAvgGraph: { get() { return ctrl.latencyAvgGraphRef.current; }, configurable: true },
-        loadAvgGraph: { get() { return ctrl.loadAvgGraphRef.current; }, configurable: true },
-        clientsGraph: { get() { return ctrl.clientsGraphRef.current; }, configurable: true },
-        graph: { get() { return ctrl.graphRef.current; }, configurable: true }
+        latencyAvgGraph: { get() { return ctrl.latencyAvgGraphRef?.current; }, configurable: true },
+        loadAvgGraph: { get() { return ctrl.loadAvgGraphRef?.current; }, configurable: true },
+        clientsGraph: { get() { return ctrl.clientsGraphRef?.current; }, configurable: true },
+        graph: { get() { return ctrl.graphRef?.current; }, configurable: true }
     });
 
     // ── Panel items ──────────────────────────────────────────────────────────
@@ -96,7 +94,7 @@ function initPanel(ctrl, setPointConfig) {
             list: graphOptions,
             value: 'Load',
             callback: value => {
-                object.graph.setIndex(graphOptions.get(value));
+                object.graph?.setIndex(graphOptions.get(value));
             }
         },
         {
@@ -121,17 +119,16 @@ function initPanel(ctrl, setPointConfig) {
         }
     ];
 
-    const panel = new Panel();
-
-    items.forEach(data => {
-        panel.add(new PanelItem(data));
+    // The panel is rendered declaratively by <Point3DPanel>; expose it lazily
+    // so call sites like ctrl.view.panel keep working, as with the graphs.
+    Object.defineProperty(object, 'panel', {
+        get() { return ctrl.panelRef?.current; },
+        configurable: true
     });
 
-    object.panel = panel;
-
     setPointConfig({
+        items,
         name: Data.getName(),
-        panel,
         type: Data.getType()
     });
 }
@@ -229,18 +226,14 @@ function handleData({ timestampData, latencyAvgData, loadAvgData, clientsData },
     ctrl.latencyAvgData = new GraphData();
     ctrl.latencyAvgData.setArrays(latencyAvgData);
 
-    const latencyAvgMax = Math.max(300, ctrl.latencyAvgData.getMax());
-
-    ctrl.view.latencyAvgGraph.setGhostArray([...ctrl.latencyAvgData.smallGhostArrayReversed, ...ctrl.latencyAvgData.largeGhostArrayReversed]);
-    ctrl.view.latencyAvgGraph.setArray([...ctrl.latencyAvgData.smallArrayReversed, ...ctrl.latencyAvgData.largeArrayReversed]);
-    ctrl.view.latencyAvgGraph.setRange(latencyAvgMax);
+    ctrl.latencyAvgMax = Math.max(300, ctrl.latencyAvgData.getMax());
 
     // ── Load avg ─────────────────────────────────────────────────────────────
 
     ctrl.loadAvgData = new GraphData();
     ctrl.loadAvgData.setArrays(loadAvgData);
 
-    const loadAvgMax = Math.max(400, ctrl.loadAvgData.getMax());
+    const loadAvgMax = ctrl.loadAvgMax = Math.max(400, ctrl.loadAvgData.getMax());
 
     // 2D Details graph (React GraphSegments via uiRefs)
     if (uiRefs.loadAvgGraph.current) {
@@ -249,21 +242,39 @@ function handleData({ timestampData, latencyAvgData, loadAvgData, clientsData },
         uiRefs.loadAvgGraph.current.setRange(loadAvgMax);
     }
 
-    // 3D radial graph (vanilla RadialGraphSegmentsCanvas)
-    ctrl.view.loadAvgGraph.setGhostArray([...ctrl.loadAvgData.smallGhostArrayReversed, ...ctrl.loadAvgData.largeGhostArrayReversed]);
-    ctrl.view.loadAvgGraph.setArray([...ctrl.loadAvgData.smallArrayReversed, ...ctrl.loadAvgData.largeArrayReversed]);
-    ctrl.view.loadAvgGraph.setRange(loadAvgMax);
-
     // ── Clients ──────────────────────────────────────────────────────────────
 
     ctrl.clientsData = new GraphData();
     ctrl.clientsData.setArrays(clientsData);
 
-    const clientsMax = Math.max(10, ctrl.clientsData.getMax());
+    ctrl.clientsMax = Math.max(10, ctrl.clientsData.getMax());
 
-    ctrl.view.clientsGraph.setGhostArray([...ctrl.clientsData.smallGhostArrayReversed, ...ctrl.clientsData.largeGhostArrayReversed]);
-    ctrl.view.clientsGraph.setArray([...ctrl.clientsData.smallArrayReversed, ...ctrl.clientsData.largeArrayReversed]);
-    ctrl.view.clientsGraph.setRange(clientsMax);
+    applyGraphData(ctrl);
+}
+
+/**
+ * Pushes the accumulated historical arrays onto the three 3D radial graphs.
+ *
+ * The graphs are React children of `<Point3D>` and so mount a tick after the
+ * first 'data' message arrives.  This is a no-op until then; `TrackedPoint`
+ * replays it on mount so no data is dropped.
+ */
+function applyGraphData(ctrl) {
+    const { latencyAvgGraph, loadAvgGraph, clientsGraph } = ctrl.view;
+
+    if (!latencyAvgGraph || !loadAvgGraph || !clientsGraph || !ctrl.latencyAvgData) return;
+
+    latencyAvgGraph.setGhostArray([...ctrl.latencyAvgData.smallGhostArrayReversed, ...ctrl.latencyAvgData.largeGhostArrayReversed]);
+    latencyAvgGraph.setArray([...ctrl.latencyAvgData.smallArrayReversed, ...ctrl.latencyAvgData.largeArrayReversed]);
+    latencyAvgGraph.setRange(ctrl.latencyAvgMax);
+
+    loadAvgGraph.setGhostArray([...ctrl.loadAvgData.smallGhostArrayReversed, ...ctrl.loadAvgData.largeGhostArrayReversed]);
+    loadAvgGraph.setArray([...ctrl.loadAvgData.smallArrayReversed, ...ctrl.loadAvgData.largeArrayReversed]);
+    loadAvgGraph.setRange(ctrl.loadAvgMax);
+
+    clientsGraph.setGhostArray([...ctrl.clientsData.smallGhostArrayReversed, ...ctrl.clientsData.largeGhostArrayReversed]);
+    clientsGraph.setArray([...ctrl.clientsData.smallArrayReversed, ...ctrl.clientsData.largeArrayReversed]);
+    clientsGraph.setRange(ctrl.clientsMax);
 
     refresh(ctrl);
 }
@@ -305,18 +316,23 @@ function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg,
 
         ctrl.latencyAvgData.update(latencyAvg);
 
-        if (ctrl.latencyAvgData.smallCounter === 0) {
-            ctrl.view.latencyAvgGraph.ghostArray.splice(0, 12, ...ctrl.latencyAvgData.smallGhostArrayReversed);
-            ctrl.view.latencyAvgGraph.array.splice(0, 12, ...ctrl.latencyAvgData.smallArrayReversed);
-            ctrl.view.latencyAvgGraph.needsUpdate = true;
-            ctrl.view.latencyAvgGraph.graphNeedsUpdate = true;
-        }
+        // 3D radial graph — absent until <Point3DGraph> mounts.
+        const graph = ctrl.view.latencyAvgGraph;
 
-        if (ctrl.latencyAvgData.largeCounter === 0) {
-            ctrl.view.latencyAvgGraph.ghostArray.splice(-90, 90, ...ctrl.latencyAvgData.largeGhostArrayReversed);
-            ctrl.view.latencyAvgGraph.array.splice(-90, 90, ...ctrl.latencyAvgData.largeArrayReversed);
-            ctrl.view.latencyAvgGraph.needsUpdate = true;
-            ctrl.view.latencyAvgGraph.graphNeedsUpdate = true;
+        if (graph) {
+            if (ctrl.latencyAvgData.smallCounter === 0) {
+                graph.ghostArray.splice(0, 12, ...ctrl.latencyAvgData.smallGhostArrayReversed);
+                graph.array.splice(0, 12, ...ctrl.latencyAvgData.smallArrayReversed);
+                graph.needsUpdate = true;
+                graph.graphNeedsUpdate = true;
+            }
+
+            if (ctrl.latencyAvgData.largeCounter === 0) {
+                graph.ghostArray.splice(-90, 90, ...ctrl.latencyAvgData.largeGhostArrayReversed);
+                graph.array.splice(-90, 90, ...ctrl.latencyAvgData.largeArrayReversed);
+                graph.needsUpdate = true;
+                graph.graphNeedsUpdate = true;
+            }
         }
     }
 
@@ -342,23 +358,27 @@ function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg,
             ]);
         }
 
-        // 3D radial graph — realtime update
-        ctrl.view.loadAvgGraph.ghostArray.splice(-90, 90, ...ctrl.loadAvgData.largeGhostArrayReversed);
-        ctrl.view.loadAvgGraph.array.splice(-90, 90, ...ctrl.loadAvgData.largeArrayReversed);
-        ctrl.view.loadAvgGraph.needsUpdate = true;
+        // 3D radial graph — realtime update; absent until <Point3DGraph> mounts.
+        const graph = ctrl.view.loadAvgGraph;
 
-        if (ctrl.loadAvgData.smallCounter === 0) {
-            ctrl.view.loadAvgGraph.ghostArray.splice(0, 12, ...ctrl.loadAvgData.smallGhostArrayReversed);
-            ctrl.view.loadAvgGraph.array.splice(0, 12, ...ctrl.loadAvgData.smallArrayReversed);
-            ctrl.view.loadAvgGraph.needsUpdate = true;
-            ctrl.view.loadAvgGraph.graphNeedsUpdate = true;
-        }
+        if (graph) {
+            graph.ghostArray.splice(-90, 90, ...ctrl.loadAvgData.largeGhostArrayReversed);
+            graph.array.splice(-90, 90, ...ctrl.loadAvgData.largeArrayReversed);
+            graph.needsUpdate = true;
 
-        if (ctrl.loadAvgData.largeCounter === 0) {
-            ctrl.view.loadAvgGraph.ghostArray.splice(-90, 90, ...ctrl.loadAvgData.largeGhostArrayReversed);
-            ctrl.view.loadAvgGraph.array.splice(-90, 90, ...ctrl.loadAvgData.largeArrayReversed);
-            ctrl.view.loadAvgGraph.needsUpdate = true;
-            ctrl.view.loadAvgGraph.graphNeedsUpdate = true;
+            if (ctrl.loadAvgData.smallCounter === 0) {
+                graph.ghostArray.splice(0, 12, ...ctrl.loadAvgData.smallGhostArrayReversed);
+                graph.array.splice(0, 12, ...ctrl.loadAvgData.smallArrayReversed);
+                graph.needsUpdate = true;
+                graph.graphNeedsUpdate = true;
+            }
+
+            if (ctrl.loadAvgData.largeCounter === 0) {
+                graph.ghostArray.splice(-90, 90, ...ctrl.loadAvgData.largeGhostArrayReversed);
+                graph.array.splice(-90, 90, ...ctrl.loadAvgData.largeArrayReversed);
+                graph.needsUpdate = true;
+                graph.graphNeedsUpdate = true;
+            }
         }
     }
 
@@ -371,18 +391,23 @@ function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg,
 
         ctrl.clientsData.update(numClients);
 
-        if (ctrl.clientsData.smallCounter === 0) {
-            ctrl.view.clientsGraph.ghostArray.splice(0, 12, ...ctrl.clientsData.smallGhostArrayReversed);
-            ctrl.view.clientsGraph.array.splice(0, 12, ...ctrl.clientsData.smallArrayReversed);
-            ctrl.view.clientsGraph.needsUpdate = true;
-            ctrl.view.clientsGraph.graphNeedsUpdate = true;
-        }
+        // 3D radial graph — absent until <Point3DGraph> mounts.
+        const graph = ctrl.view.clientsGraph;
 
-        if (ctrl.clientsData.largeCounter === 0) {
-            ctrl.view.clientsGraph.ghostArray.splice(-90, 90, ...ctrl.clientsData.largeGhostArrayReversed);
-            ctrl.view.clientsGraph.array.splice(-90, 90, ...ctrl.clientsData.largeArrayReversed);
-            ctrl.view.clientsGraph.needsUpdate = true;
-            ctrl.view.clientsGraph.graphNeedsUpdate = true;
+        if (graph) {
+            if (ctrl.clientsData.smallCounter === 0) {
+                graph.ghostArray.splice(0, 12, ...ctrl.clientsData.smallGhostArrayReversed);
+                graph.array.splice(0, 12, ...ctrl.clientsData.smallArrayReversed);
+                graph.needsUpdate = true;
+                graph.graphNeedsUpdate = true;
+            }
+
+            if (ctrl.clientsData.largeCounter === 0) {
+                graph.ghostArray.splice(-90, 90, ...ctrl.clientsData.largeGhostArrayReversed);
+                graph.array.splice(-90, 90, ...ctrl.clientsData.largeArrayReversed);
+                graph.needsUpdate = true;
+                graph.graphNeedsUpdate = true;
+            }
         }
     }
 }
@@ -391,6 +416,8 @@ function handleStatus({ currentTime, serverUptime, latency, latencyAvg, loadAvg,
  * Refreshes timestamp-based labels and date-change markers on the 3D graphs.
  */
 function refresh(ctrl) {
+    if (!ctrl.view.latencyAvgGraph) return;
+
     ctrl.view.latencyAvgGraph.setData([[], ctrl.timestampData.labelsArrayReversed]);
     ctrl.view.loadAvgGraph.setData([[], ctrl.timestampData.labelsArrayReversed]);
     ctrl.view.clientsGraph.setData([[], ctrl.timestampData.labelsArrayReversed]);
@@ -408,7 +435,7 @@ function refresh(ctrl) {
 
 // ─── TrackedPoint (sub-component) ────────────────────────────────────────────
 
-function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef, graphRef, graphRefs, latencyAvgGraphRef, loadAvgGraphRef, clientsGraphRef }) {
+function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef, panelRef, graphRef, graphRefs, latencyAvgGraphRef, loadAvgGraphRef, clientsGraphRef }) {
     const ctx = usePoint3DContext();
 
     useEffect(() => {
@@ -423,19 +450,21 @@ function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef, graphRef, graphRef
         };
     }, [ctrlRef, ctx]);
 
-    // Apply deferred graph.setIndex(1) once the container handle is available.
+    // Apply deferred graph.setIndex(1) and replay any data that arrived before
+    // the graphs mounted, once the container handle is available.
     useEffect(() => {
         graphRef.current?.setIndex(1);
-    }, [graphRef]);
+        applyGraphData(ctrlRef.current);
+    }, [ctrlRef, graphRef]);
 
     return (
         <Point3D
             object={mesh}
             name={pointConfig.name}
-            panel={pointConfig.panel}
             ref={pointRef}
             type={pointConfig.type}
         >
+            <Point3DPanel ref={panelRef} items={pointConfig.items} />
             <Point3DGraph
                 ref={graphRef}
                 start={-45}
@@ -535,6 +564,7 @@ export function SceneContent({
     const meshRef = useRef(null);
     const groupRef = useRef(null);
     const pointRef = useRef(null);
+    const panelRef = useRef(null);
     const pointConfigRef = useRef(null);
 
     // Graph refs for declarative RadialGraphSegmentsCanvas children.
@@ -552,6 +582,7 @@ export function SceneContent({
         ctrl.clientsGraphRef = clientsGraphRef;
         ctrl.graphRef = graphRef;
         ctrl.graphRefs = graphRefs;
+        ctrl.panelRef = panelRef;
     }, [graphRefs]);
     const [mesh, setMesh] = useState(null);
     const [pointConfig, setPointConfig] = useState(null);
@@ -559,8 +590,8 @@ export function SceneContent({
     const pointAdapter = useMemo(() => ({
         animateOut: (...args) => pointRef.current?.animateOut(...args),
         deactivate: () => pointRef.current?.deactivate(),
-        getPanelIndex: name => pointConfigRef.current?.panel?.getPanelIndex?.(name),
-        getPanelValue: name => pointConfigRef.current?.panel?.getPanelValue?.(name),
+        getPanelIndex: name => panelRef.current?.getPanelIndex?.(name),
+        getPanelValue: name => panelRef.current?.getPanelValue?.(name),
         get instances() {
             return pointRef.current?.instances ?? [];
         },
@@ -569,8 +600,8 @@ export function SceneContent({
         },
         onHover: event => pointRef.current?.onHover(event),
         setData: data => pointRef.current?.setData(data),
-        setPanelIndex: (name, index, path) => pointConfigRef.current?.panel?.setPanelIndex?.(name, index, path),
-        setPanelValue: (name, value, path) => pointConfigRef.current?.panel?.setPanelValue?.(name, value, path)
+        setPanelIndex: (name, index, path) => panelRef.current?.setPanelIndex?.(name, index, path),
+        setPanelValue: (name, value, path) => panelRef.current?.setPanelValue?.(name, value, path)
     }), []);
 
     useEffect(() => {
@@ -842,6 +873,7 @@ export function SceneContent({
                         ctrlRef={ctrlRef}
                         mesh={mesh}
                         pointConfig={pointConfig}
+                        panelRef={panelRef}
                         pointRef={pointRef}
                         graphRef={graphRef}
                         graphRefs={graphRefs}
