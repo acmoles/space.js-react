@@ -67,14 +67,16 @@ function initPanel(ctrl, setPointConfig) {
     const { view } = ctrl;
     const object = view;
 
-    // ── Radial graphs (now React refs — components rendered in TrackedPoint) ──
+    // ── Radial graphs (React components rendered in TrackedPoint) ─────────
+    // Provide lazy getters so call sites like ctrl.view.latencyAvgGraph work
+    // even though the refs are only populated after TrackedPoint mounts.
 
-    object.latencyAvgGraph = ctrl.latencyAvgGraphRef.current;
-    object.loadAvgGraph = ctrl.loadAvgGraphRef.current;
-    object.clientsGraph = ctrl.clientsGraphRef.current;
-    object.graph = ctrl.graphRef.current;
-
-    object.graph.setIndex(1);
+    Object.defineProperties(object, {
+        latencyAvgGraph: { get() { return ctrl.latencyAvgGraphRef.current; }, configurable: true },
+        loadAvgGraph: { get() { return ctrl.loadAvgGraphRef.current; }, configurable: true },
+        clientsGraph: { get() { return ctrl.clientsGraphRef.current; }, configurable: true },
+        graph: { get() { return ctrl.graphRef.current; }, configurable: true }
+    });
 
     // ── Panel items ──────────────────────────────────────────────────────────
 
@@ -406,7 +408,7 @@ function refresh(ctrl) {
 
 // ─── TrackedPoint (sub-component) ────────────────────────────────────────────
 
-function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef }) {
+function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef, graphRef, graphRefs, latencyAvgGraphRef, loadAvgGraphRef, clientsGraphRef }) {
     const ctx = usePoint3DContext();
 
     useEffect(() => {
@@ -421,7 +423,10 @@ function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef }) {
         };
     }, [ctrlRef, ctx]);
 
-    const ctrl = ctrlRef.current;
+    // Apply deferred graph.setIndex(1) once the container handle is available.
+    useEffect(() => {
+        graphRef.current?.setIndex(1);
+    }, [graphRef]);
 
     return (
         <Point3D
@@ -432,13 +437,13 @@ function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef }) {
             type={pointConfig.type}
         >
             <Point3DGraph
-                ref={ctrl.graphRef}
+                ref={graphRef}
                 start={-45}
                 graphHeight={40}
-                graphRefs={ctrl.graphRefs}
+                graphRefs={graphRefs}
             >
                 <RadialGraphSegmentsCanvas
-                    ref={ctrl.latencyAvgGraphRef}
+                    ref={latencyAvgGraphRef}
                     start={-45}
                     graphHeight={40}
                     resolution={102}
@@ -453,7 +458,7 @@ function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef }) {
                     noMarkerDrag
                 />
                 <RadialGraphSegmentsCanvas
-                    ref={ctrl.loadAvgGraphRef}
+                    ref={loadAvgGraphRef}
                     start={-45}
                     graphHeight={40}
                     resolution={102}
@@ -468,7 +473,7 @@ function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef }) {
                     noMarkerDrag
                 />
                 <RadialGraphSegmentsCanvas
-                    ref={ctrl.clientsGraphRef}
+                    ref={clientsGraphRef}
                     start={-45}
                     graphHeight={40}
                     resolution={102}
@@ -531,6 +536,23 @@ export function SceneContent({
     const groupRef = useRef(null);
     const pointRef = useRef(null);
     const pointConfigRef = useRef(null);
+
+    // Graph refs for declarative RadialGraphSegmentsCanvas children.
+    const latencyAvgGraphRef = useRef(null);
+    const loadAvgGraphRef = useRef(null);
+    const clientsGraphRef = useRef(null);
+    const graphRef = useRef(null);
+    const graphRefs = useMemo(() => [latencyAvgGraphRef, loadAvgGraphRef, clientsGraphRef], []);
+
+    // Store graph refs on ctrl via a one-time effect so initPanel can find them.
+    useEffect(() => {
+        const ctrl = ctrlRef.current;
+        ctrl.latencyAvgGraphRef = latencyAvgGraphRef;
+        ctrl.loadAvgGraphRef = loadAvgGraphRef;
+        ctrl.clientsGraphRef = clientsGraphRef;
+        ctrl.graphRef = graphRef;
+        ctrl.graphRefs = graphRefs;
+    }, [graphRefs]);
     const [mesh, setMesh] = useState(null);
     const [pointConfig, setPointConfig] = useState(null);
 
@@ -821,6 +843,11 @@ export function SceneContent({
                         mesh={mesh}
                         pointConfig={pointConfig}
                         pointRef={pointRef}
+                        graphRef={graphRef}
+                        graphRefs={graphRefs}
+                        latencyAvgGraphRef={latencyAvgGraphRef}
+                        loadAvgGraphRef={loadAvgGraphRef}
+                        clientsGraphRef={clientsGraphRef}
                     />
                 </Points3D>
             )}

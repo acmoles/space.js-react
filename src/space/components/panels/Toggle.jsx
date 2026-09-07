@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import { useAnimation } from '../../motion/index.js';
 
@@ -31,6 +31,18 @@ export function Toggle({ name, value: initialValue = false, onChange, children, 
 
     // Stable ref for latest value used in event handler
     const valueRef = useRef(value);
+
+    // The original Toggle calls `setValue(this.value)` at the end of its
+    // constructor, which notifies with the initial value.  Panel definitions
+    // rely on that first callback to populate nested content, so mirror it on
+    // mount.  The ref guard keeps it to a single emit under StrictMode.
+    const emittedRef = useRef(false);
+
+    useEffect(() => {
+        if (emittedRef.current) return;
+        emittedRef.current = true;
+        emitChange(valueRef.current);
+    });
 
     // Dynamic content — set imperatively via setContent()
     const dynContentRef = useRef(null);

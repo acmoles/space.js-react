@@ -64,9 +64,17 @@ export function Slider({
         }
     };
 
-    // Apply initial value after mount
+    // Apply initial value after mount.  The original Slider calls
+    // `setValue(this.value)` at the end of its constructor, which notifies
+    // with the initial value; panel definitions rely on that first callback to
+    // populate nested content, so notify here too.  The ref guard keeps it to
+    // a single emit under StrictMode.
+    const emittedRef = useRef(false);
+
     useEffect(() => {
-        applyValue(valueRef.current, false);
+        if (emittedRef.current) return;
+        emittedRef.current = true;
+        applyValue(valueRef.current);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useImperativeHandle(ref, () => ({
