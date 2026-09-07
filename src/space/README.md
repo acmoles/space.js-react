@@ -210,6 +210,19 @@ Replaces `lib/ui/UI.js`.
 
 ---
 
+### `three/` — React Three Fiber layer
+
+Replaces `lib/three/ui/` and `lib/three/panels/`. `Point3D` and friends take
+their panels and graphs as declarative children (`<Point3DPanel items={...} />`,
+`<Point3DGraph />`) rather than as imperative objects.
+
+Panel *definitions* live in `three/panels/` and are plain functions returning
+arrays of item descriptors — data, not rendering. Where the library used
+`class X extends Panel { initPanel() { ... } }`, the React version is
+`export function xPanelItems(...) { return [...] }`. Nested panels use the
+`subPanel()` helper so definition files need no JSX, and static class members
+(`type`, `properties`) become properties on the exported function.
+
 ## Motion and hooks surface
 
 Also re-exported from `src/space/index.js`:

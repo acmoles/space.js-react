@@ -267,22 +267,30 @@ Components own their markup, styles and animation, and motion runs through the
 library's own tween engine and easing functions so timings and curves are
 identical to the vanilla version.
 
-One area is deliberately left in its vanilla form: the panels and graphs that
-are attached to a `Point3D`. The three.js panel definitions under
-`lib/three/panels/` — 60-odd files describing the contents of the light and
-material inspectors — build their items from the vanilla `Panel` and
-`PanelItem`, and `MaterialPanels` entries such as the `InstancedMeshPanel` in
-`3d_materials_instancing_modified` subclass `Panel` directly, exactly as the
-pre-port example did. `Point3D` in turn reads properties off the panel and graph
-objects it is given (`element`, `events`, `graphHeight`, `middle`, `halfWidth`,
-`startAngle`).
+No React component in `src/` uses a UI class from `lib/`. The panels and graphs
+attached to a `Point3D` are declared as children:
 
-Passing React-rendered equivalents through that interface was tried and backed
-out: it required rendering each component into a detached `createRoot` and
-hand-writing an adapter that re-derived those values, which duplicated the
-components' internal sizing maths and would drift silently. The vanilla objects
-are used instead, behind the hooks in `src/space/three/hooks/`, until `Point3D`
-itself accepts its panel and graph as React children.
+```jsx
+<Point3D {...props}>
+    <Point3DPanel items={panelItems} />
+    <Point3DGraph {...graphProps} />
+</Point3D>
+```
+
+The three.js panel definitions — 60-odd files describing the contents of the
+light, material and texture inspectors — live under `src/space/three/panels/`.
+Where the vanilla library expressed these as classes (`class X extends Panel`,
+with `initPanel()` adding `PanelItem`s), the React versions are plain functions
+returning arrays of item descriptors, so a panel definition is *data* rather
+than a rendering concern. Nesting is expressed with the `subPanel()` helper,
+which keeps every definition file free of JSX. Static class members such as
+`type` and `properties` become properties on the exported function.
+
+What `src/` still imports from `lib/` is only framework-agnostic, non-UI code:
+the tween engine and easing functions, `Utils`, the `Color` and `Vector2` math
+types, `SVGPathProperties`, the loaders, `Stage`, `router`, `ticker` and
+`WebAudio`. Sharing these is what keeps motion identical to the vanilla version,
+and none of them render anything.
 
 Ports are checked against the pre-port pages with the parity harness, which
 renders a route and the original page side by side in headless Chromium and
@@ -293,6 +301,11 @@ npm install --no-save playwright-core   # once
 npm run parity                          # every route
 npm run parity -- tween magnetic        # specific routes
 ```
+
+Each route is compared twice: once idle, and once with the pointer at the centre
+of the viewport. Much of this UI — `Point3D` panels, radial graphs, trackers —
+only appears on hover, so an idle screenshot alone will happily pass a route
+whose panel is broken. Both columns must read `0`.
 
 A pixel count tells you *that* a route differs. To see *what* differs, the
 layout harness walks the rendered tree of both pages and dumps tag names,
