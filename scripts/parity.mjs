@@ -36,6 +36,14 @@ import path from 'node:path';
 import { EXECUTABLE, WORKTREE, build, ensureReference, launch, listRoutes, openPage, run, serve } from './harness.mjs';
 
 const SETTLE = Number(process.env.PARITY_SETTLE || 3500);
+
+// Extra settle after moving the pointer, to let hover transitions finish.
+const HOVER_SETTLE = Number(process.env.PARITY_HOVER_SETTLE || 1500);
+
+// Centre of the harness viewport (see `openPage` in harness.mjs).  The 3D
+// examples place their interactive points around the middle of the screen,
+// so hovering here is what reveals their panels and graphs.
+const VIEWPORT_CENTRE = { x: 640, y: 400 };
 const OUT = process.env.PARITY_OUT || '/tmp/parity';
 const DIST = '/tmp/parity-dist';
 const REFERENCE_PORT = 8099;
@@ -62,8 +70,13 @@ function isNoise(text) {
  * Returns `{ errors, blank }`, where `errors` are console errors that are not
  * noise and `blank` is true when the page rendered nothing — a blank page on
  * both sides compares as a perfect match, so callers must treat it as failure.
+ *
+ * When `hover` is set the pointer is moved to the centre of the viewport
+ * before the screenshot, so that hover-activated UI (3D point panels, radial
+ * graphs, trackers) is actually exercised.  Without this pass the comparison
+ * is blind to every example whose panel or graph only appears on hover.
  */
-async function capture(browser, url, file) {
+async function capture(browser, url, file, { hover = false } = {}) {
     const page = await openPage(browser);
 
     const errors = [];
@@ -88,6 +101,11 @@ async function capture(browser, url, file) {
 
     await page.goto(url, { waitUntil: 'load' }).catch(() => {});
     await page.waitForTimeout(SETTLE);
+
+    if (hover) {
+        await page.mouse.move(VIEWPORT_CENTRE.x, VIEWPORT_CENTRE.y);
+        await page.waitForTimeout(HOVER_SETTLE);
+    }
 
     const blank = await page
         .evaluate(() => {
@@ -156,6 +174,29 @@ async function main() {
 
         const consoleErrors = [...current.errors];
 
+        // Second pass with the pointer over the centre of the page.  Static
+        // screenshots alone pass even when hover-activated UI is broken, so
+        // this is where panel and graph regressions actually surface.
+        const referenceHover = await capture(
+            browser,
+            `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`,
+            path.join(OUT, `${name}-reference-hover.png`),
+            { hover: true }
+        );
+
+        const currentHover = await capture(
+            browser,
+            `http://127.0.0.1:${CURRENT_PORT}/examples/${route}`,
+            path.join(OUT, `${name}-current-hover.png`),
+            { hover: true }
+        );
+
+        consoleErrors.push(...currentHover.errors.filter(e => !consoleErrors.includes(e)));
+
+        if (referenceHover.blank !== currentHover.blank) {
+            consoleErrors.push(referenceHover.blank ? 'reference page rendered nothing on hover' : 'current page rendered nothing on hover');
+        }
+
         // A blank page on one side only makes the pixel count meaningless.
         // Some pages legitimately render nothing (console-only test pages), so
         // blank on both sides is not a failure.
@@ -169,15 +210,21 @@ async function main() {
             path.join(OUT, `${name}-diff.png`)
         );
 
-        const pass = pixels === 0 && consoleErrors.length === 0;
+        const hoverPixels = compare(
+            path.join(OUT, `${name}-reference-hover.png`),
+            path.join(OUT, `${name}-current-hover.png`),
+            path.join(OUT, `${name}-hover-diff.png`)
+        );
 
-        results.push({ route, pixels, errors: consoleErrors, pass });
+        const pass = pixels === 0 && hoverPixels === 0 && consoleErrors.length === 0;
+
+        results.push({ route, pixels, hoverPixels, errors: consoleErrors, pass });
 
         // Per-route immediate output (backwards-compatible format)
         if (pixels === null) {
             console.log(`${route}: captured (install ImageMagick for a pixel count)`);
         } else {
-            console.log(`${route}: ${pixels} differing pixels`);
+            console.log(`${route}: ${pixels} differing pixels, ${hoverPixels} on hover`);
         }
 
         for (const err of consoleErrors) {
@@ -192,18 +239,19 @@ async function main() {
 
     // Summary table
     const colRoute = Math.max(5, ...results.map(r => r.route.length));
-    const header = `${'route'.padEnd(colRoute)}  ${'pixels'.padStart(6)}  status`;
+    const header = `${'route'.padEnd(colRoute)}  ${'pixels'.padStart(6)}  ${'hover'.padStart(6)}  status`;
     const separator = '─'.repeat(header.length);
 
     console.log(`\n${separator}`);
     console.log(header);
     console.log(separator);
 
-    for (const { route, pixels, errors, pass } of results) {
-        const pixStr = pixels === null ? '    —' : String(pixels).padStart(6);
+    for (const { route, pixels, hoverPixels, errors, pass } of results) {
+        const pixStr = pixels === null ? '     —' : String(pixels).padStart(6);
+        const hoverStr = hoverPixels === null ? '     —' : String(hoverPixels).padStart(6);
         const status = pass ? '✓ pass' : `✗ FAIL${errors.length ? ` (${errors.length} error${errors.length > 1 ? 's' : ''})` : ''}`;
 
-        console.log(`${route.padEnd(colRoute)}  ${pixStr}  ${status}`);
+        console.log(`${route.padEnd(colRoute)}  ${pixStr}  ${hoverStr}  ${status}`);
     }
 
     console.log(separator);

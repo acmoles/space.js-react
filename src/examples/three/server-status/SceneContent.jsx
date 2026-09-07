@@ -17,8 +17,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
     Panel,
     PanelItem,
-    RadialGraphContainer,
-    RadialGraphSegmentsCanvas,
     Stage,
     clearTween,
     delayedCall,
@@ -27,7 +25,8 @@ import {
     tween
 } from '@lib/three.js';
 
-import { Point3D, Points3D, usePoint3DContext } from '../../../space/three/index.js';
+import { RadialGraphSegmentsCanvas } from '../../../space/components/radial/index.js';
+import { Point3D, Point3DGraph, Points3D, usePoint3DContext } from '../../../space/three/index.js';
 
 import { Data } from './utils.js';
 import { GraphData, TimestampData } from './data.js';
@@ -68,59 +67,12 @@ function initPanel(ctrl, setPointConfig) {
     const { view } = ctrl;
     const object = view;
 
-    // ── Radial graphs ────────────────────────────────────────────────────────
+    // ── Radial graphs (now React refs — components rendered in TrackedPoint) ──
 
-    object.graph = new RadialGraphContainer({
-        start: -45,
-        graphHeight: 40
-    });
-
-    object.latencyAvgGraph = new RadialGraphSegmentsCanvas({
-        start: -45,
-        graphHeight: 40,
-        resolution: 102,
-        tension: 12,
-        lookupPrecision: [25, 200],
-        segments: [12, 90],
-        ratio: [0.125, 0.875],
-        labels: ['', '12hrs'],
-        range: 300,
-        suffix: 'ms',
-        hoverLabels: true,
-        noMarkerDrag: true
-    });
-    object.graph.add(object.latencyAvgGraph);
-
-    object.loadAvgGraph = new RadialGraphSegmentsCanvas({
-        start: -45,
-        graphHeight: 40,
-        resolution: 102,
-        tension: 6,
-        lookupPrecision: [25, 200],
-        segments: [12, 90],
-        ratio: [0.125, 0.875],
-        labels: ['', '12hrs'],
-        range: 400,
-        suffix: '%',
-        hoverLabels: true,
-        noMarkerDrag: true
-    });
-    object.graph.add(object.loadAvgGraph);
-
-    object.clientsGraph = new RadialGraphSegmentsCanvas({
-        start: -45,
-        graphHeight: 40,
-        resolution: 102,
-        tension: 12,
-        lookupPrecision: [25, 200],
-        segments: [12, 90],
-        ratio: [0.125, 0.875],
-        labels: ['', '12hrs'],
-        range: 10,
-        hoverLabels: true,
-        noMarkerDrag: true
-    });
-    object.graph.add(object.clientsGraph);
+    object.latencyAvgGraph = ctrl.latencyAvgGraphRef.current;
+    object.loadAvgGraph = ctrl.loadAvgGraphRef.current;
+    object.clientsGraph = ctrl.clientsGraphRef.current;
+    object.graph = ctrl.graphRef.current;
 
     object.graph.setIndex(1);
 
@@ -176,7 +128,6 @@ function initPanel(ctrl, setPointConfig) {
     object.panel = panel;
 
     setPointConfig({
-        graph: object.graph,
         name: Data.getName(),
         panel,
         type: Data.getType()
@@ -470,15 +421,68 @@ function TrackedPoint({ ctrlRef, mesh, pointConfig, pointRef }) {
         };
     }, [ctrlRef, ctx]);
 
+    const ctrl = ctrlRef.current;
+
     return (
         <Point3D
             object={mesh}
-            graph={pointConfig.graph}
             name={pointConfig.name}
             panel={pointConfig.panel}
             ref={pointRef}
             type={pointConfig.type}
-        />
+        >
+            <Point3DGraph
+                ref={ctrl.graphRef}
+                start={-45}
+                graphHeight={40}
+                graphRefs={ctrl.graphRefs}
+            >
+                <RadialGraphSegmentsCanvas
+                    ref={ctrl.latencyAvgGraphRef}
+                    start={-45}
+                    graphHeight={40}
+                    resolution={102}
+                    tension={12}
+                    lookupPrecision={[25, 200]}
+                    segments={[12, 90]}
+                    ratio={[0.125, 0.875]}
+                    labels={['', '12hrs']}
+                    range={300}
+                    suffix="ms"
+                    hoverLabels
+                    noMarkerDrag
+                />
+                <RadialGraphSegmentsCanvas
+                    ref={ctrl.loadAvgGraphRef}
+                    start={-45}
+                    graphHeight={40}
+                    resolution={102}
+                    tension={6}
+                    lookupPrecision={[25, 200]}
+                    segments={[12, 90]}
+                    ratio={[0.125, 0.875]}
+                    labels={['', '12hrs']}
+                    range={400}
+                    suffix="%"
+                    hoverLabels
+                    noMarkerDrag
+                />
+                <RadialGraphSegmentsCanvas
+                    ref={ctrl.clientsGraphRef}
+                    start={-45}
+                    graphHeight={40}
+                    resolution={102}
+                    tension={12}
+                    lookupPrecision={[25, 200]}
+                    segments={[12, 90]}
+                    ratio={[0.125, 0.875]}
+                    labels={['', '12hrs']}
+                    range={10}
+                    hoverLabels
+                    noMarkerDrag
+                />
+            </Point3DGraph>
+        </Point3D>
     );
 }
 

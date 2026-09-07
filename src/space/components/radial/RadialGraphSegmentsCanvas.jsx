@@ -166,6 +166,7 @@ export function RadialGraphSegmentsCanvas({
         labelsAnimatedIn: false,
         hoveredIn: false,
         labelHoveredIn: false,
+        needsUpdate: false,
         graphNeedsUpdate: false,
         initialized: false,
         enabled: true,
@@ -847,6 +848,30 @@ export function RadialGraphSegmentsCanvas({
 
             get startAngle() {
                 return s.startAngle;
+            },
+
+            get array() {
+                return s.array;
+            },
+
+            get ghostArray() {
+                return s.ghostArray;
+            },
+
+            get needsUpdate() {
+                return s.needsUpdate;
+            },
+
+            set needsUpdate(v) {
+                s.needsUpdate = v;
+            },
+
+            get graphNeedsUpdate() {
+                return s.graphNeedsUpdate;
+            },
+
+            set graphNeedsUpdate(v) {
+                s.graphNeedsUpdate = v;
             },
 
             setContext(context) {
