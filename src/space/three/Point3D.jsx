@@ -15,6 +15,7 @@
 
 import { createRoot } from 'react-dom/client';
 import { Children, isValidElement, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { useStore } from '@react-three/fiber';
 import { MeshBasicMaterial, Vector2 } from 'three';
 
 import { getBoundingSphereWorld, getScreenSpaceBox } from '@lib/three.js';
@@ -157,6 +158,7 @@ export function Point3D({
     children
 }) {
     const ctx = usePoint3DContext();
+    const store = useStore();
     const graphValue = resolveMaybeRef(graph);
     const panelValue = resolveMaybeRef(panel);
 
@@ -179,7 +181,9 @@ export function Point3D({
 
     // A registered child wins over the imperative prop, so call sites can move
     // to declarative composition one at a time.
-    const resolveGraph = useCallback(() => childGraphRef.current?.current ?? graphRef.current, []);
+    const resolveGraph = useCallback(() => {
+        return childGraphRef.current?.current ?? graphRef.current;
+    }, []);
     const resolvePanel = useCallback(() => childPanelRef.current?.current ?? panelPropRef.current, []);
     useEffect(() => { onHoverPropRef.current = onHoverProp; }, [onHoverProp]);
     useEffect(() => { onClickPropRef.current = onClickProp; }, [onClickProp]);
@@ -387,8 +391,11 @@ export function Point3D({
     }, [ctx]);
 
     // Graph element lifecycle — append/remove graph.element from our overlay div.
+    // Only applies to a vanilla graph passed via the `graph` prop: a
+    // <Point3DGraph> child renders itself into the overlay and wires its own
+    // context and cursor events, so it has no `element` or `events` to manage.
     useEffect(() => {
-        const g = resolveGraph();
+        const g = graphRef.current;
         const el = overlayDivRef.current; // capture before async cleanup
         if (!g || !el) return undefined;
 
@@ -409,11 +416,13 @@ export function Point3D({
                 el.removeChild(g.element);
             }
         };
-    }, [ctx, graphValue, resolveGraph]);
+    }, [ctx, graphValue]);
 
-    // Panel element lifecycle — portal lib Panel DOM element into the overlay div.
+    // Panel element lifecycle — portal a vanilla lib Panel's DOM element into
+    // the overlay div.  A <Point3DPanel> child renders itself into the overlay,
+    // so it has no `element` to portal.
     useEffect(() => {
-        const p = resolvePanel();
+        const p = panelPropRef.current;
 
         if (!p?.element) return undefined;
 
@@ -428,7 +437,7 @@ export function Point3D({
                 el.removeChild(p.element);
             }
         };
-    }, [panelValue, ctx, resolvePanel]);
+    }, [panelValue, ctx]);
 
     // --- Stable API object registered with Points3D ---------------------------
 
@@ -647,7 +656,9 @@ export function Point3D({
             _setIndex: i => { indexRef.current = i; },
 
             _update: () => {
-                const cam = cameraRef.current;
+                // Prefer an explicitly provided camera, otherwise fall back to
+                // the live R3F store camera.
+                const cam = cameraRef.current || store.getState().camera;
                 const c = ctxRef.current;
                 if (!cam || !sphereRef.current || !c) return;
 

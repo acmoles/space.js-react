@@ -1,67 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { BoxGeometry } from 'three';
 
-import { Panel, PanelItem } from '@lib/three.js';
 import { Example } from '@/components';
 import { UI } from '@/space/index.js';
 
-import { Point3D, Points3D, useRadialGraphCanvas } from '../../space/three/index.js';
+import { RadialGraphCanvas } from '../../space/components/radial/index.js';
+import { Point3D, Point3DGraph, Point3DPanel, Points3D } from '../../space/three/index.js';
 
-// ─── useUpdatePanel ────────────────────────────────────────────────────────────
-
-function useUpdatePanel(graphRef) {
-    const panelRef = useRef(null);
-    const storeRef = useRef({
-        listeners: new Set(),
-        version: 0
-    });
-
-    const notify = useCallback(() => {
-        storeRef.current.version += 1;
-        storeRef.current.listeners.forEach(listener => listener());
-    }, []);
-
-    const subscribe = useCallback(listener => {
-        storeRef.current.listeners.add(listener);
-
-        return () => {
-            storeRef.current.listeners.delete(listener);
-        };
-    }, []);
-
-    const getSnapshot = useCallback(() => storeRef.current.version, []);
-
-    useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-
-    useEffect(() => {
-        const panel = new Panel();
-
-        panel.add(new PanelItem({
-            type: 'link',
-            value: 'Update',
-            callback: value => {
-                console.log('Update callback:', value);
-                graphRef.current?.setArray([0.12, 0.28, 0.41, 0.57, 0.73, 0.66, 0.5, 0.34, 0.22, 0.48]);
-            }
-        }));
-
-        panelRef.current = panel;
-        notify();
-
-        return () => {
-            if (panelRef.current === panel) {
-                panelRef.current = null;
-                notify();
-            }
-
-            panel.destroy?.();
-        };
-    }, [graphRef, notify]);
-
-    return panelRef;
-}
+const GRAPH_VALUE = [0.18, 0.32, 0.47, 0.63, 0.78, 0.71, 0.54, 0.39, 0.24, 0.12];
+const UPDATED_VALUE = [0.12, 0.28, 0.41, 0.57, 0.73, 0.66, 0.5, 0.34, 0.22, 0.48];
 
 function Scene({ overlayEl }) {
     const meshRef = useRef(null);
@@ -73,15 +22,19 @@ function Scene({ overlayEl }) {
         return nextGeometry;
     }, []);
 
-    const graphRef = useRadialGraphCanvas({
-        value: [0.18, 0.32, 0.47, 0.63, 0.78, 0.71, 0.54, 0.39, 0.24, 0.12],
-        start: -45,
-        graphHeight: 40,
-        precision: 2,
-        lookupPrecision: 200
-    });
+    const graphRef = useRef(null);
+    const graphRefs = useMemo(() => [graphRef], []);
 
-    const panelRef = useUpdatePanel(graphRef);
+    const panelItems = useMemo(() => [
+        {
+            type: 'link',
+            value: 'Update',
+            callback: value => {
+                console.log('Update callback:', value);
+                graphRef.current?.setArray(UPDATED_VALUE);
+            }
+        }
+    ], []);
 
     const handleMeshRef = useCallback(nextMesh => {
         meshRef.current = nextMesh;
@@ -114,11 +67,25 @@ function Scene({ overlayEl }) {
                 <Points3D container={overlayEl}>
                     <Point3D
                         object={mesh}
-                        graph={graphRef}
                         name="127.0.0.1"
-                        panel={panelRef}
                         type="localhost"
-                    />
+                    >
+                        <Point3DGraph
+                            start={-45}
+                            graphHeight={40}
+                            graphRefs={graphRefs}
+                        >
+                            <RadialGraphCanvas
+                                ref={graphRef}
+                                value={GRAPH_VALUE}
+                                start={-45}
+                                graphHeight={40}
+                                precision={2}
+                                lookupPrecision={200}
+                            />
+                        </Point3DGraph>
+                        <Point3DPanel items={panelItems} />
+                    </Point3D>
                 </Points3D>
             )}
             <OrbitControls enableDamping />
