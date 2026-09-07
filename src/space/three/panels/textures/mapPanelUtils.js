@@ -8,7 +8,7 @@
 
 import { Mesh, MeshBasicMaterial, OrthographicCamera, WebGLRenderer } from 'three';
 
-import { getFullscreenTriangle, getSphericalCube } from '../../utils/Utils3D.js';
+import { getFullscreenTriangle, getSphericalCube } from '@lib/three/utils/Utils3D.js';
 
 let renderer;
 let camera;

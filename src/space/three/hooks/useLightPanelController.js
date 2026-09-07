@@ -14,7 +14,7 @@
 import { useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 
-import { LightPanelController } from '@lib/three.js';
+import { LightPanelController } from '../panels/lights/lightPanelController.js';
 
 function resolveUi(target) {
     if (target && typeof target === 'object' && 'current' in target) {

@@ -31,7 +31,12 @@ export function List({ list, value, onChange, children, ref }) {
 
     // keysState mirrors keys.current for rendering (JSX cannot read ref.current)
     const [keysState, setKeysState] = useState(() => Array.from(list.keys()));
-    const [index, setIndexState] = useState(() => Array.from(list.values()).indexOf(value));
+    // The original resolves the initial index against the list KEYS
+    // (List.js: `this.index = this.keys.indexOf(value)`), while `setValue()`
+    // resolves against the values.  Panel definitions pass a key here, so
+    // matching on values would yield -1 for any list whose keys and values
+    // differ (e.g. VisibleOptions, MaterialOptions).
+    const [index, setIndexState] = useState(() => Array.from(list.keys()).indexOf(value));
     const [showContent, setShowContent] = useState(true);
 
     const indexRef = useRef(index);
@@ -47,6 +52,18 @@ export function List({ list, value, onChange, children, ref }) {
             onChange({ path: [], index: newIndex, value: keys.current[newIndex], target: null });
         }
     }, [onChange]);
+
+    // The original List calls `setIndex(this.index)` at the end of its
+    // constructor, which notifies with the initial value.  Panel definitions
+    // rely on that first callback to populate nested content, so mirror it on
+    // mount.  The ref guard keeps it to a single emit under StrictMode.
+    const emittedRef = useRef(false);
+
+    useEffect(() => {
+        if (emittedRef.current) return;
+        emittedRef.current = true;
+        emitChange(indexRef.current);
+    }, [emitChange]);
 
     // Sync toggle active state after every index change (toggle mode only)
     useEffect(() => {

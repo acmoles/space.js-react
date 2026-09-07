@@ -7,7 +7,7 @@ import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Example } from '@/components';
 import { UI } from '@/space/index.js';
 
-import { Point3D, Points3D, useMaterialsPanel } from '../../space/three/index.js';
+import { Point3D, Point3DPanel, Points3D, useMaterialsPanelItems } from '../../space/three/index.js';
 
 const color = new Color();
 const matrix = new Matrix4();
@@ -39,7 +39,7 @@ function Scene({ overlayEl }) {
         }
     }), []);
 
-    const panelRef = useMaterialsPanel(mesh, panelUi);
+    const panelItems = useMaterialsPanelItems(mesh, panelUi);
 
     const handleMeshRef = useCallback(nextMesh => {
         if (nextMesh) {
@@ -82,9 +82,10 @@ function Scene({ overlayEl }) {
                         object={mesh}
                         name={mesh.geometry.type}
                         type={mesh.material.type}
-                        panel={panelRef}
                         ref={pointRef}
-                    />
+                    >
+                        <Point3DPanel items={panelItems} />
+                    </Point3D>
                 </Points3D>
             )}
             <OrbitControls enableDamping enableZoom={false} enablePan={false} />

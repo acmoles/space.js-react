@@ -63,6 +63,13 @@ function Scene({ ui }) {
     );
 }
 
+// Matches the pre-port example, which adds a bare FPS row to the header panel.
+const PANEL_ITEMS = [
+    {
+        name: 'FPS'
+    }
+];
+
 /**
  * Declarative lights example with the light control panel.
  */
@@ -75,7 +82,7 @@ export default function Lights({ title }) {
 
     return (
         <Example title={title}>
-            <UI fps ref={uiRef} />
+            <UI fps panelItems={PANEL_ITEMS} ref={uiRef} />
             <Canvas
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}

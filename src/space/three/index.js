@@ -12,5 +12,7 @@ export { Point3DContext, usePoint3DContext } from './Point3DContext.js';
 export { Point3DOverlayContext, usePoint3DOverlayContext } from './Point3DOverlayContext.js';
 
 export { useLightPanelController } from './hooks/useLightPanelController.js';
-export { useMaterialsPanel } from './hooks/useMaterialsPanel.js';
+export { useMaterialsPanelItems } from './hooks/useMaterialsPanelItems.js';
 export { useProjectedPosition } from './hooks/useProjectedPosition.js';
+
+export * from './panels/index.js';

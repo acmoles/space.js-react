@@ -4,11 +4,10 @@ import { OrbitControls } from '@react-three/drei';
 import { Color, IcosahedronGeometry, InstancedBufferAttribute, Matrix4, MeshPhongMaterial } from 'three';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
-import { MaterialPanels, MaterialPatches, Panel, PanelItem } from '@lib/three.js';
 import { Example } from '@/components';
 import { UI } from '@/space/index.js';
 
-import { Point3D, Points3D, useMaterialsPanel } from '../../space/three/index.js';
+import { MaterialPanels, MaterialPatches, Point3D, Point3DPanel, Points3D, subPanel, useMaterialsPanelItems } from '../../space/three/index.js';
 
 const color = new Color();
 const matrix = new Matrix4();
@@ -54,83 +53,59 @@ MaterialPatches.Phong.instanceOpacity = function (shader) {
     );
 };
 
-class InstancedMeshPanel extends Panel {
-    constructor(mesh, ui, materialItems) {
-        super();
+// Overrides the built-in instanced-mesh panel with one that also exposes
+// per-instance opacity, backed by the `instanceOpacity` attribute patched into
+// the Phong shader above.
+function instancedMeshPanelItems(mesh, ui, materialItems) {
+    const point = ui.constructor.getPoint(mesh);
 
-        this.mesh = mesh;
-        this.ui = ui;
-        this.materialItems = materialItems;
+    return [
+        {
+            type: 'list',
+            name: 'Instance',
+            list: new Map([
+                ['Mesh', false],
+                ['Instance', true]
+            ]),
+            value: 'Mesh',
+            callback: (value, item) => {
+                if (value === 'Instance' && point) {
+                    const index = point.instances[0].index;
 
-        this.initPanel();
-    }
-
-    initPanel() {
-        const mesh = this.mesh;
-        const ui = this.ui;
-        const materialItems = this.materialItems;
-        const point = ui.constructor.getPoint(mesh);
-
-        const items = [
-            {
-                type: 'list',
-                name: 'Instance',
-                list: new Map([
-                    ['Mesh', false],
-                    ['Instance', true]
-                ]),
-                value: 'Mesh',
-                callback: (value, item) => {
-                    if (value === 'Instance' && point) {
-                        const index = point.instances[0].index;
-
-                        const instanceItems = [
-                            {
-                                type: 'divider'
-                            },
-                            {
-                                type: 'slider',
-                                name: 'Opacity',
-                                min: 0,
-                                max: 1,
-                                step: 0.01,
-                                value: mesh.geometry.attributes.instanceOpacity.getX(index),
-                                callback: nextValue => {
-                                    if (!mesh.material.transparent) {
-                                        mesh.material.transparent = true;
-                                        mesh.material.needsUpdate = true;
-                                    }
-
-                                    point.instances.forEach(instance => {
-                                        mesh.geometry.attributes.instanceOpacity.setX(instance.index, nextValue);
-                                    });
-
-                                    mesh.geometry.attributes.instanceOpacity.needsUpdate = true;
+                    item.setContent(subPanel([
+                        {
+                            type: 'divider'
+                        },
+                        {
+                            type: 'slider',
+                            name: 'Opacity',
+                            min: 0,
+                            max: 1,
+                            step: 0.01,
+                            value: mesh.geometry.attributes.instanceOpacity.getX(index),
+                            callback: nextValue => {
+                                if (!mesh.material.transparent) {
+                                    mesh.material.transparent = true;
+                                    mesh.material.needsUpdate = true;
                                 }
-                            }
-                        ];
 
-                        const instancePanel = new Panel();
-                        instancePanel.animateIn(true);
-                        instanceItems.forEach(data => instancePanel.add(new PanelItem(data)));
-                        item.setContent(instancePanel);
-                    } else {
-                        const materialPanel = new Panel();
-                        materialPanel.animateIn(true);
-                        materialItems.forEach(data => materialPanel.add(new PanelItem(data)));
-                        item.setContent(materialPanel);
-                    }
+                                point.instances.forEach(instance => {
+                                    mesh.geometry.attributes.instanceOpacity.setX(instance.index, nextValue);
+                                });
+
+                                mesh.geometry.attributes.instanceOpacity.needsUpdate = true;
+                            }
+                        }
+                    ]));
+                } else {
+                    item.setContent(subPanel(materialItems));
                 }
             }
-        ];
-
-        items.forEach(data => {
-            this.add(new PanelItem(data));
-        });
-    }
+        }
+    ];
 }
 
-MaterialPanels.InstancedMeshPanel = InstancedMeshPanel;
+MaterialPanels.instancedMeshPanelItems = instancedMeshPanelItems;
 
 function Scene({ overlayEl }) {
     const pointRef = useRef(null);
@@ -158,7 +133,7 @@ function Scene({ overlayEl }) {
         }
     }), []);
 
-    const panelRef = useMaterialsPanel(mesh, panelUi);
+    const panelItems = useMaterialsPanelItems(mesh, panelUi);
 
     const handleMeshRef = useCallback(nextMesh => {
         if (nextMesh) {
@@ -201,9 +176,10 @@ function Scene({ overlayEl }) {
                         object={mesh}
                         name={mesh.geometry.type}
                         type={mesh.material.type}
-                        panel={panelRef}
                         ref={pointRef}
-                    />
+                    >
+                        <Point3DPanel items={panelItems} />
+                    </Point3D>
                 </Points3D>
             )}
             <OrbitControls enableDamping enableZoom={false} enablePan={false} />

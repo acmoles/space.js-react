@@ -6,7 +6,7 @@ import { getSphericalCube } from '@lib/three.js';
 import { Example } from '@/components';
 import { UI } from '@/space/index.js';
 
-import { Point3D, Points3D, useMaterialsPanel } from '../../space/three/index.js';
+import { Point3D, Point3DPanel, Points3D, useMaterialsPanelItems } from '../../space/three/index.js';
 
 function Scene({ overlayEl }) {
     const pointRef = useRef(null);
@@ -31,7 +31,7 @@ function Scene({ overlayEl }) {
         }
     }), []);
 
-    const panelRef = useMaterialsPanel(mesh, panelUi);
+    const panelItems = useMaterialsPanelItems(mesh, panelUi);
 
     const handleMeshRef = useCallback(nextMesh => {
         meshRef.current = nextMesh;
@@ -66,9 +66,10 @@ function Scene({ overlayEl }) {
                         object={mesh}
                         name={mesh.geometry.type}
                         type={mesh.material.type}
-                        panel={panelRef}
                         ref={pointRef}
-                    />
+                    >
+                        <Point3DPanel items={panelItems} />
+                    </Point3D>
                 </Points3D>
             )}
             <OrbitControls enableDamping />
