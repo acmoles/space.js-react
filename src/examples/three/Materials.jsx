@@ -92,6 +92,7 @@ export default function Materials({ title }) {
         <Example title={title}>
             <UI fps ref={uiRef} />
             <Canvas
+                flat
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}

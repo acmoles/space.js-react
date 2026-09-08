@@ -108,9 +108,10 @@ function Point3DOverlay({
                     snapFn={snapFn}
                     targetNumbers={targetNumbers}
                     trackerRef={trackerRef}
-                />
+                >
+                    {children}
+                </Point>
             )}
-            {children}
         </>
     );
 }

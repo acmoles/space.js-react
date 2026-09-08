@@ -18,7 +18,10 @@
  *
  * Real timers (`setTimeout`/`setInterval`) are deliberately left alone: module
  * loading, texture decoding and font loading depend on them, and stubbing them
- * out deadlocks the page before it ever renders.
+ * out deadlocks the page before it ever renders.  Because some intro sequences
+ * *are* driven by real timers, the frames must be stepped in small chunks with
+ * a little real time in between (see `advance`), or those pages never start and
+ * capture as an empty background.
  *
  * Applied identically to the reference page and the ported page, so it cannot
  * mask a difference between them — it only stops them disagreeing with
@@ -122,15 +125,39 @@ export async function installDeterministicClock(page, { seed = 1, baseDate = 170
 /**
  * Advances the page's virtual clock by `frames` frames.
  *
+ * Stepped in small chunks with a short real pause between them, so that
+ * anything driven by a real `setTimeout` (intro sequences, deferred mounts)
+ * still gets a chance to run.  Stepping all the frames in one synchronous call
+ * starves those pages and they capture as a blank background.
+ *
+ * The frame *count* stays fixed, so the result is still deterministic; only the
+ * wall-clock spacing varies.
+ *
  * Resolves without doing anything if the clock is not installed, so callers
  * can share a capture path with harnesses that do not use it.
+ *
+ * @param {import('playwright-core').Page} page
+ * @param {number} frames
+ * @param {object} [options]
+ * @param {number} [options.chunk=10]   Frames per synchronous step.
+ * @param {number} [options.pause=40]   Real milliseconds between steps.
  */
-export async function advance(page, frames) {
-    await page
-        .evaluate(count => {
-            if (typeof window.__parityAdvance === 'function') {
-                window.__parityAdvance(count);
-            }
-        }, frames)
-        .catch(() => {});
+export async function advance(page, frames, { chunk = 10, pause = 40 } = {}) {
+    for (let done = 0; done < frames; done += chunk) {
+        const count = Math.min(chunk, frames - done);
+
+        const ok = await page
+            .evaluate(n => {
+                if (typeof window.__parityAdvance !== 'function') return false;
+
+                window.__parityAdvance(n);
+
+                return true;
+            }, count)
+            .catch(() => false);
+
+        if (!ok) return;
+
+        await page.waitForTimeout(pause);
+    }
 }

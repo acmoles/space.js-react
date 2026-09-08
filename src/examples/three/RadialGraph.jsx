@@ -111,6 +111,7 @@ export default function RadialGraph({ title }) {
         <Example title={title}>
             <UI ref={uiRef} fps />
             <Canvas
+                flat
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}

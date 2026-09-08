@@ -139,6 +139,16 @@ async function capture(browser, url, file, { hover = false } = {}) {
     if (DETERMINISTIC) {
         // Real time only to finish loading; the animation is stepped by hand so
         // that the capture lands on an exact frame.
+        //
+        // Two passes: some intros are kicked off by a real timer that has not
+        // fired by the end of the first pass, leaving their reveal tween parked
+        // at frame zero (the `close` and `progress` examples capture as an empty
+        // background that way).  A second settle lets those timers land, and the
+        // second pass runs their animation to completion.  Animations that
+        // already finished are unaffected, so the frame count stays fixed and
+        // the result stays deterministic.
+        await page.waitForTimeout(LOAD_SETTLE);
+        await advance(page, FRAMES);
         await page.waitForTimeout(LOAD_SETTLE);
         await advance(page, FRAMES);
     } else {

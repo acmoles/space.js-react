@@ -44,6 +44,7 @@ export function Point({
     onUiUnlock,
     onUiHide,
     snapFn,
+    children,
     ref
 }) {
     const targetRef = useRef({ x: 0, y: 0 });
@@ -336,6 +337,7 @@ export function Point({
                 targetNumbers={targetNumbers}
                 onContainerHover={handleContainerHover}
             />
+            {children}
         </div>
     );
 }

@@ -202,6 +202,7 @@ export default function MaterialsInstancingModified({ title }) {
         <Example title={title}>
             <UI fps ref={uiRef} />
             <Canvas
+                flat
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 60, near: 1, far: 2000, position: [amount, amount, amount] }}

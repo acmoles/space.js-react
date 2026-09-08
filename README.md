@@ -331,13 +331,53 @@ npm run smoke                           # every route
 npm run smoke -- panel fps_panel        # specific routes
 ```
 
-With `compare` actually available, most routes do **not** currently reach pixel
-parity: only 6 of 56 pass. To tell a real difference from animation noise, the
-same reference page can be captured twice and diffed against itself. The 3D
-routes are deterministic (0 px reference-vs-reference), so their diffs are real
-regressions; animated 2D routes such as `test_meter` and `test_radial_graph`
-have a genuine noise floor of hundreds to tens of thousands of pixels and need a
-tolerance or a paused clock before their numbers mean anything.
+##### Noise, and why the numbers can be trusted now
+
+The examples animate continuously and many feed `Math.random()` into graphs and
+meters, so two captures of the *same* page used to disagree by hundreds to tens
+of thousands of pixels. That noise floor was indistinguishable from a real
+regression.
+
+`scripts/deterministic.mjs` removes both sources of it, on both sides of the
+comparison:
+
+- `requestAnimationFrame`, `performance.now()` and `Date.now()` are replaced by
+  a virtual clock that only moves when the harness steps it, so a capture lands
+  on an exact frame rather than "wherever the screenshot happened to fall".
+- `Math.random()` is replaced by a seeded PRNG, so a page plotting random data
+  plots the same data every run.
+
+Real timers are left alone, because module loading and texture decoding depend
+on them.
+
+The floor is measured rather than assumed — `PARITY_NOISE=1` captures the
+reference a second time and diffs it against itself, and that self-diff becomes
+the route's tolerance:
+
+```sh
+PARITY_NOISE=1 npm run parity -- test_radial_graph
+```
+
+`test_radial_graph` went from a 19,845 px floor to 0, and `test_meter` from 764
+to 0, so the default tolerance is 0 and a "0 differing pixels" claim now means
+something.
+
+##### Known gaps
+
+Four routes — `close`, `progress`, `progress_indeterminate` and `audio_stream` —
+capture as an empty background under the deterministic clock. Their markup and
+geometry are correct and identical to the reference (verified via
+`getBoundingClientRect` and computed styles), but their reveal tween never
+receives frames, so nothing is painted. This is a harness limitation, not a
+confirmed port regression; it is **not** worked around with a per-route
+tolerance. Under the real clock these routes are phase-sensitive and drift
+(`audio_stream` measured 2,139 px), so neither mode currently proves them.
+Run them with `PARITY_DETERMINISTIC=0` for a rough check until the reveal is
+traced.
+
+`thread_canvas` draws from a worker. `page.addInitScript` does not reach worker
+contexts, so its `Math.random()` is unseeded and its noise floor is the whole
+viewport. Its pixel number is meaningless until the worker is seeded too.
 
 Ten routes report `reference page rendered nothing` and are counted as
 failures even though they show zero differing pixels. This is expected in a

@@ -329,6 +329,7 @@ export function ServerStatusScene({ title, createSource }) {
             )}
 
             <Canvas
+                flat
                 gl={{ antialias: true }}
                 dpr={window.devicePixelRatio}
                 camera={{ fov: 35, near: 1, far: 2000, position: [0, 0, 10] }}
