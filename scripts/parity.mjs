@@ -34,8 +34,37 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { EXECUTABLE, WORKTREE, build, ensureReference, launch, listRoutes, openPage, run, serve } from './harness.mjs';
+import { advance, installDeterministicClock } from './deterministic.mjs';
 
 const SETTLE = Number(process.env.PARITY_SETTLE || 3500);
+
+// With the deterministic clock installed the page does not animate on its own,
+// so a real-time settle only needs to cover module loading, texture decoding
+// and font loading; the animation itself is stepped explicitly.
+const LOAD_SETTLE = Number(process.env.PARITY_LOAD_SETTLE || 1500);
+
+// Virtual frames to step before capturing.  Any fixed number works — it just
+// has to be the same for both sides.  120 frames is two seconds of animation,
+// enough for intro transitions to have finished.
+const FRAMES = Number(process.env.PARITY_FRAMES || 120);
+
+// Frames to step after moving the pointer, to let hover transitions finish.
+const HOVER_FRAMES = Number(process.env.PARITY_HOVER_FRAMES || 60);
+
+// The deterministic clock can be disabled to compare against the old
+// behaviour, or to check whether it is itself causing a difference.
+const DETERMINISTIC = process.env.PARITY_DETERMINISTIC !== '0';
+
+// Captures the reference page a second time and diffs it against itself.  That
+// self-diff is the measurement noise floor: no comparison against the port can
+// be more precise than it, so it is used as the per-route tolerance.  With the
+// deterministic clock the floor should be 0 on every route, which is what makes
+// a strict "0 differing pixels" claim meaningful in the first place.
+const MEASURE_NOISE = process.env.PARITY_NOISE === '1';
+
+// Flat fallback tolerance, for the rare route that cannot be made
+// deterministic.  Defaults to 0 — strict.
+const TOLERANCE = Number(process.env.PARITY_TOLERANCE || 0);
 
 // Extra settle after moving the pointer, to let hover transitions finish.
 const HOVER_SETTLE = Number(process.env.PARITY_HOVER_SETTLE || 1500);
@@ -45,9 +74,11 @@ const HOVER_SETTLE = Number(process.env.PARITY_HOVER_SETTLE || 1500);
 // so hovering here is what reveals their panels and graphs.
 const VIEWPORT_CENTRE = { x: 640, y: 400 };
 const OUT = process.env.PARITY_OUT || '/tmp/parity';
-const DIST = '/tmp/parity-dist';
-const REFERENCE_PORT = 8099;
-const CURRENT_PORT = 4199;
+// Overridable so two harness runs (or two agents) can work concurrently
+// without fighting over ports or the build directory.
+const DIST = process.env.PARITY_DIST || '/tmp/parity-dist';
+const REFERENCE_PORT = Number(process.env.PARITY_REFERENCE_PORT || 8099);
+const CURRENT_PORT = Number(process.env.PARITY_CURRENT_PORT || 4199);
 
 // Console noise that is expected in the sandbox and must not fail a route.
 const NOISE_PATTERNS = [
@@ -79,6 +110,10 @@ function isNoise(text) {
 async function capture(browser, url, file, { hover = false } = {}) {
     const page = await openPage(browser);
 
+    if (DETERMINISTIC) {
+        await installDeterministicClock(page);
+    }
+
     const errors = [];
 
     page.on('console', msg => {
@@ -100,11 +135,24 @@ async function capture(browser, url, file, { hover = false } = {}) {
     });
 
     await page.goto(url, { waitUntil: 'load' }).catch(() => {});
-    await page.waitForTimeout(SETTLE);
+
+    if (DETERMINISTIC) {
+        // Real time only to finish loading; the animation is stepped by hand so
+        // that the capture lands on an exact frame.
+        await page.waitForTimeout(LOAD_SETTLE);
+        await advance(page, FRAMES);
+    } else {
+        await page.waitForTimeout(SETTLE);
+    }
 
     if (hover) {
         await page.mouse.move(VIEWPORT_CENTRE.x, VIEWPORT_CENTRE.y);
-        await page.waitForTimeout(HOVER_SETTLE);
+
+        if (DETERMINISTIC) {
+            await advance(page, HOVER_FRAMES);
+        } else {
+            await page.waitForTimeout(HOVER_SETTLE);
+        }
     }
 
     const blank = await page
@@ -234,16 +282,55 @@ async function main() {
             path.join(OUT, `${name}-hover-diff.png`)
         );
 
-        // `null` means the comparison could not be made, which is not a pass.
-        const pass = pixels === 0 && hoverPixels === 0 && consoleErrors.length === 0;
+        // Noise floor: the same reference page, captured again and diffed
+        // against itself.  Anything at or below this is indistinguishable from
+        // run-to-run variation.
+        let noise = TOLERANCE;
+        let hoverNoise = TOLERANCE;
 
-        results.push({ route, pixels, hoverPixels, errors: consoleErrors, pass });
+        if (MEASURE_NOISE) {
+            await capture(
+                browser,
+                `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`,
+                path.join(OUT, `${name}-reference-2.png`)
+            );
+
+            await capture(
+                browser,
+                `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`,
+                path.join(OUT, `${name}-reference-2-hover.png`),
+                { hover: true }
+            );
+
+            noise = Math.max(TOLERANCE, compare(
+                path.join(OUT, `${name}-reference.png`),
+                path.join(OUT, `${name}-reference-2.png`),
+                path.join(OUT, `${name}-noise-diff.png`)
+            ) ?? TOLERANCE);
+
+            hoverNoise = Math.max(TOLERANCE, compare(
+                path.join(OUT, `${name}-reference-hover.png`),
+                path.join(OUT, `${name}-reference-2-hover.png`),
+                path.join(OUT, `${name}-noise-hover-diff.png`)
+            ) ?? TOLERANCE);
+        }
+
+        // `null` means the comparison could not be made, which is not a pass.
+        const pass = pixels !== null
+            && hoverPixels !== null
+            && pixels <= noise
+            && hoverPixels <= hoverNoise
+            && consoleErrors.length === 0;
+
+        results.push({ route, pixels, hoverPixels, noise, hoverNoise, errors: consoleErrors, pass });
 
         // Per-route immediate output (backwards-compatible format)
         if (pixels === null || hoverPixels === null) {
             console.log(`${route}: ✗ NOT COMPARED — install ImageMagick (\`compare\`) to measure pixel parity`);
         } else {
-            console.log(`${route}: ${pixels} differing pixels, ${hoverPixels} on hover`);
+            const floor = MEASURE_NOISE ? ` (noise floor ${noise}/${hoverNoise})` : '';
+
+            console.log(`${route}: ${pixels} differing pixels, ${hoverPixels} on hover${floor}`);
         }
 
         for (const err of consoleErrors) {
@@ -258,19 +345,21 @@ async function main() {
 
     // Summary table
     const colRoute = Math.max(5, ...results.map(r => r.route.length));
-    const header = `${'route'.padEnd(colRoute)}  ${'pixels'.padStart(6)}  ${'hover'.padStart(6)}  status`;
+    const noiseHeader = MEASURE_NOISE ? `  ${'noise'.padStart(6)}  ${'nhover'.padStart(6)}` : '';
+    const header = `${'route'.padEnd(colRoute)}  ${'pixels'.padStart(6)}  ${'hover'.padStart(6)}${noiseHeader}  status`;
     const separator = '─'.repeat(header.length);
 
     console.log(`\n${separator}`);
     console.log(header);
     console.log(separator);
 
-    for (const { route, pixels, hoverPixels, errors, pass } of results) {
+    for (const { route, pixels, hoverPixels, noise, hoverNoise, errors, pass } of results) {
         const pixStr = pixels === null ? '     —' : String(pixels).padStart(6);
         const hoverStr = hoverPixels === null ? '     —' : String(hoverPixels).padStart(6);
         const status = pass ? '✓ pass' : `✗ FAIL${errors.length ? ` (${errors.length} error${errors.length > 1 ? 's' : ''})` : ''}`;
+        const noiseStr = MEASURE_NOISE ? `  ${String(noise).padStart(6)}  ${String(hoverNoise).padStart(6)}` : '';
 
-        console.log(`${route.padEnd(colRoute)}  ${pixStr}  ${hoverStr}  ${status}`);
+        console.log(`${route.padEnd(colRoute)}  ${pixStr}  ${hoverStr}${noiseStr}  ${status}`);
     }
 
     console.log(separator);
