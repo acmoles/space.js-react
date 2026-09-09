@@ -138,7 +138,7 @@ export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, ref
 
     return (
         <div ref={rootRef} className="info header-info" style={{ float: 'right', padding: '10px' }}>
-            <span ref={numberRef} className="number">0</span>
+            <div ref={numberRef} className="number">0</div>
             {hasPanel && (
                 <Panel
                     ref={panelRef}

@@ -445,15 +445,11 @@ export function Point3D({
     useEffect(() => {
         const animateIn = reverse => {
             const g = resolveGraph();
-            const p = resolvePanel();
 
             if (!animatedInRef.current) {
                 if (g) {
                     g.animateIn();
                     trackerRef.current?.open();
-                } else if (p) {
-                    p.animateIn(true);
-                    trackerRef.current?.animateIn?.();
                 } else {
                     reticleRef.current?.animateIn();
                     if (!noLine) lineRef.current?.animateIn(reverse);
@@ -471,7 +467,6 @@ export function Point3D({
 
         const animateOut = (fast, cb) => {
             const g = resolveGraph();
-            const p = resolvePanel();
 
             if (g) {
                 if (fast) {
@@ -484,14 +479,6 @@ export function Point3D({
                 }
 
                 pointRef.current?.animateOut(true);
-            } else if (p) {
-                if (fast) {
-                    p.animateOut();
-                    trackerRef.current?.close?.();
-                    trackerRef.current?.animateOut?.();
-                    pointRef.current?.animateOut(true);
-                    animatedInRef.current = false;
-                }
             } else {
                 reticleRef.current?.animateOut();
                 if (!noLine) lineRef.current?.animateOut(fast, cb);
