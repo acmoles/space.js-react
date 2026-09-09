@@ -1,0 +1,151 @@
+import { Group, MathUtils, Mesh, MeshPhongMaterial, NoColorSpace, SRGBColorSpace, Vector2 } from 'three';
+import { getSphericalCube } from '@lib/three.js';
+
+import { params } from '../config.js';
+
+import hsv2rgbSmooth from '@alienkitty/alien.js/src/shaders/modules/hsv/hsv2rgbSmooth.glsl.js';
+import rgb2hsv from '@alienkitty/alien.js/src/shaders/modules/hsv/rgb2hsv.glsl.js';
+import brightnessContrast from '@alienkitty/alien.js/src/shaders/modules/brightness-contrast/brightness-contrast.glsl.js';
+
+/**
+ * Mars globe: a spherical-cube mesh textured with six per-face basecolor and
+ * normal maps, each `MeshPhongMaterial` extended via `onBeforeCompile` with an
+ * HSV offset and brightness/contrast pass.
+ *
+ * Ported from `examples/mars/src/views/scene/Mars.js`. The original read the
+ * loader, cameras and anisotropy from the static `WorldController`; here they
+ * are passed in via a plain `world` object so the module stays framework-free.
+ */
+export class Mars extends Group {
+    constructor(world) {
+        super();
+
+        this.world = world;
+
+        // 25 degree tilt
+        this.rotation.z = MathUtils.degToRad(-25);
+
+        // HSL offset
+        this.hue = { value: -1 / 360 };
+        this.saturation = { value: -10 / 100 };
+        this.lightness = { value: -3 / 100 };
+        this.brightness = { value: 6 / 100 };
+        this.contrast = { value: 10 / 100 };
+    }
+
+    async initMesh() {
+        const { northPolarCamera, southPolarCamera, point3Camera, loadTexture } = this.world;
+
+        const geometry = getSphericalCube(0.6, 40);
+
+        const material = this.createCubeFaceMaterial({
+            mapFaces: await Promise.all([
+                loadTexture('cube/mars/mars_basecolor_px.jpg'),
+                loadTexture('cube/mars/mars_basecolor_nx.jpg'),
+                loadTexture('cube/mars/mars_basecolor_py.jpg'),
+                loadTexture('cube/mars/mars_basecolor_ny.jpg'),
+                loadTexture('cube/mars/mars_basecolor_pz.jpg'),
+                loadTexture('cube/mars/mars_basecolor_nz.jpg')
+            ]),
+            normalFaces: await Promise.all([
+                loadTexture('cube/mars/mars_normal_px.jpg'),
+                loadTexture('cube/mars/mars_normal_nx.jpg'),
+                loadTexture('cube/mars/mars_normal_py.jpg'),
+                loadTexture('cube/mars/mars_normal_ny.jpg'),
+                loadTexture('cube/mars/mars_normal_pz.jpg'),
+                loadTexture('cube/mars/mars_normal_nz.jpg')
+            ])
+        });
+
+        const mesh = new Mesh(geometry, material);
+        mesh.rotation.y = MathUtils.degToRad(15); // Start rotation
+        this.add(mesh);
+
+        // Add cameras to the group (view from orbit)
+        this.add(northPolarCamera);
+        this.add(southPolarCamera);
+        this.add(point3Camera);
+
+        this.mesh = mesh;
+    }
+
+    createCubeFaceMaterial({ mapFaces, normalFaces }) {
+        const { anisotropy } = this.world;
+
+        return mapFaces.map((texture, index) => {
+            const map = mapFaces[index];
+            const normalMap = normalFaces[index];
+
+            map.colorSpace = SRGBColorSpace;
+
+            // Important: Make sure your normal map does not have a color profile!
+            normalMap.colorSpace = NoColorSpace;
+
+            map.anisotropy = anisotropy;
+            normalMap.anisotropy = anisotropy;
+
+            const material = new MeshPhongMaterial({
+                map,
+                normalMap,
+                normalScale: new Vector2(2, -2),
+                shininess: 0,
+                reflectivity: 0.1,
+                fog: false
+            });
+
+            material.onBeforeCompile = shader => {
+                shader.uniforms.hue = this.hue;
+                shader.uniforms.saturation = this.saturation;
+                shader.uniforms.lightness = this.lightness;
+                shader.uniforms.brightness = this.brightness;
+                shader.uniforms.contrast = this.contrast;
+
+                shader.fragmentShader = shader.fragmentShader.replace(
+                    'void main() {',
+                    /* glsl */ `
+                    uniform float hue;
+                    uniform float saturation;
+                    uniform float lightness;
+                    uniform float brightness;
+                    uniform float contrast;
+
+                    ${hsv2rgbSmooth}
+                    ${rgb2hsv}
+                    ${brightnessContrast}
+
+                    void main() {
+                    `
+                );
+
+                shader.fragmentShader = shader.fragmentShader.replace(
+                    'vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;',
+                    /* glsl */ `
+                    vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + reflectedLight.directSpecular + reflectedLight.indirectSpecular + totalEmissiveRadiance;
+
+                    vec3 hsv = rgb2hsv(outgoingLight);
+                    hsv.x += hue;
+                    hsv.y += saturation;
+                    hsv.z += lightness;
+
+                    outgoingLight = hsv2rgbSmooth(hsv);
+
+                    outgoingLight = getBrightnessContrast(outgoingLight, brightness, 1.0 + contrast);
+                    `
+                );
+            };
+
+            return material;
+        });
+    }
+
+    // Public methods
+
+    update = () => {
+        if (params.animate) {
+            // Counter clockwise rotation
+            this.mesh.rotation.y += 0.0005 * params.speed;
+        }
+    };
+
+    ready = () => this.initMesh();
+}

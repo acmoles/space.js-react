@@ -1,0 +1,1 @@
+import{t}from"./Ticker-w6Kf66ZZ.js";function startTicker(){t.isAnimating||t.start()}export{startTicker as t};

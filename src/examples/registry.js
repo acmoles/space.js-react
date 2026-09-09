@@ -339,5 +339,11 @@ export const examples = [
         title: 'Server Status Thread',
         group: 'three',
         Component: lazy(() => import('./three/ServerStatusThread.jsx'))
+    },
+    {
+        path: '/examples/about',
+        title: 'About',
+        group: 'three',
+        Component: lazy(() => import('./three/about/About.jsx'))
     }
 ];

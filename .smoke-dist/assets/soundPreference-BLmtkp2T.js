@@ -1,0 +1,1 @@
+function getStoredSound(){const t=localStorage.getItem("sound");if(!t||"undefined"===t)return!0;try{const e=JSON.parse(t);return"boolean"!=typeof e||e}catch{return!0}}function setStoredSound(t){"boolean"==typeof t&&localStorage.setItem("sound",JSON.stringify(t))}export{setStoredSound as n,getStoredSound as t};

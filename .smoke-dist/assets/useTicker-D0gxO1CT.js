@@ -1,0 +1,1 @@
+import{l as e,o as r}from"./index-1m6DZa4G.js";import{t}from"./Ticker-w6Kf66ZZ.js";var s=e(r(),1);function useTicker(e,r=!0,c){const o=(0,s.useRef)(e);(0,s.useEffect)(()=>{o.current=e}),(0,s.useEffect)(()=>{if(!r)return;const onUpdate=(e,r,t)=>o.current(e,r,t);return t.add(onUpdate,c),t.start(),()=>t.remove(onUpdate)},[r,c])}export{useTicker as t};

@@ -1,0 +1,1 @@
+import{l as t,o as e,t as s}from"./index-1m6DZa4G.js";import{t as r}from"./Example-WeEc2VUT.js";import{t as a}from"./UI-CatCPtOd.js";var f=t(e(),1),m=s();function TestFpsExample({title:t}){const e=(0,f.useRef)(null);return(0,f.useEffect)(()=>{e.current.animateIn()},[]),(0,m.jsx)(r,{title:t,children:(0,m.jsx)(a,{fps:!0,ref:e})})}export{TestFpsExample as default};
