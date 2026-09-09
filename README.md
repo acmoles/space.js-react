@@ -375,9 +375,15 @@ tolerance. Under the real clock these routes are phase-sensitive and drift
 Run them with `PARITY_DETERMINISTIC=0` for a rough check until the reveal is
 traced.
 
-`thread_canvas` draws from a worker. `page.addInitScript` does not reach worker
-contexts, so its `Math.random()` is unseeded and its noise floor is the whole
-viewport. Its pixel number is meaningless until the worker is seeded too.
+`thumbnail` and `thread_canvas` paint per-pixel random noise over the whole
+viewport, so any difference in how many `Math.random()` calls precede a frame
+offsets the entire stream and every pixel differs. Both report roughly
+1,024,000 px while their mean brightness matches the reference to four decimal
+places, which is the signature of a stream offset rather than a visual
+regression. `thread_canvas` additionally draws from a worker, and
+`page.addInitScript` does not reach worker contexts, so its `Math.random()` is
+not seeded at all. Their pixel numbers are meaningless until the RNG streams
+can be aligned; the surrounding chrome on both routes is verified by eye.
 
 Ten routes report `reference page rendered nothing` and are counted as
 failures even though they show zero differing pixels. This is expected in a

@@ -9,12 +9,24 @@ import { UI } from '../../space/components/ui/index.js';
 
 const TILE_SIZE = 250;
 
+// The original `CanvasNoise` takes this as a parameter and the example passes
+// `false`, giving colour noise.
+const MONOCHROME = false;
+
+// The original throttles the noise redraw via `ticker.add(this.onUpdate, 20)`.
+const NOISE_FPS = 20;
+
 /**
- * Draws a frame of colour noise onto `canvas`, tiling a pre-generated `tile`
- * canvas. Kept as a plain function so it can be called from both a resize
- * handler and the per-frame ticker without creating wrapper objects.
+ * Draws a frame of noise onto `canvas`, tiling a pre-generated `tile` canvas.
+ * Kept as a plain function so it can be called from both a resize handler and
+ * the per-frame ticker without creating wrapper objects.
+ *
+ * `rand` is drawn for every pixel even when it goes unused, because the
+ * original does the same. Keeping the draws per pixel identical is what lets
+ * the parity harness seed `Math.random()` and get a byte-identical image out of
+ * both implementations.
  */
-function drawNoise(canvas, tile) {
+function drawNoise(canvas, tile, monochrome = MONOCHROME) {
     if (!canvas || !tile) return;
 
     const ctx = canvas.getContext('2d');
@@ -22,9 +34,11 @@ function drawNoise(canvas, tile) {
     const pixels = new ImageData(tile.width, tile.height);
 
     for (let i = 0, l = pixels.data.length; i < l; i += 4) {
-        pixels.data[i] = Math.random() * 255;
-        pixels.data[i + 1] = Math.random() * 255;
-        pixels.data[i + 2] = Math.random() * 255;
+        const rand = 255 * Math.random();
+
+        pixels.data[i] = monochrome ? rand : 255 * Math.random();
+        pixels.data[i + 1] = monochrome ? rand : 255 * Math.random();
+        pixels.data[i + 2] = monochrome ? rand : 255 * Math.random();
         pixels.data[i + 3] = 255;
     }
 
@@ -96,7 +110,8 @@ export default function ThumbnailExample({ title }) {
     }, [noiseCanvas]);
 
     // Redraw noise every frame via the shared ticker
-    useTicker(() => drawNoise(noiseRef.current, tileRef.current));
+    // 20fps, as the original's `ticker.add(this.onUpdate, 20)` does.
+    useTicker(() => drawNoise(noiseRef.current, tileRef.current), true, NOISE_FPS);
 
     return (
         <Example title={title}>

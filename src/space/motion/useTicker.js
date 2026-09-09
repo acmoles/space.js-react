@@ -11,12 +11,16 @@ import { ticker } from '@lib/tween/Ticker.js';
  *
  * @param {function} callback Called with `(time, delta, frame)`.
  * @param {boolean} [enabled] Whether the callback is subscribed.
+ * @param {number} [fps] Throttles the callback to this rate, as the second
+ *   argument to `ticker.add()` does. Omit to run every frame.
  * @example
  * useTicker((time, delta) => {
  *     ref.current.textContent = Math.round(1000 / delta);
  * });
+ * @example
+ * useTicker(() => drawNoise(), true, 20);
  */
-export function useTicker(callback, enabled = true) {
+export function useTicker(callback, enabled = true, fps) {
     const callbackRef = useRef(callback);
 
     useEffect(() => {
@@ -30,9 +34,9 @@ export function useTicker(callback, enabled = true) {
 
         const onUpdate = (time, delta, frame) => callbackRef.current(time, delta, frame);
 
-        ticker.add(onUpdate);
+        ticker.add(onUpdate, fps);
         ticker.start();
 
         return () => ticker.remove(onUpdate);
-    }, [enabled]);
+    }, [enabled, fps]);
 }
