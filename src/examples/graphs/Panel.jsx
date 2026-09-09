@@ -1,10 +1,40 @@
-import { createElement, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { brightness, getKeyByValue } from '@lib/index.js';
 
 import { Example } from '@/components';
 
-import { Panel } from '../../space/components/panels/Panel.jsx';
+import {
+    Panel,
+    PanelColor,
+    PanelContent,
+    PanelDivider,
+    PanelLinkRow,
+    PanelList,
+    PanelSlider,
+    PanelSpacer,
+    PanelThumbnailRow,
+    PanelToggle
+} from '../../space/components/panels/index.js';
+
+const toggleOptions = new Map([
+    ['Dark', false],
+    ['Light', true]
+]);
+
+const selectOptions = new Map([
+    ['Never', 1],
+    ['Gonna', 2],
+    ['Give', 3],
+    ['You', 4],
+    ['Up', 5]
+]);
+
+const contentOptions = new Map([
+    ['Content A', 1],
+    ['Content B', 2],
+    ['Empty', 3]
+]);
 
 /**
  * Standalone Panel example — a full-featured panel centered in the viewport.
@@ -18,25 +48,6 @@ export default function PanelExample({ title }) {
 
     const [originalBodyBg] = useState(() => document.body.style.backgroundColor);
 
-    const [toggleOptions] = useState(() => new Map([
-        ['Dark', false],
-        ['Light', true]
-    ]));
-
-    const [selectOptions] = useState(() => new Map([
-        ['Never', 1],
-        ['Gonna', 2],
-        ['Give', 3],
-        ['You', 4],
-        ['Up', 5]
-    ]));
-
-    const [contentOptions] = useState(() => new Map([
-        ['Content A', 1],
-        ['Content B', 2],
-        ['Empty', 3]
-    ]));
-
     const [img] = useState(() => {
         const image = new Image();
         image.crossOrigin = 'anonymous';
@@ -44,243 +55,75 @@ export default function PanelExample({ title }) {
         return image;
     });
 
-    const [items] = useState(() => [
-        {
-            type: 'color',
-            name: 'Color',
-            value: backgroundColor,
-            callback: value => {
-                document.body.style.backgroundColor = `#${value.getHexString()}`;
-                panelRef.current?.invert(brightness(value) > 0.6);
-            }
-        },
-        {
-            type: 'list',
-            name: 'List Toggle',
-            list: toggleOptions,
-            value: getKeyByValue(toggleOptions, false),
-            callback: value => {
-                console.log('ListToggle callback:', value);
+    // Nested content is derived from state rather than injected imperatively.
+    // `*Touched` mirrors the original `hasContent()` guard: content is created
+    // on first interaction and then only shown or hidden, never rebuilt.
+    const [contentSelection, setContentSelection] = useState(null);
+    const [sliderValue, setSliderValue] = useState(0);
+    const [sliderTouched, setSliderTouched] = useState(false);
+    const [toggleValue, setToggleValue] = useState(false);
+    const [toggleTouched, setToggleTouched] = useState(false);
 
-                const light = toggleOptions.get(value);
+    const applyBackground = useCallback(value => {
+        document.body.style.backgroundColor = `#${value.getHexString()}`;
+        panelRef.current?.invert(brightness(value) > 0.6);
+    }, []);
 
-                if (light) {
-                    panelRef.current?.setPanelValue('Color', 0xffffff);
-                } else {
-                    panelRef.current?.setPanelValue('Color', backgroundColor);
-                }
-            }
-        },
-        {
-            type: 'divider'
-        },
-        {
-            type: 'list',
-            name: 'List Select',
-            list: selectOptions,
-            value: 'Never',
-            callback: value => {
-                console.log('ListSelect callback:', value);
+    const handleColor = useCallback(e => applyBackground(e.value), [applyBackground]);
 
-                const roll = selectOptions.get(value);
+    const handleListToggle = useCallback(e => {
+        console.log('ListToggle callback:', e.value);
 
-                if (roll === 5) {
-                    open('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-                }
-            }
-        },
-        {
-            type: 'divider'
-        },
-        {
-            type: 'list',
-            name: 'List Content',
-            list: contentOptions,
-            value: 'Content A',
-            callback: (value, item) => {
-                console.log('ListSelect with content callback:', value);
-
-                switch (value) {
-                    case 'Content A': {
-                        item.setContent(createElement(Panel, {
-                            items: [
-                                {
-                                    type: 'divider'
-                                },
-                                {
-                                    type: 'color',
-                                    name: 'Nested Color 1',
-                                    value: backgroundColor,
-                                    callback: colorValue => {
-                                        document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
-                                        panelRef.current?.invert(brightness(colorValue) > 0.6);
-                                    }
-                                }
-                            ],
-                            autoAnimateIn: true
-                        }));
-                        item.toggleContent(true);
-                        break;
-                    }
-                    case 'Content B': {
-                        item.setContent(createElement(Panel, {
-                            items: [
-                                {
-                                    type: 'divider'
-                                },
-                                {
-                                    type: 'slider',
-                                    name: 'Nested',
-                                    min: 0,
-                                    max: 1,
-                                    step: 0.01,
-                                    value: 0.5,
-                                    callback: sliderValue => {
-                                        console.log('Slider callback:', sliderValue);
-                                    }
-                                }
-                            ],
-                            autoAnimateIn: true
-                        }));
-                        item.toggleContent(true);
-                        break;
-                    }
-                    default: {
-                        item.toggleContent(false);
-                        break;
-                    }
-                }
-            }
-        },
-        {
-            type: 'divider'
-        },
-        {
-            type: 'slider',
-            name: 'Slider',
-            min: 0,
-            max: 1,
-            step: 0.01,
-            value: 0,
-            callback: (value, item) => {
-                console.log('Slider with content callback:', value);
-
-                if (!item.hasContent()) {
-                    item.setContent(createElement(Panel, {
-                        items: [
-                            {
-                                type: 'divider'
-                            },
-                            {
-                                type: 'color',
-                                name: 'Nested Color 2',
-                                value: backgroundColor,
-                                callback: colorValue => {
-                                    document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
-                                    panelRef.current?.invert(brightness(colorValue) > 0.6);
-                                }
-                            }
-                        ],
-                        autoAnimateIn: true
-                    }));
-                }
-
-                if (value > 0) {
-                    item.toggleContent(true);
-                } else {
-                    item.toggleContent(false);
-                }
-            }
-        },
-        {
-            type: 'divider'
-        },
-        {
-            type: 'toggle',
-            name: 'Toggle',
-            value: false,
-            callback: (value, item) => {
-                console.log('Toggle with content callback:', value);
-
-                if (!item.hasContent()) {
-                    item.setContent(createElement(Panel, {
-                        items: [
-                            {
-                                type: 'divider'
-                            },
-                            {
-                                type: 'color',
-                                name: 'Nested Color 3',
-                                value: backgroundColor,
-                                callback: colorValue => {
-                                    document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
-                                    panelRef.current?.invert(brightness(colorValue) > 0.6);
-                                }
-                            }
-                        ],
-                        autoAnimateIn: true
-                    }));
-                }
-
-                if (value > 0) {
-                    item.toggleContent(true);
-                } else {
-                    item.toggleContent(false);
-                }
-            }
-        },
-        {
-            type: 'divider'
-        },
-        {
-            type: 'content',
-            callback: (value, item) => {
-                item.setContent(createElement(Panel, {
-                    items: [
-                        {
-                            type: 'color',
-                            name: 'Nested Color 4',
-                            value: backgroundColor,
-                            callback: colorValue => {
-                                document.body.style.backgroundColor = `#${colorValue.getHexString()}`;
-                                panelRef.current?.invert(brightness(colorValue) > 0.6);
-                            }
-                        }
-                    ],
-                    autoAnimateIn: true
-                }));
-            }
-        },
-        {
-            type: 'divider'
-        },
-        {
-            type: 'thumbnail',
-            name: 'Thumbnail',
-            value: img,
-            callback: value => {
-                console.log('Thumbnail callback:', value);
-            }
-        },
-        {
-            type: 'spacer'
-        },
-        {
-            type: 'link',
-            value: 'Reset',
-            callback: () => {
-                console.log('Link callback: Reset');
-
-                panelRef.current?.setPanelValue('Color', backgroundColor);
-                panelRef.current?.setPanelValue('List Toggle', false);
-                panelRef.current?.setPanelValue('List Select', 1);
-                panelRef.current?.setPanelValue('List Content', 1);
-                panelRef.current?.setPanelValue('Slider', 0);
-                panelRef.current?.setPanelValue('Toggle', false);
-                panelRef.current?.setPanelValue('Thumbnail', img);
-            }
+        if (toggleOptions.get(e.value)) {
+            panelRef.current?.setPanelValue('Color', 0xffffff);
+        } else {
+            panelRef.current?.setPanelValue('Color', backgroundColor);
         }
-    ]);
+    }, [backgroundColor]);
+
+    const handleListSelect = useCallback(e => {
+        console.log('ListSelect callback:', e.value);
+
+        if (selectOptions.get(e.value) === 5) {
+            open('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+        }
+    }, []);
+
+    const handleListContent = useCallback(e => {
+        console.log('ListSelect with content callback:', e.value);
+
+        setContentSelection(e.value);
+    }, []);
+
+    const handleSlider = useCallback(e => {
+        console.log('Slider with content callback:', e.value);
+
+        setSliderTouched(true);
+        setSliderValue(e.value);
+    }, []);
+
+    const handleToggle = useCallback(e => {
+        console.log('Toggle with content callback:', e.value);
+
+        setToggleTouched(true);
+        setToggleValue(e.value);
+    }, []);
+
+    const handleThumbnail = useCallback(e => {
+        console.log('Thumbnail callback:', e.value);
+    }, []);
+
+    const handleReset = useCallback(() => {
+        console.log('Link callback: Reset');
+
+        panelRef.current?.setPanelValue('Color', backgroundColor);
+        panelRef.current?.setPanelValue('List Toggle', false);
+        panelRef.current?.setPanelValue('List Select', 1);
+        panelRef.current?.setPanelValue('List Content', 1);
+        panelRef.current?.setPanelValue('Slider', 0);
+        panelRef.current?.setPanelValue('Toggle', false);
+        panelRef.current?.setPanelValue('Thumbnail', img);
+    }, [backgroundColor, img]);
 
     useEffect(() => {
         panelRef.current?.animateIn();
@@ -290,9 +133,88 @@ export default function PanelExample({ title }) {
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const nestedColor = (name, key) => (
+        <Panel key={key} autoAnimateIn>
+            <PanelDivider />
+            <PanelColor name={name} value={backgroundColor} onChange={handleColor} />
+        </Panel>
+    );
+
     return (
         <Example title={title} center>
-            <Panel ref={panelRef} items={items} />
+            <Panel ref={panelRef}>
+                <PanelColor name="Color" value={backgroundColor} onChange={handleColor} />
+                <PanelList
+                    name="List Toggle"
+                    list={toggleOptions}
+                    value={getKeyByValue(toggleOptions, false)}
+                    onChange={handleListToggle}
+                />
+                <PanelDivider />
+                <PanelList
+                    name="List Select"
+                    list={selectOptions}
+                    value="Never"
+                    onChange={handleListSelect}
+                />
+                <PanelDivider />
+                <PanelList
+                    name="List Content"
+                    list={contentOptions}
+                    value="Content A"
+                    onChange={handleListContent}
+                >
+                    {contentSelection === 'Content A' && nestedColor('Nested Color 1', 'a')}
+                    {contentSelection === 'Content B' && (
+                        <Panel key="b" autoAnimateIn>
+                            <PanelDivider />
+                            <PanelSlider
+                                name="Nested"
+                                min={0}
+                                max={1}
+                                step={0.01}
+                                value={0.5}
+                                onChange={e => console.log('Slider callback:', e.value)}
+                            />
+                        </Panel>
+                    )}
+                </PanelList>
+                <PanelDivider />
+                <PanelSlider
+                    name="Slider"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={0}
+                    onChange={handleSlider}
+                    showContent={sliderValue > 0}
+                >
+                    {sliderTouched && nestedColor('Nested Color 2')}
+                </PanelSlider>
+                <PanelDivider />
+                <PanelToggle
+                    name="Toggle"
+                    value={false}
+                    onChange={handleToggle}
+                    showContent={!!toggleValue}
+                >
+                    {toggleTouched && nestedColor('Nested Color 3')}
+                </PanelToggle>
+                <PanelDivider />
+                <PanelContent>
+                    <Panel autoAnimateIn>
+                        <PanelColor
+                            name="Nested Color 4"
+                            value={backgroundColor}
+                            onChange={handleColor}
+                        />
+                    </Panel>
+                </PanelContent>
+                <PanelDivider />
+                <PanelThumbnailRow name="Thumbnail" value={img} onChange={handleThumbnail} />
+                <PanelSpacer />
+                <PanelLinkRow value="Reset" onChange={handleReset} />
+            </Panel>
         </Example>
     );
 }

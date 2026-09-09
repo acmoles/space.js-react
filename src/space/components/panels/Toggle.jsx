@@ -12,14 +12,17 @@ import './Toggle.css';
  * @param {string}   props.name     Label text.
  * @param {boolean}  [props.value=false] Initial value.
  * @param {function} [props.onChange] Called with `{ path, value, target }`.
+ * @param {boolean}  [props.showContent] Controls sub-panel visibility. When
+ *   omitted, visibility is driven imperatively via `toggleContent()`.
  * @param {React.ReactNode} [props.children] Optional sub-panel shown below.
  * @param {object}   [props.ref] Exposes `setValue(v)`.
  * @example
  * <Toggle name="Visible" value={true} onChange={e => console.log(e.value)} />
  */
-export function Toggle({ name, value: initialValue = false, onChange, children, ref }) {
+export function Toggle({ name, value: initialValue = false, onChange, showContent, children, ref }) {
     const [value, setValueState] = useState(initialValue);
-    const [showContent, setShowContent] = useState(true);
+    const [showContentState, setShowContentState] = useState(true);
+    const contentVisible = showContent ?? showContentState;
 
     const [circleRef, circle] = useAnimation({ opacity: initialValue ? 1 : 0.15 });
 
@@ -63,7 +66,7 @@ export function Toggle({ name, value: initialValue = false, onChange, children, 
             setDynContent(node);
         },
         toggleContent(show) {
-            setShowContent(show);
+            setShowContentState(show);
         }
     }), [circle]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -82,7 +85,7 @@ export function Toggle({ name, value: initialValue = false, onChange, children, 
                 <span ref={circleRef} className="circle">●</span>
             </div>
             {(children || dynContent) && (
-                <div className="group" style={{ display: showContent ? '' : 'none' }}>
+                <div className="group" style={{ display: contentVisible ? '' : 'none' }}>
                     {dynContent ?? children}
                 </div>
             )}

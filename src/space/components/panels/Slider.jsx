@@ -35,6 +35,7 @@ export function Slider({
     step = 0.01,
     value: initialValue = 0,
     onChange,
+    showContent,
     children,
     ref
 }) {
@@ -52,6 +53,8 @@ export function Slider({
     useEffect(() => { onChangeRef.current = onChange; });
 
     const [dynContent, setDynContent] = useState(null);
+    const [showContentState, setShowContentState] = useState(true);
+    const contentVisible = showContent ?? showContentState;
     const dynContentRef = useRef(null);
     const [lineRef, line] = useAnimation({ transformOrigin: 'left center', scaleX: 0 });
 
@@ -91,7 +94,7 @@ export function Slider({
             setDynContent(node);
         },
         toggleContent(show) {
-            if (groupRef.current) groupRef.current.style.display = show ? '' : 'none';
+            setShowContentState(show);
         }
     }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -156,7 +159,7 @@ export function Slider({
                 <div ref={lineRef} className="line" />
             </div>
             {(dynContent ?? children) && (
-                <div ref={groupRef} className="group">
+                <div ref={groupRef} className="group" style={{ display: contentVisible ? '' : 'none' }}>
                     {dynContent ?? children}
                 </div>
             )}

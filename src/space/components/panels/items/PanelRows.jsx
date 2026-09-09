@@ -124,13 +124,13 @@ export function PanelMeterRow({ name, ref, ...props }) {
  * Children become the row's nested content, so a sub-panel can be derived from
  * state rather than pushed in imperatively.
  */
-export function PanelList({ name, list, value, onChange, children, ref }) {
+export function PanelList({ name, list, value, onChange, showContent, children, ref }) {
     const viewRef = useRef(null);
     const emit = useSourceEvent(viewRef, onChange);
 
     return (
         <PanelItem ref={ref} name={name} viewRef={viewRef}>
-            <List ref={viewRef} name={name} list={list} value={value} onChange={emit}>
+            <List ref={viewRef} name={name} list={list} value={value} onChange={emit} showContent={showContent}>
                 {children}
             </List>
         </PanelItem>
@@ -138,7 +138,7 @@ export function PanelList({ name, list, value, onChange, children, ref }) {
 }
 
 /** A draggable value row. Children become nested content. */
-export function PanelSlider({ name, min, max, step, value, onChange, children, ref }) {
+export function PanelSlider({ name, min, max, step, value, onChange, showContent, children, ref }) {
     const viewRef = useRef(null);
     const emit = useSourceEvent(viewRef, onChange);
 
@@ -152,6 +152,7 @@ export function PanelSlider({ name, min, max, step, value, onChange, children, r
                 step={step}
                 value={value}
                 onChange={emit}
+                showContent={showContent}
             >
                 {children}
             </Slider>
@@ -160,13 +161,13 @@ export function PanelSlider({ name, min, max, step, value, onChange, children, r
 }
 
 /** A boolean row. Children become nested content. */
-export function PanelToggle({ name, value, onChange, children, ref }) {
+export function PanelToggle({ name, value, onChange, showContent, children, ref }) {
     const viewRef = useRef(null);
     const emit = useSourceEvent(viewRef, onChange);
 
     return (
         <PanelItem ref={ref} name={name} viewRef={viewRef}>
-            <Toggle ref={viewRef} name={name} value={value} onChange={emit}>
+            <Toggle ref={viewRef} name={name} value={value} onChange={emit} showContent={showContent}>
                 {children}
             </Toggle>
         </PanelItem>

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { Example } from '@/components';
 
-import { Panel } from '../../space/components/panels/Panel.jsx';
+import { Panel, PanelColor } from '../../space/components/panels/index.js';
 
 /**
  * Panel test — a single-item panel used for visual regression testing.
@@ -11,29 +11,19 @@ import { Panel } from '../../space/components/panels/Panel.jsx';
 export default function TestPanelExample({ title }) {
     const panelRef = useRef(null);
 
-    const [items] = useState(() => [
-        // Uncomment to test different item types:
-        // { name: 'FPS' }
-        // { type: 'spacer' }
-        // { type: 'divider' }
-        // { type: 'link' }
-        // { type: 'thumbnail' }
-        // { type: 'graph' }
-        // { type: 'meter' }
-        // { type: 'list' }
-        // { type: 'slider' }
-        // { type: 'toggle' }
-        // { type: 'content' }
-        { type: 'color' }
-    ]);
-
     useEffect(() => {
         panelRef.current?.animateIn();
     }, []);
 
     return (
         <Example title={title} center>
-            <Panel ref={panelRef} items={items} />
+            <Panel ref={panelRef}>
+                {/* Swap for another row component to test a different item type:
+                    PanelLabel, PanelSpacer, PanelDivider, PanelLinkRow,
+                    PanelThumbnailRow, PanelGraphRow, PanelMeterRow, PanelList,
+                    PanelSlider, PanelToggle, PanelContent. */}
+                <PanelColor />
+            </Panel>
         </Example>
     );
 }
