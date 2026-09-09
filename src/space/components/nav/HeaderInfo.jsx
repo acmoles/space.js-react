@@ -23,7 +23,7 @@ import './HeaderInfo.css';
  * infoRef.current.animateIn();
  * infoRef.current.addPanel({ type: 'slider', name: 'Speed', value: 5 });
  */
-export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, ref }) {
+export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, panelChildren, ref }) {
     const [rootRef, root] = useAnimation();
     const [numberRef, numberCtrl] = useAnimation();
     const panelRef = useRef(null);
@@ -32,7 +32,7 @@ export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, ref
     const pointerRef = useRef({ lastTime: 0, lastX: 0, lastY: 0, x: 0, y: 0 });
 
     const [panelItems, setPanelItems] = useState(() => initialPanelItems || []);
-    const hasPanel = panelItems.length > 0;
+    const hasPanel = panelItems.length > 0 || !!panelChildren;
 
     // Keep latest callbacks in a ref so event-handler closures stay fresh
     // without re-subscribing on every render (mirrors useEventListener pattern).
@@ -142,8 +142,10 @@ export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, ref
             {hasPanel && (
                 <Panel
                     ref={panelRef}
-                    items={panelItems}
-                />
+                    items={panelChildren ? undefined : panelItems}
+                >
+                    {panelChildren}
+                </Panel>
             )}
         </div>
     );

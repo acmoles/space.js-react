@@ -42,6 +42,7 @@ export function Header({
     fpsOpen = false,
     breakpoint = 0,
     panelItems,
+    panelChildren,
     ref
 }) {
     const rootRef = useRef(null);
@@ -117,7 +118,7 @@ export function Header({
                 />
             ))}
             {showInfo && (
-                <HeaderInfo ref={infoRef} fpsOpen={fpsOpen} panelItems={panelItems} />
+                <HeaderInfo ref={infoRef} fpsOpen={fpsOpen} panelItems={panelItems} panelChildren={panelChildren} />
             )}
         </div>
     );

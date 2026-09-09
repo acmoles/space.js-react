@@ -63,6 +63,7 @@ export function UI({
     breakpoint = 1000,
     header,
     panelItems,
+    panelChildren,
     footer,
     menu,
     info,
@@ -326,6 +327,7 @@ export function UI({
                     fpsOpen={fpsOpen}
                     breakpoint={breakpoint}
                     panelItems={panelItems}
+                    panelChildren={panelChildren}
                 />
             )}
 
