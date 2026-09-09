@@ -68,9 +68,12 @@ export function PanelItem({ name, style, viewRef, graphRef, children, ref }) {
             if (name !== lookup) return undefined;
             return viewRef?.current?.getValue?.() ?? graphRef?.current?.getValue?.();
         },
+        // The original notifies: `Panel.setPanelValue` calls `view.setValue(value)`
+        // with `notify` defaulting to true, so callbacks fire and any state
+        // derived from the value (such as nested content) stays in step.
         setPanelValue(lookup, value) {
             if (name !== lookup) return;
-            viewRef?.current?.setValue?.(value, false);
+            viewRef?.current?.setValue?.(value);
             graphRef?.current?.setValue?.(value);
         },
         getPanelIndex(lookup) {
@@ -79,7 +82,7 @@ export function PanelItem({ name, style, viewRef, graphRef, children, ref }) {
         },
         setPanelIndex(lookup, index) {
             if (name !== lookup) return;
-            viewRef?.current?.setIndex?.(index, false);
+            viewRef?.current?.setIndex?.(index);
         }
     }), [root, container, containerRef, rootRef, viewRef, graphRef, name]);
 

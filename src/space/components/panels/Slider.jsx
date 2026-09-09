@@ -24,6 +24,9 @@ function getPrecision(step) {
  * @param {number}   [props.value=0]   Initial value.
  * @param {function} [props.onChange]  Called with `{ path, value, target }`.
  * @param {React.ReactNode} [props.children] Optional sub-panel content.
+ * @param {boolean}  [props.showContent] Controls sub-panel visibility. When
+ *   omitted, visibility is driven imperatively via `toggleContent()`. When
+ *   supplied it takes precedence, so `toggleContent()` has no effect.
  * @param {object}   [props.ref] Exposes `setValue(v, notify?)` and `toggleContent(show)`.
  * @example
  * <Slider name="Speed" min={0} max={10} step={0.1} value={5} onChange={e => console.log(e.value)} />

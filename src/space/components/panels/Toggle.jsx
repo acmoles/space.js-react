@@ -13,7 +13,8 @@ import './Toggle.css';
  * @param {boolean}  [props.value=false] Initial value.
  * @param {function} [props.onChange] Called with `{ path, value, target }`.
  * @param {boolean}  [props.showContent] Controls sub-panel visibility. When
- *   omitted, visibility is driven imperatively via `toggleContent()`.
+ *   omitted, visibility is driven imperatively via `toggleContent()`. When
+ *   supplied it takes precedence, so `toggleContent()` has no effect.
  * @param {React.ReactNode} [props.children] Optional sub-panel shown below.
  * @param {object}   [props.ref] Exposes `setValue(v)`.
  * @example

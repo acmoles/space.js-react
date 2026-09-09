@@ -221,6 +221,16 @@ export function ColorPicker({
         panelCtx.notifyOpen(rootRef.current, () => closeRing(true));
     };
 
+    // Release the panel's open slot if this picker unmounts while open,
+    // otherwise sibling rows stay disabled forever.
+    useEffect(() => {
+        const element = rootRef.current;
+
+        return () => {
+            if (isOpenRef.current) panelCtx.notifyClose(element);
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     useImperativeHandle(ref, () => ({
         setValue(v, notify = true) {
             if (v && v.isColor) colorVal.current.copy(v);

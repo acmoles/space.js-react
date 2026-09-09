@@ -17,7 +17,8 @@ import './List.css';
  * @param {function} [props.onChange] Called with `{ path, index, value, target }`.
  * @param {React.ReactNode} [props.children] Optional sub-panel rendered below.
  * @param {boolean}  [props.showContent] Controls sub-panel visibility. When
- *   omitted, visibility is driven imperatively via `toggleContent()`.
+ *   omitted, visibility is driven imperatively via `toggleContent()`. When
+ *   supplied it takes precedence, so `toggleContent()` has no effect.
  * @param {object}   [props.ref] Exposes `setIndex`, `setValue`, `setList`, `toggleContent`.
  * @example
  * <List

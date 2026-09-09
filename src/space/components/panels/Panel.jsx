@@ -83,7 +83,11 @@ export function Panel({ children, items, onChange, autoAnimateIn = false, ref })
                 item.disable();
             });
         },
-        notifyClose() {
+        // `element` scopes the close to the picker that owns the open slot, so a
+        // picker unmounting while open cannot re-enable rows another picker has
+        // since disabled. Called without an argument it closes unconditionally.
+        notifyClose(element) {
+            if (element && openPickerRef.current?.element !== element) return;
             openPickerRef.current = null;
             itemsRef.current.forEach(item => item.enable());
         }

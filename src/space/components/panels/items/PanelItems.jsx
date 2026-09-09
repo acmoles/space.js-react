@@ -27,7 +27,8 @@ import {
  * why a descriptor's `callback` is wired up here in addition to `onChange`.
  *
  * @param {object}     props
- * @param {object[]}   props.items      Item descriptors.
+ * @param {object[]}   props.items      Item descriptors. `id` or `name`, when
+ *   present, is used as the React key.
  * @param {function}   [props.onChange] Called when any row emits a change.
  * @param {object[]}   [props.itemRefs] Optional array to collect row handles into.
  * @example
@@ -36,9 +37,13 @@ import {
  * </Panel>
  */
 export function PanelItems({ items = [], onChange, itemRefs }) {
+    // Prefer a stable identity so that reordering or replacing descriptors does
+    // not carry a row's uncontrolled state (slider position, list index) over to
+    // a different row. Falls back to the index for anonymous rows such as
+    // dividers and spacers, which hold no state.
     return items.map((data, i) => (
         <DescriptorRow
-            key={i}
+            key={data.id ?? data.name ?? i}
             data={data}
             onChange={onChange}
             ref={itemRefs ? el => { itemRefs[i] = el; } : undefined}
