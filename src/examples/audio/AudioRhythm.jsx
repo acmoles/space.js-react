@@ -5,24 +5,65 @@ import { BufferLoader, WebAudio, headsTails } from '@lib/index.js';
 import { Example } from '@/components';
 import { useClassName } from '@/hooks';
 import { Info } from '@/space/components/nav/index.js';
-import { Panel } from '@/space/components/panels/index.js';
+import { Panel, PanelDivider, PanelLabel, PanelSlider } from '@/space/components/panels/index.js';
 import { UI } from '@/space/components/ui/UI.jsx';
 
 import './AudioRhythm.css';
 
+
+const TRACKS = [
+    { key: 'drone', name: 'Drone', volume: 1 },
+    { key: 'bells', name: 'Bells', volume: 0.5 },
+    { key: 'accent1', name: 'Accent1', volume: 0.1 },
+    { key: 'accent2', name: 'Accent2', volume: 0.05 },
+    { key: 'kick', name: 'Kick', volume: 1 },
+    { key: 'snare', name: 'Snare', volume: 1 },
+    { key: 'hihat', name: 'Hihat', volume: 1 }
+];
+
+/**
+ * One mixer strip: volume, stereo pan and playback rate for a single track.
+ * `source` is read lazily because the audio nodes are created on first input.
+ */
+function TrackPanel({ name, volume, source, ref }) {
+    return (
+        <Panel ref={ref}>
+            <PanelLabel name={name} />
+            <PanelDivider />
+            <PanelSlider
+                name="Volume"
+                min={0}
+                max={1}
+                step={0.01}
+                value={volume}
+                onChange={e => { const s = source(); if (s) s.gain.value = e.value; }}
+            />
+            <PanelSlider
+                name="Pan"
+                min={-1}
+                max={1}
+                step={0.01}
+                value={0}
+                onChange={e => { const s = source(); if (s) s.stereoPan.value = e.value; }}
+            />
+            <PanelSlider
+                name="Rate"
+                min={0}
+                max={2}
+                step={0.01}
+                value={1}
+                onChange={e => { const s = source(); if (s) s.playbackRate.value = e.value; }}
+            />
+        </Panel>
+    );
+}
 export default function AudioRhythmExample({ title }) {
     useClassName('scroll');
 
     const uiRef = useRef(null);
     const instructionsRef = useRef(null);
 
-    const track1Ref = useRef(null);
-    const track2Ref = useRef(null);
-    const track3Ref = useRef(null);
-    const track4Ref = useRef(null);
-    const track5Ref = useRef(null);
-    const track6Ref = useRef(null);
-    const track7Ref = useRef(null);
+    const trackRefs = useRef([]);
 
     // Panel items are stable — defined once as module-level constants below.
     // The callbacks mutate audio state held in the effect closure via stateRef.
@@ -134,9 +175,7 @@ export default function AudioRhythmExample({ title }) {
             document.addEventListener('pointerdown', onPointerDown);
 
             // Animate panels in
-            [track1Ref, track2Ref, track3Ref, track4Ref, track5Ref, track6Ref, track7Ref].forEach(r => {
-                r.current?.animateIn();
-            });
+            trackRefs.current.forEach(panel => panel?.animateIn());
 
             instructionsRef.current?.animateIn();
             uiRef.current?.animateIn();
@@ -166,76 +205,15 @@ export default function AudioRhythmExample({ title }) {
         <Example title={title}>
             <div className="audio-rhythm-panels">
                 <div className="audio-rhythm-container">
-                    <Panel
-                        ref={track1Ref}
-                        items={[
-                            { name: 'Drone' },
-                            { type: 'divider' },
-                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 1, callback: v => { if (st.drone) st.drone.gain.value = v; } },
-                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.drone) st.drone.stereoPan.value = v; } },
-                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.drone) st.drone.playbackRate.value = v; } }
-                        ]}
-                    />
-                    <Panel
-                        ref={track2Ref}
-                        items={[
-                            { name: 'Bells' },
-                            { type: 'divider' },
-                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 0.5, callback: v => { if (st.bells) st.bells.gain.value = v; } },
-                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.bells) st.bells.stereoPan.value = v; } },
-                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.bells) st.bells.playbackRate.value = v; } }
-                        ]}
-                    />
-                    <Panel
-                        ref={track3Ref}
-                        items={[
-                            { name: 'Accent1' },
-                            { type: 'divider' },
-                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 0.1, callback: v => { if (st.accent1) st.accent1.gain.value = v; } },
-                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.accent1) st.accent1.stereoPan.value = v; } },
-                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.accent1) st.accent1.playbackRate.value = v; } }
-                        ]}
-                    />
-                    <Panel
-                        ref={track4Ref}
-                        items={[
-                            { name: 'Accent2' },
-                            { type: 'divider' },
-                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 0.05, callback: v => { if (st.accent2) st.accent2.gain.value = v; } },
-                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.accent2) st.accent2.stereoPan.value = v; } },
-                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.accent2) st.accent2.playbackRate.value = v; } }
-                        ]}
-                    />
-                    <Panel
-                        ref={track5Ref}
-                        items={[
-                            { name: 'Kick' },
-                            { type: 'divider' },
-                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 1, callback: v => { if (st.kick) st.kick.gain.value = v; } },
-                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.kick) st.kick.stereoPan.value = v; } },
-                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.kick) st.kick.playbackRate.value = v; } }
-                        ]}
-                    />
-                    <Panel
-                        ref={track6Ref}
-                        items={[
-                            { name: 'Snare' },
-                            { type: 'divider' },
-                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 1, callback: v => { if (st.snare) st.snare.gain.value = v; } },
-                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.snare) st.snare.stereoPan.value = v; } },
-                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.snare) st.snare.playbackRate.value = v; } }
-                        ]}
-                    />
-                    <Panel
-                        ref={track7Ref}
-                        items={[
-                            { name: 'Hihat' },
-                            { type: 'divider' },
-                            { type: 'slider', name: 'Volume', min: 0, max: 1, step: 0.01, value: 1, callback: v => { if (st.hihat) st.hihat.gain.value = v; } },
-                            { type: 'slider', name: 'Pan', min: -1, max: 1, step: 0.01, value: 0, callback: v => { if (st.hihat) st.hihat.stereoPan.value = v; } },
-                            { type: 'slider', name: 'Rate', min: 0, max: 2, step: 0.01, value: 1, callback: v => { if (st.hihat) st.hihat.playbackRate.value = v; } }
-                        ]}
-                    />
+                    {TRACKS.map(({ key, name, volume }, i) => (
+                        <TrackPanel
+                            key={key}
+                            ref={panel => { trackRefs.current[i] = panel; }}
+                            name={name}
+                            volume={volume}
+                            source={() => st[key]}
+                        />
+                    ))}
                 </div>
             </div>
             <Info

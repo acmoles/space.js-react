@@ -4,7 +4,7 @@ import { WebAudio } from '@lib/index.js';
 
 import { Example } from '@/components';
 import { Info } from '@/space/components/nav/index.js';
-import { Panel } from '@/space/components/panels/index.js';
+import { Panel, PanelDivider, PanelLabel, PanelSlider } from '@/space/components/panels/index.js';
 import { UI } from '@/space/components/ui/UI.jsx';
 
 import './AudioStream.css';
@@ -71,29 +71,26 @@ export default function AudioStreamExample({ title }) {
             <div className="audio-stream-panel">
                 <Panel
                     ref={panelRef}
-                    items={[
-                        { name: 'Cyberspace' },
-                        { type: 'divider' },
-                        {
-                            type: 'slider',
-                            name: 'Volume',
-                            min: 0,
-                            max: 1,
-                            step: 0.01,
-                            value: 1,
-                            callback: v => { if (st.cyberspace) st.cyberspace.gain.value = v; }
-                        },
-                        {
-                            type: 'slider',
-                            name: 'Pan',
-                            min: -1,
-                            max: 1,
-                            step: 0.01,
-                            value: 0,
-                            callback: v => { if (st.cyberspace) st.cyberspace.stereoPan.value = v; }
-                        }
-                    ]}
-                />
+                >
+                    <PanelLabel name="Cyberspace" />
+                    <PanelDivider />
+                    <PanelSlider
+                        name="Volume"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={1}
+                        onChange={e => { if (st.cyberspace) st.cyberspace.gain.value = e.value; }}
+                    />
+                    <PanelSlider
+                        name="Pan"
+                        min={-1}
+                        max={1}
+                        step={0.01}
+                        value={0}
+                        onChange={e => { if (st.cyberspace) st.cyberspace.stereoPan.value = e.value; }}
+                    />
+                </Panel>
             </div>
             <Info
                 ref={instructionsRef}
