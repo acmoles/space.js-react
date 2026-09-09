@@ -73,14 +73,18 @@ export function Slider({
     // Apply initial value after mount.  The original Slider calls
     // `setValue(this.value)` at the end of its constructor, which notifies
     // with the initial value; panel definitions rely on that first callback to
-    // populate nested content, so notify here too.  The ref guard keeps it to
-    // a single emit under StrictMode.
+    // populate nested content, so notify here too.
+    //
+    // Only the notification is guarded.  StrictMode's simulated remount makes
+    // `useAnimation` re-apply its `initial` (`scaleX: 0`) on the second pass,
+    // so the fill has to be re-applied on every pass or every slider renders
+    // empty in development.
     const emittedRef = useRef(false);
 
     useEffect(() => {
-        if (emittedRef.current) return;
+        const notify = !emittedRef.current;
         emittedRef.current = true;
-        applyValue(valueRef.current);
+        applyValue(valueRef.current, notify);
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useImperativeHandle(ref, () => ({

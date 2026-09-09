@@ -109,7 +109,18 @@ export function Panel({ children, items, onChange, autoAnimateIn = false, ref })
         animateOut(callback) {
             const handles = orderedItems();
             const last = handles.length - 1;
-            handles.forEach((item, i) => item.animateOut(i, last, (last - i) * 15, callback));
+
+            // The root must be hidden as well as faded: `.panel` sets
+            // `pointer-events: auto`, so a root left at `display: block` stays a
+            // transparent hit target over the canvas. The original does this
+            // with `this.hide()` in the same callback (`Panel.js` animateOut).
+            const done = () => {
+                root.set({ display: 'none' });
+
+                if (callback) callback();
+            };
+
+            handles.forEach((item, i) => item.animateOut(i, last, (last - i) * 15, done));
         },
         activate() {
             root.stop().animate({ opacity: 1 }, 300, 'easeOutSine');

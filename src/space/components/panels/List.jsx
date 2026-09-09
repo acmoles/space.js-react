@@ -80,6 +80,15 @@ export function List({ list, value, onChange, showContent, children, ref }) {
     }, [index]);
 
     useImperativeHandle(ref, () => ({
+        // The original reads `view.keys[view.index]` / `view.index` straight off
+        // the List (`Panel.js` getPanelValue/getPanelIndex, which are marked
+        // "TODO: Support all panel types" and only handle lists).
+        getValue() {
+            return keys.current[indexRef.current];
+        },
+        getIndex() {
+            return indexRef.current;
+        },
         setIndex(newIndex, notify = true) {
             indexRef.current = newIndex;
             setIndexState(newIndex);
