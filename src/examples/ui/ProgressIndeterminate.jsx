@@ -34,9 +34,6 @@ function ProgressIndeterminate() {
     });
 
     useEffect(() => {
-        // Draw empty initial state so the circle is invisible before animateIn
-        drawLine(circleRef.current, 0, 0, -0.25);
-
         const start = () => {
             tween(circle, { progress: 1 }, 1000, 'easeOutCubic', () => {
                 tween(circle, { start: 1 }, 1000, 'easeInOutCubic', () => {

@@ -45,7 +45,11 @@ export default function AudioStreamExample({ title }) {
         document.addEventListener('click', onClick);
 
         instructionsRef.current?.animateIn();
-        panelRef.current?.animateIn();
+
+        // The original calls `panel.animateIn()` before any items are added, so
+        // it iterates an empty list: the panel is shown and the items simply
+        // appear, untweened.  `fast` reproduces that.
+        panelRef.current?.animateIn(true);
         uiRef.current?.animateIn();
 
         return () => {

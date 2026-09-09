@@ -153,7 +153,7 @@ export function Slider({
             <div ref={containerRef} className="container" onPointerDown={handlePointerDown}>
                 <span className="content">{name}</span>
                 <span ref={numberRef} className="number">{clampVal(initialValue)}</span>
-                <span ref={lineRef} className="line" />
+                <div ref={lineRef} className="line" />
             </div>
             {(dynContent ?? children) && (
                 <div ref={groupRef} className="group">

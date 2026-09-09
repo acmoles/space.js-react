@@ -40,11 +40,6 @@ function CloseButton() {
     });
 
     useEffect(() => {
-        // Set initial dasharray so strokes start invisible
-        drawLine(circleRef.current, 0, 0, -0.25);
-        drawLine(line1Ref.current, 0, 0, 0);
-        drawLine(line2Ref.current, 0, 0, 0);
-
         const animateIn = () => {
             if (needsUpdateRef.current) {
                 return;

@@ -115,7 +115,9 @@ export function PanelItem({ data, onChange, ref }) {
         }
         if (type === 'spacer') return null;
         if (type === 'divider') {
-            return <div className="line" />;
+            // Inline, as the original sets them: there is no `.line` rule that
+            // would give the divider its height outside a specific component.
+            return <div className="line" style={{ height: 1, backgroundColor: 'var(--ui-color-divider-line)' }} />;
         }
         if (type === 'link') {
             return (

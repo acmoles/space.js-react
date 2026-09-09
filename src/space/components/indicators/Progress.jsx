@@ -55,11 +55,6 @@ export function Progress({
         }
     });
 
-    // Draw initial state after mount
-    useEffect(() => {
-        drawLine(circleRef.current, 0, 0, -0.25);
-    }, []);
-
     useImperativeHandle(ref, () => ({
         animateIn: () => root.stop().set({ scale: 1, opacity: 0 }).animate({ opacity: 1 }, 400, 'easeOutCubic'),
         animateOut: callback => root.stop().animate({ scale: 1.1, opacity: 0 }, 400, 'easeInCubic', callback)
