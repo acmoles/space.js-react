@@ -49,6 +49,10 @@ export function DetailsTitle({ title, ref }) {
         const all = entries.current.filter(e => e !== null && e !== undefined && e.char !== '_');
         const pool = [...all];
 
+        all.forEach(entry => {
+            entry.letter.stop().set({ opacity: 1 });
+        });
+
         shuffle(pool);
 
         pool.slice(0, 2).forEach((entry, i) => {

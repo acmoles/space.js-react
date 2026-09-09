@@ -2,7 +2,9 @@
 
 .details .title {
     width: fit-content;
+    padding: 0;
     white-space: nowrap;
+    pointer-events: auto;
 }
 
 .details .title .letter {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 're
 
 import { useAnimation } from '../../motion/index.js';
 import { PanelContext } from './PanelContext.js';
-import { PanelItems } from './items/PanelItems.jsx';
+import { PanelItem } from './PanelItem.jsx';
 
 import './Panel.css';
 
@@ -11,64 +11,37 @@ function getCSSVar(name) {
 }
 
 /**
- * A panel of control rows.
- *
- * Rows are supplied as children, using the row components in `./items`. Each
- * row registers itself with the panel through context, so the panel can stagger
- * its animations and coordinate colour pickers without inspecting or cloning
- * its children — rows may therefore be wrapped, grouped or conditionally
- * rendered freely.
- *
- * For panels that are genuinely data — the three.js material and light
- * inspectors, which build their rows by walking a material at runtime — pass
- * descriptors to `items` instead, or render `<PanelItems>` as a child.
+ * A panel container that renders a list of item descriptors as control rows.
+ * Provides staggered animate-in/out, colour-picker coordination, and
+ * per-item enable/disable, matching the original `Panel` class exactly.
  *
  * @param {object}     props
- * @param {React.ReactNode} [props.children] Row components.
- * @param {object[]}   [props.items]        Item descriptors, as an alternative to children.
- * @param {function}   [props.onChange]     Called when any row emits an update. Applies to
- *                                          the `items` descriptors; JSX children carry their own.
- * @param {boolean}    [props.autoAnimateIn=false] Animate in on mount, untweened, as the
- *                                          reference library does for sub-panels.
+ * @param {object[]}   props.items          Item descriptor objects (same shape as the original).
+ * @param {function}   [props.onChange]     Called when any child item emits an update.
+ * @param {boolean}    [props.autoAnimateIn=false] When true, calls `animateIn(fast=true)` on mount
+ *                                           (for nested panels created by setContent callbacks).
  * @param {object}     [props.ref]    Exposes `animateIn(fast?)`, `animateOut(callback?)`,
- *                                    `activate()`, `deactivate()`, `invert(isInverted)`,
- *                                    and the `getPanelValue` / `setPanelValue` family.
+ *                                    `activate()`, `deactivate()`, `invert(isInverted)`.
  * @example
- * <Panel ref={panelRef}>
- *     <PanelSlider name="Speed" min={0} max={10} step={0.1} value={5} onChange={e => setSpeed(e.value)} />
- *     <PanelToggle name="Visible" value onChange={e => setVisible(e.value)} />
- * </Panel>
+ * <Panel
+ *   ref={panelRef}
+ *   items={[
+ *     { type: 'slider', name: 'Speed', min: 0, max: 10, step: 0.1, value: 5 },
+ *     { type: 'toggle', name: 'Visible', value: true }
+ *   ]}
+ *   onChange={e => console.log(e)}
+ * />
  */
-export function Panel({ children, items, onChange, autoAnimateIn = false, ref }) {
+export function Panel({ items = [], onChange, autoAnimateIn = false, ref }) {
     const [rootRef, root] = useAnimation({ display: 'none' });
 
-    // Live row handles, keyed by identity. Insertion order follows mount order,
-    // which is bottom-up, so the panel sorts into document order before it
-    // staggers rather than relying on it.
-    const itemsRef = useRef(new Set());
+    // Per-item imperative handles
+    const itemRefs = useRef([]);
 
     // Currently open ColorPicker entry: { element: domNode, close: fn }
     const openPickerRef = useRef(null);
 
-    const orderedItems = useCallback(() => {
-        const handles = [...itemsRef.current];
-
-        return handles.sort((a, b) => {
-            const x = a.element;
-            const y = b.element;
-
-            if (!x || !y) return 0;
-
-            return x.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
-        });
-    }, []);
-
     const contextValue = useMemo(() => ({
-        registerItem(handle) {
-            itemsRef.current.add(handle);
-
-            return () => itemsRef.current.delete(handle);
-        },
         notifyOpen(pickerElement, closeFn) {
             // Close any already-open picker first
             if (openPickerRef.current) {
@@ -77,50 +50,56 @@ export function Panel({ children, items, onChange, autoAnimateIn = false, ref })
             openPickerRef.current = { element: pickerElement, close: closeFn };
 
             // Disable items whose element does NOT contain the picker
-            itemsRef.current.forEach(item => {
+            itemRefs.current.forEach(item => {
+                if (!item) return;
                 const el = item.element;
                 if (el && pickerElement && el.contains(pickerElement)) return;
                 item.disable();
             });
         },
-        // `element` scopes the close to the picker that owns the open slot, so a
-        // picker unmounting while open cannot re-enable rows another picker has
-        // since disabled. Called without an argument it closes unconditionally.
+        // `element` scopes the close to the picker owning the open slot, so a
+        // picker unmounting while open cannot re-enable rows another picker
+        // has since disabled. Called with no argument it closes regardless.
         notifyClose(element) {
             if (element && openPickerRef.current?.element !== element) return;
             openPickerRef.current = null;
-            itemsRef.current.forEach(item => item.enable());
+            itemRefs.current.forEach(item => item?.enable());
         }
     }), []);
 
-    const animateIn = useCallback(fast => {
-        root.set({ display: '' });
-        orderedItems().forEach((item, i) => item.animateIn(i * 15, fast));
-    }, [root, orderedItems]);
+    const handleChange = useCallback(e => {
+        if (onChange) onChange(e);
+    }, [onChange]);
 
-    // Sub-panels created at runtime are already visible in the reference
-    // library, which animates them in without a tween.
+    // Automatically animate in (fast / no tween) after mount for nested panels.
     useEffect(() => {
-        if (autoAnimateIn) animateIn(true);
+        if (!autoAnimateIn) return;
+        root.set({ display: '' });
+        itemRefs.current.forEach((item, i) => item?.animateIn(i * 15, true));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useImperativeHandle(ref, () => ({
-        animateIn,
+        animateIn(fast) {
+            root.set({ display: '' });
+            itemRefs.current.forEach((item, i) => {
+                item?.animateIn(i * 15, fast);
+            });
+        },
         animateOut(callback) {
-            const handles = orderedItems();
-            const last = handles.length - 1;
+            const last = itemRefs.current.length - 1;
 
-            // The root must be hidden as well as faded: `.panel` sets
-            // `pointer-events: auto`, so a root left at `display: block` stays a
-            // transparent hit target over the canvas. The original does this
-            // with `this.hide()` in the same callback (`Panel.js` animateOut).
+            // `.panel` sets `pointer-events: auto`, so a root left displayed
+            // stays a transparent hit target over the canvas. The original
+            // hides it in the same callback (`Panel.js` animateOut -> hide()).
             const done = () => {
                 root.set({ display: 'none' });
 
                 if (callback) callback();
             };
 
-            handles.forEach((item, i) => item.animateOut(i, last, (last - i) * 15, done));
+            itemRefs.current.forEach((item, i) => {
+                item?.animateOut(i, last, (last - i) * 15, done);
+            });
         },
         activate() {
             root.stop().animate({ opacity: 1 }, 300, 'easeOutSine');
@@ -129,42 +108,49 @@ export function Panel({ children, items, onChange, autoAnimateIn = false, ref })
             root.stop().animate({ opacity: 0 }, 300, 'easeOutSine');
         },
         invert(isInverted) {
-            const documentRoot = document.documentElement;
+            const root2 = document.documentElement;
             const light = getCSSVar('--ui-invert-light-color');
             const lightTriplet = getCSSVar('--ui-invert-light-color-triplet');
             const lightLine = getCSSVar('--ui-invert-light-color-line');
             const dark = getCSSVar('--ui-invert-dark-color');
             const darkTriplet = getCSSVar('--ui-invert-dark-color-triplet');
             const darkLine = getCSSVar('--ui-invert-dark-color-line');
-            documentRoot.style.setProperty('--ui-color', isInverted ? light : dark);
-            documentRoot.style.setProperty('--ui-color-triplet', isInverted ? lightTriplet : darkTriplet);
-            documentRoot.style.setProperty('--ui-color-line', isInverted ? lightLine : darkLine);
+            root2.style.setProperty('--ui-color', isInverted ? light : dark);
+            root2.style.setProperty('--ui-color-triplet', isInverted ? lightTriplet : darkTriplet);
+            root2.style.setProperty('--ui-color-line', isInverted ? lightLine : darkLine);
         },
-        // Value API — broadcast by name, the matching row answers.
+        // Programmatic panel helpers matching the original API
         getPanelIndex(name) {
-            for (const item of itemsRef.current) {
-                const index = item.getPanelIndex?.(name);
-                if (index !== undefined) return index;
+            for (const item of itemRefs.current) {
+                const idx = item?.getPanelIndex?.(name);
+                if (idx !== undefined) return idx;
             }
         },
         getPanelValue(name) {
-            for (const item of itemsRef.current) {
-                const value = item.getPanelValue?.(name);
-                if (value !== undefined) return value;
+            for (const item of itemRefs.current) {
+                const val = item?.getPanelValue?.(name);
+                if (val !== undefined) return val;
             }
         },
-        setPanelIndex(name, index) {
-            itemsRef.current.forEach(item => item.setPanelIndex?.(name, index));
+        setPanelIndex(name, index, path = []) {
+            itemRefs.current.forEach(item => item?.setPanelIndex?.(name, index, path));
         },
-        setPanelValue(name, value) {
-            itemsRef.current.forEach(item => item.setPanelValue?.(name, value));
+        setPanelValue(name, value, path = []) {
+            itemRefs.current.forEach(item => item?.setPanelValue?.(name, value, path));
         }
-    }), [root, animateIn, orderedItems]);
+    }), [root]);
 
     return (
         <PanelContext.Provider value={contextValue}>
             <div ref={rootRef} className="panel">
-                {items ? <PanelItems items={items} onChange={onChange} /> : children}
+                {items.map((data, i) => (
+                    <PanelItem
+                        key={i}
+                        ref={el => { itemRefs.current[i] = el; }}
+                        data={data}
+                        onChange={handleChange}
+                    />
+                ))}
             </div>
         </PanelContext.Provider>
     );

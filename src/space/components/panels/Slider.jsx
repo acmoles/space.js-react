@@ -24,9 +24,6 @@ function getPrecision(step) {
  * @param {number}   [props.value=0]   Initial value.
  * @param {function} [props.onChange]  Called with `{ path, value, target }`.
  * @param {React.ReactNode} [props.children] Optional sub-panel content.
- * @param {boolean}  [props.showContent] Controls sub-panel visibility. When
- *   omitted, visibility is driven imperatively via `toggleContent()`. When
- *   supplied it takes precedence, so `toggleContent()` has no effect.
  * @param {object}   [props.ref] Exposes `setValue(v, notify?)` and `toggleContent(show)`.
  * @example
  * <Slider name="Speed" min={0} max={10} step={0.1} value={5} onChange={e => console.log(e.value)} />
@@ -38,7 +35,6 @@ export function Slider({
     step = 0.01,
     value: initialValue = 0,
     onChange,
-    showContent,
     children,
     ref
 }) {
@@ -56,8 +52,6 @@ export function Slider({
     useEffect(() => { onChangeRef.current = onChange; });
 
     const [dynContent, setDynContent] = useState(null);
-    const [showContentState, setShowContentState] = useState(true);
-    const contentVisible = showContent ?? showContentState;
     const dynContentRef = useRef(null);
     const [lineRef, line] = useAnimation({ transformOrigin: 'left center', scaleX: 0 });
 
@@ -101,7 +95,7 @@ export function Slider({
             setDynContent(node);
         },
         toggleContent(show) {
-            setShowContentState(show);
+            if (groupRef.current) groupRef.current.style.display = show ? '' : 'none';
         }
     }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -166,7 +160,7 @@ export function Slider({
                 <div ref={lineRef} className="line" />
             </div>
             {(dynContent ?? children) && (
-                <div ref={groupRef} className="group" style={{ display: contentVisible ? '' : 'none' }}>
+                <div ref={groupRef} className="group">
                     {dynContent ?? children}
                 </div>
             )}

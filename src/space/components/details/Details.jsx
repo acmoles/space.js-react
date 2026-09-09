@@ -77,6 +77,7 @@ function renderContentItem(item, key) {
         >
             {item.title !== undefined && (
                 <h2
+                    className="info"
                     style={{ width: 'fit-content' }}
                     dangerouslySetInnerHTML={{ __html: item.title }}
                 />

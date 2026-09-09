@@ -159,7 +159,11 @@ export default function FpsGraphExample({ title }) {
         items.forEach(item => uiRef.current?.addPanel(item));
         // Defer animateIn until after React flushes the addPanel state updates
         const id = requestAnimationFrame(() => uiRef.current?.animateIn());
-        return () => cancelAnimationFrame(id);
+
+        return () => {
+            cancelAnimationFrame(id);
+            items.forEach(item => uiRef.current?.removePanel(item));
+        };
     }, [items]);
 
     return (

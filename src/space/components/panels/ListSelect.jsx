@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef } from 'react';
+import { useEffect, useImperativeHandle, useRef } from 'react';
 
 import { useAnimation } from '../../motion/index.js';
 
@@ -11,7 +11,9 @@ import './ListSelect.css';
  *
  * @param {object}   props
  * @param {string[]} props.list  Array of key strings to cycle through.
- * @param {number}   props.index Current index into `list`.
+ * @param {number}   props.index Initial index into `list`. Like the original,
+ *                                the widget owns its index after mount; later
+ *                                changes must go through the `setIndex` handle.
  * @param {function} [props.onClick] Called with `{ target: { index } }` after cycling.
  * @param {object}   [props.ref] Exposes `setList(list)` and `setIndex(index)`.
  * @example
@@ -30,6 +32,13 @@ export function ListSelect({ list: listProp, index: indexProp, onClick, ref }) {
         if (contentRef.current) contentRef.current.textContent = listRef.current[indexRef.current];
         if (overRef.current) overRef.current.textContent = listRef.current[nextRef.current];
     };
+
+    // The original owns both labels imperatively and only rewrites them when
+    // the cycle animation completes.  Rendering them as JSX children instead
+    // would let the re-render triggered by the click commit the new text
+    // immediately, so `content` would jump to the incoming item while it is
+    // still animating out — the visible "skips an item" glitch.
+    useEffect(syncText, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useImperativeHandle(ref, () => ({
         setList(newList) {
@@ -65,8 +74,8 @@ export function ListSelect({ list: listProp, index: indexProp, onClick, ref }) {
 
     return (
         <div className="list-select" onClick={handleClick}>
-            <span ref={contentRef} className="content">{listProp[indexProp]}</span>
-            <span ref={overRef} className="over">{listProp[(indexProp + 1) % listProp.length]}</span>
+            <span ref={contentRef} className="content" />
+            <span ref={overRef} className="over" />
         </div>
     );
 }

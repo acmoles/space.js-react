@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { WebAudio, clamp, mapLinear, median, rms, ticker, tween } from '@lib/index.js';
 
 import { Example } from '@/components';
+import { getStoredSound, setStoredSound } from '@/examples/utils/soundPreference.js';
 import { Info } from '@/space/components/nav/index.js';
 import { RadialGraphSegments } from '@/space/components/radial/index.js';
 import { useResize } from '@/space/hooks/index.js';
@@ -32,11 +33,7 @@ export default function AudioRadialGraphExample({ title }) {
     const graphRef = useRef(null);
     const instructionsRef = useRef(null);
 
-    const [initialSound] = useState(() => {
-        const v = localStorage.getItem('sound');
-
-        return v ? JSON.parse(v) : true;
-    });
+    const [initialSound] = useState(getStoredSound);
 
     // Stable callback ref so AudioButton's onUpdate stays referentially stable
     const onAudioRef = useRef(null);
@@ -163,7 +160,7 @@ export default function AudioRadialGraphExample({ title }) {
                 mute();
             }
 
-            localStorage.setItem('sound', JSON.stringify(sound));
+            setStoredSound(sound);
             as.soundState = sound;
         }
 
@@ -370,6 +367,10 @@ export default function AudioRadialGraphExample({ title }) {
 
             ticker.remove(onUpdate);
 
+            panelItems.forEach(item => {
+                uiRef.current?.removePanel(item);
+            });
+
             cyberspace.stop();
 
             if (WebAudio.context) {
@@ -412,5 +413,4 @@ export default function AudioRadialGraphExample({ title }) {
         </Example>
     );
 }
-
 

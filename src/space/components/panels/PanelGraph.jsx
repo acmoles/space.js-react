@@ -74,7 +74,11 @@ export function PanelGraph({
     const animatedInRef = useRef(false);
     const hoveredInRef = useRef(false);
     const needsUpdateRef = useRef(true);
-    const graphNeedsUpdateRef = useRef(false);
+    // The original's constructor runs `setArray(this.value)`, which sets
+    // `graphNeedsUpdate`, so the lookup table is always built by the first
+    // `drawGraph()`. Seeding the array directly (above) skips that, and
+    // `getCurveY` then reads past the end of an empty lookup on first hover.
+    const graphNeedsUpdateRef = useRef(!noHover && !!lookupPrecision);
 
     // FPS mode
     const fpsStateRef = useRef(null);
@@ -100,8 +104,12 @@ export function PanelGraph({
     const infoRef = useRef(null);
     const numberRef = useRef(null);
 
-    const hoverInRef = useRef(false);
     const hoverTween = useRef(null);
+    // Stands in for the original's `this.info.tween({ opacity })`: a persistent
+    // object so a re-triggered tween starts from the current opacity rather
+    // than snapping back to a literal's value.
+    const infoPropsRef = useRef({ opacity: 0 });
+    const infoTween = useRef(null);
     const delay = useDelayedCall();
 
     // Colours (read once after mount)
@@ -388,12 +396,15 @@ export function PanelGraph({
             needsUpdateRef.current = true;
         });
         if (infoRef.current) {
+            clearTween(infoTween.current);
             infoRef.current.style.visibility = 'visible';
-            tween({ opacity: 0 }, { opacity: 1 }, 275, 'easeInOutCubic', null, ({ opacity }) => {
-                if (infoRef.current) infoRef.current.style.opacity = opacity;
+            // `tween`'s update callback is invoked with no arguments, so the
+            // value has to be read back off the tweened object.
+            infoTween.current = tween(infoPropsRef.current, { opacity: 1 }, 275, 'easeInOutCubic', null, () => {
+                if (infoRef.current) infoRef.current.style.opacity = infoPropsRef.current.opacity;
             });
         }
-        hoverInRef.current = true;
+        hoveredInRef.current = true;
     }, []);
 
     const hoverOut = useCallback(() => {
@@ -402,19 +413,20 @@ export function PanelGraph({
             needsUpdateRef.current = true;
         });
         if (infoRef.current) {
-            tween({ opacity: 1 }, { opacity: 0 }, 275, 'easeInOutCubic', null, ({ opacity }) => {
-                if (infoRef.current) {
-                    infoRef.current.style.opacity = opacity;
-                    if (opacity < 0.001) infoRef.current.style.visibility = 'hidden';
-                }
+            clearTween(infoTween.current);
+            // The original hides the info only once the fade completes
+            // (`info.tween(..., () => this.info.invisible())`).
+            infoTween.current = tween(infoPropsRef.current, { opacity: 0 }, 275, 'easeInOutCubic', () => {
+                if (infoRef.current) infoRef.current.style.visibility = 'hidden';
+            }, () => {
+                if (infoRef.current) infoRef.current.style.opacity = infoPropsRef.current.opacity;
             });
         }
-        hoverInRef.current = false;
+        hoveredInRef.current = false;
     }, []);
 
     const handleHover = useCallback(e => {
         if (!animatedInRef.current) {
-            hoveredInRef.current = e.type === 'mouseenter';
             return;
         }
         if (e.type === 'mouseenter') {
@@ -491,7 +503,11 @@ export function PanelGraph({
                 needsUpdateRef.current = true;
                 if (!noHover && lookupPrecision) graphNeedsUpdateRef.current = true;
             }
-            drawGraph();
+
+            if (needsUpdateRef.current || hoveredInRef.current) {
+                drawGraph();
+                needsUpdateRef.current = false;
+            }
         }
     }), [setRange, drawGraph, precision, resolution, noHover, lookupPrecision, callback]);
 

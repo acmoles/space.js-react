@@ -1,7 +1,10 @@
 /* global.css already provides .details .link and .details .link .line font rules */
 
 .details .link {
+    position: static;
     width: fit-content;
+    padding: 0;
+    text-transform: none;
     white-space: nowrap;
 }
 
@@ -10,5 +13,7 @@
 }
 
 .details .link .line {
+    position: static;
     display: inline-block;
+    background-color: transparent;
 }

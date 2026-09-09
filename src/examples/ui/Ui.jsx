@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Example } from '@/components';
+import { getStoredSound, setStoredSound } from '@/examples/utils/soundPreference.js';
 import { useClassName } from '@/hooks';
 
 import { UI } from '../../space/components/ui/index.js';
@@ -36,10 +37,7 @@ export default function UiExample({ title }) {
 
     const uiRef = useRef(null);
 
-    const [sound, setSound] = useState(() => {
-        const stored = localStorage.getItem('sound');
-        return stored !== null ? JSON.parse(stored) : true;
-    });
+    const [sound, setSound] = useState(getStoredSound);
 
     // On mount: show info/instructions, open details panel, animate everything in
     useEffect(() => {
@@ -84,10 +82,10 @@ export default function UiExample({ title }) {
                 detailsButton={{ number: 1, total: 6 }}
                 muteButton={{
                     sound,
-                    onUpdate: e => {
-                        console.log('MuteButton callback:', e);
-                        localStorage.setItem('sound', JSON.stringify(e.sound));
-                        setSound(e.sound);
+                    onUpdate: soundOn => {
+                        console.log('MuteButton callback:', soundOn);
+                        setStoredSound(soundOn);
+                        setSound(soundOn);
                     }
                 }}
                 onDetails={e => console.log('Details event:', e)}

@@ -24,35 +24,42 @@ The home page (`/`) is an index of every example. Each example lives at the rout
 
 ### Usage
 
-Panel components are declared as JSX. Rows register themselves with the enclosing `Panel`, so they can be wrapped, grouped or rendered conditionally and still animate in document order:
+A `Panel` is described by an array of row descriptors, mirroring the item
+objects the original library takes. Rows animate in in array order:
 
 ```jsx
-import {
-    Panel, PanelColor, PanelDivider, PanelLabel, PanelSlider, PanelToggle
-} from '@/space/components/panels/index.js';
+import { Panel } from '@/space/components/panels/index.js';
 
-<Panel ref={panelRef}>
-    <PanelLabel name="Settings" />
-    <PanelDivider />
-    <PanelSlider name="Speed" min={0} max={10} step={0.1} value={5} onChange={e => setSpeed(e.value)} />
-    <PanelToggle name="Visible" value onChange={e => setVisible(e.value)} />
-    <PanelColor name="Color" value="#ffffff" onChange={e => setColor(e.value)} />
-</Panel>
+const items = [
+    { name: 'Settings' },
+    { type: 'divider' },
+    { type: 'slider', name: 'Speed', min: 0, max: 10, step: 0.1, value: 5, callback: value => setSpeed(value) },
+    { type: 'toggle', name: 'Visible', value: true, callback: value => setVisible(value) },
+    { type: 'color', name: 'Color', value: '#ffffff', callback: value => setColor(value) }
+];
+
+<Panel ref={panelRef} items={items} />
 ```
 
 Call `panelRef.current.animateIn()` to stagger the rows in, or pass `autoAnimateIn` to show them untweened on mount (what nested panels do).
 
-The full set of rows is `PanelLabel`, `PanelSpacer`, `PanelDivider`, `PanelLinkRow`, `PanelThumbnailRow`, `PanelGraphRow`, `PanelMeterRow`, `PanelList`, `PanelSlider`, `PanelToggle`, `PanelColor` and `PanelContent`.
+Row types are `divider`, `spacer`, `link`, `thumbnail`, `graph`, `meter`, `list`, `slider`, `toggle`, `color` and `content`; an item with no `type` renders a label.
 
-Children of `PanelList`, `PanelSlider` and `PanelToggle` become nested content. Visibility is driven by the `showContent` prop:
+`list`, `slider` and `toggle` rows take nested rows through `content`, which is
+either an array of descriptors or a function returning one. `Panel` shows and
+hides that group as the row opens and closes:
 
 ```jsx
-<PanelToggle name="Advanced" value={open} onChange={e => setOpen(e.value)} showContent={open}>
-    <Panel autoAnimateIn>
-        <PanelDivider />
-        <PanelSlider name="Nested" min={0} max={1} step={0.01} value={0.5} onChange={onNested} />
-    </Panel>
-</PanelToggle>
+{
+    type: 'toggle',
+    name: 'Advanced',
+    value: false,
+    callback: (value, item) => item.setContent(value ? new Panel(nestedItems) : null),
+    content: [
+        { type: 'divider' },
+        { type: 'slider', name: 'Nested', min: 0, max: 1, step: 0.01, value: 0.5, callback: onNested }
+    ]
+}
 ```
 
 HUD components:
@@ -60,7 +67,7 @@ HUD components:
 ```jsx
 import { UI } from '@/space/components/ui/UI.jsx';
 
-<UI ref={uiRef} fps fpsOpen panelChildren={<PanelLabel name="FPS" />} />
+<UI ref={uiRef} fps fpsOpen panelItems={[{ name: 'FPS' }]} />
 ```
 
 Graph and meter components:

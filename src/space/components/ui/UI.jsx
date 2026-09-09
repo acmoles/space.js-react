@@ -49,7 +49,7 @@ import './UI.css';
  * @param {object}  [props.ref]  Exposes: `animateIn`, `animateOut`, `toggleDetails`,
  *   `animateInfoIn(delay?)`, `animateInstructionsIn(delay?)`,
  *   `animateDetailsInfoIn(delay?)`, `animateDetailsInfoOut(callback?)`,
- *   `addPanel(item)`, `getPanelIndex`, `getPanelValue`, `setPanelIndex`,
+ *   `addPanel(item)`, `removePanel(item)`, `getPanelIndex`, `getPanelValue`, `setPanelIndex`,
  *   `setPanelValue`, `invert(isInverted)`, `update` (no-op).
  * @example
  * const uiRef = useRef(null);
@@ -63,7 +63,6 @@ export function UI({
     breakpoint = 1000,
     header,
     panelItems,
-    panelChildren,
     footer,
     menu,
     info,
@@ -255,6 +254,7 @@ export function UI({
 
         // Panel API — proxied through Header → HeaderInfo
         addPanel: item => headerRef.current?.addPanel(item),
+        removePanel: item => headerRef.current?.removePanel(item),
         getPanelIndex: name => headerRef.current?.getPanelIndex(name),
         getPanelValue: name => headerRef.current?.getPanelValue(name),
         setPanelIndex: (name, idx, path) => headerRef.current?.setPanelIndex(name, idx, path),
@@ -327,7 +327,6 @@ export function UI({
                     fpsOpen={fpsOpen}
                     breakpoint={breakpoint}
                     panelItems={panelItems}
-                    panelChildren={panelChildren}
                 />
             )}
 

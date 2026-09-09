@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Example } from '@/components';
 
 import './ThreadCanvas.css';
+
+const transferredCanvases = new WeakSet();
 
 /**
  * Full-viewport animated canvas noise, rendered on a dedicated worker thread
@@ -12,9 +14,19 @@ import './ThreadCanvas.css';
  */
 export default function ThreadCanvasExample({ title }) {
     const canvasRef = useRef(null);
+    const [canvasKey, setCanvasKey] = useState(0);
 
     useEffect(() => {
         const canvas = canvasRef.current;
+
+        if (!canvas) {
+            return undefined;
+        }
+
+        if (transferredCanvases.has(canvas)) {
+            setCanvasKey(key => key + 1);
+            return undefined;
+        }
 
         const worker = new Worker(new URL('./threadCanvasWorker.js', import.meta.url), { type: 'module' });
 
@@ -27,6 +39,7 @@ export default function ThreadCanvasExample({ title }) {
         };
 
         const offscreen = canvas.transferControlToOffscreen();
+        transferredCanvases.add(canvas);
 
         thread.init({ params: { canvas: offscreen } }, [offscreen]);
 
@@ -51,11 +64,11 @@ export default function ThreadCanvasExample({ title }) {
             thread.stop();
             thread.terminate();
         };
-    }, []);
+    }, [canvasKey]);
 
     return (
         <Example title={title}>
-            <canvas ref={canvasRef} className="thread-canvas" />
+            <canvas key={canvasKey} ref={canvasRef} className="thread-canvas" />
         </Example>
     );
 }

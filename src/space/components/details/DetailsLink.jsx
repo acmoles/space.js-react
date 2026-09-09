@@ -15,7 +15,7 @@ import './DetailsLink.css';
  * @example
  * <DetailsLink title="Read more" link="https://example.com" />
  */
-export function DetailsLink({ title, link, target = '_blank', onHover, onClick }) {
+export function DetailsLink({ title, link, target = '_blank', style, onHover, onClick }) {
     const [lineRef, line] = useAnimation();
 
     const handleHover = event => {
@@ -31,6 +31,7 @@ export function DetailsLink({ title, link, target = '_blank', onHover, onClick }
             className="link"
             href={link}
             target={target}
+            style={style}
             onMouseEnter={handleHover}
             onMouseLeave={handleHover}
             onClick={onClick}

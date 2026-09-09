@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Example } from '@/components';
+import { getStoredSound, setStoredSound } from '@/examples/utils/soundPreference.js';
 import { useEventListener } from '@/space/index.js';
 import { UI } from '@/space/index.js';
 
@@ -8,10 +9,7 @@ export default function UiAudioExample({ title }) {
     const uiRef = useRef(null);
 
     // Initialise sound from localStorage — stable, never written back via setState
-    const [sound] = useState(() => {
-        const saved = localStorage.getItem('sound');
-        return saved ? JSON.parse(saved) : true;
-    });
+    const [sound] = useState(getStoredSound);
 
     // The share image is created once, mirroring the original setData call
     const [image] = useState(() => {
@@ -49,7 +47,7 @@ export default function UiAudioExample({ title }) {
                     info: audioInfo,
                     onUpdate: soundOn => {
                         console.log('AudioButton event:', { sound: soundOn });
-                        localStorage.setItem('sound', JSON.stringify(soundOn));
+                        setStoredSound(soundOn);
                     }
                 }}
                 onUI={e => console.log('UI event:', e)}

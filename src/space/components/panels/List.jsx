@@ -16,9 +16,6 @@ import './List.css';
  * @param {*}        [props.value]  Initially selected value (matched by value, not key).
  * @param {function} [props.onChange] Called with `{ path, index, value, target }`.
  * @param {React.ReactNode} [props.children] Optional sub-panel rendered below.
- * @param {boolean}  [props.showContent] Controls sub-panel visibility. When
- *   omitted, visibility is driven imperatively via `toggleContent()`. When
- *   supplied it takes precedence, so `toggleContent()` has no effect.
  * @param {object}   [props.ref] Exposes `setIndex`, `setValue`, `setList`, `toggleContent`.
  * @example
  * <List
@@ -28,7 +25,7 @@ import './List.css';
  *   onChange={e => console.log(e.value)}
  * />
  */
-export function List({ list, value, onChange, showContent, children, ref }) {
+export function List({ list, value, onChange, children, ref }) {
     const keys = useRef(Array.from(list.keys()));
     const values = useRef(Array.from(list.values()));
 
@@ -40,8 +37,7 @@ export function List({ list, value, onChange, showContent, children, ref }) {
     // matching on values would yield -1 for any list whose keys and values
     // differ (e.g. VisibleOptions, MaterialOptions).
     const [index, setIndexState] = useState(() => Array.from(list.keys()).indexOf(value));
-    const [showContentState, setShowContentState] = useState(true);
-    const contentVisible = showContent ?? showContentState;
+    const [showContent, setShowContent] = useState(true);
 
     const indexRef = useRef(index);
     const itemRefs = useRef([]);
@@ -119,7 +115,7 @@ export function List({ list, value, onChange, showContent, children, ref }) {
             setDynContent(node);
         },
         toggleContent(show) {
-            setShowContentState(show);
+            setShowContent(show);
         }
     }), [emitChange]);
 
@@ -153,7 +149,7 @@ export function List({ list, value, onChange, showContent, children, ref }) {
                 )}
             </div>
             {(children || dynContent) && (
-                <div className="group" style={{ display: contentVisible ? '' : 'none' }}>
+                <div className="group" style={{ display: showContent ? '' : 'none' }}>
                     {dynContent ?? children}
                 </div>
             )}

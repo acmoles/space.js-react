@@ -12,7 +12,7 @@ import './Header.css';
  * Fixed navigation header. Children slide in staggered via `animateIn` and
  * fade out via `animateOut`. Shows an FPS counter when `fps` or `fpsOpen` is
  * set. When `HeaderInfo` has panel items, the header ref also proxies the full
- * panel API (`addPanel`, `getPanelIndex`, `getPanelValue`, `setPanelIndex`,
+ * panel API (`addPanel`, `removePanel`, `getPanelIndex`, `getPanelValue`, `setPanelIndex`,
  * `setPanelValue`, `openPanel`) so composites like `UI` can delegate without
  * holding a direct reference to `HeaderInfo`.
  *
@@ -42,7 +42,6 @@ export function Header({
     fpsOpen = false,
     breakpoint = 0,
     panelItems,
-    panelChildren,
     ref
 }) {
     const rootRef = useRef(null);
@@ -95,6 +94,7 @@ export function Header({
         // Panel API — proxied from HeaderInfo so composites don't need a
         // separate ref to HeaderInfo.
         addPanel: item => infoRef.current?.addPanel(item),
+        removePanel: item => infoRef.current?.removePanel(item),
         getPanelIndex: name => infoRef.current?.getPanelIndex(name),
         getPanelValue: name => infoRef.current?.getPanelValue(name),
         setPanelIndex: (name, idx, path) => infoRef.current?.setPanelIndex(name, idx, path),
@@ -118,7 +118,7 @@ export function Header({
                 />
             ))}
             {showInfo && (
-                <HeaderInfo ref={infoRef} fpsOpen={fpsOpen} panelItems={panelItems} panelChildren={panelChildren} />
+                <HeaderInfo ref={infoRef} fpsOpen={fpsOpen} panelItems={panelItems} />
             )}
         </div>
     );

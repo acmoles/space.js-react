@@ -14,7 +14,7 @@ import './HeaderInfo.css';
  * @param {boolean} [props.fpsOpen=false] When true the panel never closes on
  *   pointer-outside events (mirrors the original `fpsOpen` flag).
  * @param {object}  [props.ref] Exposes `hide`, `animateIn(delay)`,
- *   `animateOut`, `enable`, `disable`, `openPanel`, `addPanel(item)`,
+ *   `animateOut`, `enable`, `disable`, `openPanel`, `addPanel(item)`, `removePanel(item)`,
  *   `getPanelIndex(name)`, `getPanelValue(name)`,
  *   `setPanelIndex(name, index, path)` and `setPanelValue(name, value, path)`.
  * @example
@@ -23,7 +23,7 @@ import './HeaderInfo.css';
  * infoRef.current.animateIn();
  * infoRef.current.addPanel({ type: 'slider', name: 'Speed', value: 5 });
  */
-export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, panelChildren, ref }) {
+export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, ref }) {
     const [rootRef, root] = useAnimation();
     const [numberRef, numberCtrl] = useAnimation();
     const panelRef = useRef(null);
@@ -32,7 +32,7 @@ export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, pan
     const pointerRef = useRef({ lastTime: 0, lastX: 0, lastY: 0, x: 0, y: 0 });
 
     const [panelItems, setPanelItems] = useState(() => initialPanelItems || []);
-    const hasPanel = panelItems.length > 0 || !!panelChildren;
+    const hasPanel = panelItems.length > 0;
 
     // Keep latest callbacks in a ref so event-handler closures stay fresh
     // without re-subscribing on every render (mirrors useEventListener pattern).
@@ -130,6 +130,11 @@ export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, pan
         disable: () => numberCtrl.stop().animate({ opacity: 0.35 }, 400, 'easeInOutSine'),
         openPanel: () => cbRef.current.openPanel?.(),
         addPanel: item => setPanelItems(prev => [...prev, item]),
+        // Counterpart to `addPanel`, so an effect that adds rows can remove
+        // them again on cleanup. Without it StrictMode's simulated remount
+        // leaves a duplicate set of rows whose callbacks close over resources
+        // the first cleanup already tore down.
+        removePanel: item => setPanelItems(prev => prev.filter(i => i !== item)),
         getPanelIndex: name => panelRef.current?.getPanelIndex(name),
         getPanelValue: name => panelRef.current?.getPanelValue(name),
         setPanelIndex: (name, idx, path) => panelRef.current?.setPanelIndex(name, idx, path),
@@ -142,10 +147,8 @@ export function HeaderInfo({ fpsOpen = false, panelItems: initialPanelItems, pan
             {hasPanel && (
                 <Panel
                     ref={panelRef}
-                    items={panelChildren ? undefined : panelItems}
-                >
-                    {panelChildren}
-                </Panel>
+                    items={panelItems}
+                />
             )}
         </div>
     );
