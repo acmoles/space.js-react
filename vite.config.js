@@ -8,7 +8,13 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url)),
-            '@lib': fileURLToPath(new URL('./lib', import.meta.url))
+            '@lib': fileURLToPath(new URL('./lib', import.meta.url)),
+            // `@alienkitty/alien.js` depends on `@alienkitty/space.js`. Point
+            // that at the vendored copy in `lib/`, otherwise the app runs two
+            // copies of the library and the `Stage` and `ticker` singletons
+            // that alien.js and the ported components share diverge.
+            '@alienkitty/space.js/three': fileURLToPath(new URL('./lib/three.js', import.meta.url)),
+            '@alienkitty/space.js': fileURLToPath(new URL('./lib/index.js', import.meta.url))
         }
     },
     build: {
