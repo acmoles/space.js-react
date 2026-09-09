@@ -362,18 +362,23 @@ PARITY_NOISE=1 npm run parity -- test_radial_graph
 to 0, so the default tolerance is 0 and a "0 differing pixels" claim now means
 something.
 
+44 of the 56 routes currently pass at 0 differing pixels, idle and on hover. The
+12 that do not are described below; ten of them are blank on both sides and are
+counted as failures precisely so that a vacuous match is never mistaken for
+parity.
+
 ##### Known gaps
 
-Four routes — `close`, `progress`, `progress_indeterminate` and `audio_stream` —
-capture as an empty background under the deterministic clock. Their markup and
-geometry are correct and identical to the reference (verified via
-`getBoundingClientRect` and computed styles), but their reveal tween never
-receives frames, so nothing is painted. This is a harness limitation, not a
-confirmed port regression; it is **not** worked around with a per-route
-tolerance. Under the real clock these routes are phase-sensitive and drift
-(`audio_stream` measured 2,139 px), so neither mode currently proves them.
-Run them with `PARITY_DETERMINISTIC=0` for a rough check until the reveal is
-traced.
+`close`, `progress`, `progress_indeterminate` and `audio_stream` used to capture
+as an empty background and were assumed to be a harness limitation. They were
+not: each was a real port bug that the deterministic clock simply made visible.
+The port had added initial `drawLine` calls that hide strokes the original
+leaves solid until its ticker first runs, and `audio_stream` animated a panel
+whose items the original never animates — on a page that starts no ticker, so
+they stayed hidden forever. Two elements had also lost their box: the panel
+divider (the original sets `height: 1` inline) and the slider fill line (a block
+div, ported as an inline `<span>`, so it measured 0x0). All four now pass at
+0 px.
 
 `thumbnail` and `thread_canvas` paint per-pixel random noise over the whole
 viewport, so any difference in how many `Math.random()` calls precede a frame

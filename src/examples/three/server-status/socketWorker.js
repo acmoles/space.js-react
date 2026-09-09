@@ -10,11 +10,15 @@
 
 import { Socket } from './socket.js';
 
+// Only these may be invoked from a message, so that a `fn` of `constructor` or
+// any other inherited member cannot be dispatched to.
+const HANDLERS = ['init', 'getPeaks'];
+
 class SocketThread {
     constructor() {
         self.addEventListener('message', ({ data }) => {
             const { fn } = data.message || {};
-            if (fn && typeof this[fn] === 'function') {
+            if (HANDLERS.includes(fn) && typeof this[fn] === 'function') {
                 this[fn](data.message);
             }
         });
