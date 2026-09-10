@@ -4,10 +4,8 @@ import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { layers } from '../config.js';
 
 export class FloatingCrystal extends Group {
-    constructor(world) {
+    constructor() {
         super();
-
-        this.world = world;
 
         this.position.y = 0.7;
 
@@ -16,8 +14,6 @@ export class FloatingCrystal extends Group {
     }
 
     async initMesh() {
-        const { physics } = this.world;
-
         let geometry = new OctahedronGeometry();
 
         // Convert to indexed geometry
@@ -37,9 +33,6 @@ export class FloatingCrystal extends Group {
         mesh.layers.enable(layers.buffers);
         this.add(mesh);
 
-        // Physics
-        physics.add(mesh, { density: 2, autoSleep: false });
-
         this.mesh = mesh;
     }
 
@@ -56,10 +49,6 @@ export class FloatingCrystal extends Group {
     // Public methods
 
     update = time => {
-        if (this.world.isPhysicsEnabled()) {
-            return;
-        }
-
         this.position.y = 0.7 + Math.sin(time) * 0.1;
         this.rotation.y += 0.01;
     };

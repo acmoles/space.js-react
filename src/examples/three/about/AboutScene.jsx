@@ -10,7 +10,6 @@ import {
     PerspectiveCamera
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { OimoPhysics } from '@alienkitty/alien.js/three/oimophysics';
 
 import {
     EnvironmentTextureLoader,
@@ -35,9 +34,7 @@ import { isDebug } from './config.js';
 import { params, resetParams } from './state.js';
 import { SceneView } from './scene/SceneView.js';
 import { RenderManager } from './renderManager.js';
-import { PhysicsController } from './physicsController.js';
 import { CameraController } from './cameraController.js';
-import { InputManager } from './inputManager.js';
 import { registerAboutPatches } from './panels/registerPatches.js';
 import { aboutHeaderPanelItems } from './panels/aboutHeaderPanel.js';
 
@@ -75,7 +72,7 @@ function PointsBridge({ contextRef }) {
  * the point ref, registers it so sibling panels can resolve it, and applies
  * the tracker-sphere scale tweak once the point has mounted.
  */
-function AboutPoint({ mesh, name, type, uvTexture, physics, meshToPoint }) {
+function AboutPoint({ mesh, name, type, uvTexture, meshToPoint }) {
     const pointRef = useRef(null);
 
     const panelUi = useMemo(() => ({
@@ -87,10 +84,9 @@ function AboutPoint({ mesh, name, type, uvTexture, physics, meshToPoint }) {
         constructor: {
             points: true,
             getPoint: targetMesh => meshToPoint.get(targetMesh)?.current ?? null,
-            uvHelper: true,
-            physics
+            uvHelper: true
         }
-    }), [uvTexture, physics, meshToPoint]);
+    }), [uvTexture, meshToPoint]);
 
     const items = useMaterialsPanelItems(mesh, panelUi);
 
@@ -123,8 +119,8 @@ function AboutPoint({ mesh, name, type, uvTexture, physics, meshToPoint }) {
 
 /**
  * The About scene: dark planet, floating crystal, abstract cube, floor and
- * grid, driven through the ported RenderManager post-processing stack and the
- * Oimo physics controllers. Rendering is taken over from React Three Fiber via
+ * grid, driven through the ported RenderManager post-processing stack.
+ * Rendering is taken over from React Three Fiber via
  * a high-priority `useFrame`, exactly as the reference app renders from its
  * `ticker` loop.
  */
@@ -267,23 +263,9 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
 
         const getTexture = (path, callback) => textureLoader.load(path, callback);
 
-        // ── Physics + world ──────────────────────────────────────────────────
-
-        const physics = new OimoPhysics();
-        const physicsController = new PhysicsController(physics);
-
-        ctrl.physics = physics;
-        ctrl.physicsController = physicsController;
-
-        const world = {
-            physics,
-            input: null,
-            isPhysicsEnabled: () => physicsController.enabled
-        };
-
         // ── Scene view ─────────────────────────────────────────────────────────
 
-        const view = new SceneView(world);
+        const view = new SceneView();
         scene.add(view);
         ctrl.view = view;
 
@@ -342,7 +324,7 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
 
             view.visible = false;
 
-            // ── Render + input + camera controllers ────────────────────────────
+            // ── Render + camera controllers ────────────────────────────────────
 
             const renderManager = new RenderManager(gl, scene, camera, uiProxy, {
                 screenTriangle: getFullscreenTriangle(),
@@ -354,11 +336,7 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
             const cameraController = new CameraController(cameras, pointsContextRef);
             ctrl.cameraController = cameraController;
 
-            const inputManager = new InputManager(scene, camera, controls, cameraController, physicsController);
-            ctrl.inputManager = inputManager;
-            world.input = inputManager;
-
-            // ── Material patches (Adjust / Subsurface / Helper / Physics) ──────
+            // ── Material patches (Adjust / Subsurface / Helper) ────────────────
 
             ctrl.unregisterPatches = registerAboutPatches();
             LightPanelController.init(scene);
@@ -388,7 +366,7 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
                 return;
             }
 
-            setSceneData({ objects: nextObjects, uvTexture, physics, meshToPoint });
+            setSceneData({ objects: nextObjects, uvTexture, meshToPoint });
 
             // ── Header hover panel ─────────────────────────────────────────────
 
@@ -396,8 +374,6 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
                 scene,
                 view,
                 renderManager,
-                physics,
-                physicsController,
                 ui: uiProxy
             }));
 
@@ -453,7 +429,6 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
             store.getState().set({ camera: nextCamera });
 
             ctrl.cameraController?.setCamera(nextCamera, nextControls);
-            ctrl.inputManager?.setCamera(nextCamera, nextControls);
             ctrl.renderManager?.setCamera(nextCamera);
         };
         ctrl.setActiveCamera = setActiveCamera;
@@ -487,7 +462,6 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
             ctrl.opacityTween = opacity;
 
             // SceneController.animateIn
-            ctrl.view.animateIn();
             ctrl.view.visible = true;
 
             // RenderManager.animateIn
@@ -535,7 +509,6 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
             window.removeEventListener('keyup', ctrl.onKeyUp);
             gl.domElement.removeEventListener('touchstart', ctrl.onTouchStart);
 
-            ctrl.inputManager?.destroy();
             ctrl.cameraController?.destroy();
             ctrl.renderManager?.destroy();
 
@@ -595,9 +568,6 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
             ctrl.sceneAnimatedOneFramePast = !params.animate;
         }
 
-        ctrl.physicsController.update();
-        ctrl.inputManager.update(time);
-
         LightPanelController.update?.();
 
         ctrl.renderManager.update();
@@ -617,7 +587,6 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
                             name={object.name}
                             type={object.type}
                             uvTexture={sceneData.uvTexture}
-                            physics={sceneData.physics}
                             meshToPoint={sceneData.meshToPoint}
                         />
                     ))}

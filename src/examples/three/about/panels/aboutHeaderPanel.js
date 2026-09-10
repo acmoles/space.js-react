@@ -1,4 +1,3 @@
-import { Vector3 } from 'three';
 import { getKeyByValue } from '@lib/three.js';
 
 import {
@@ -30,16 +29,11 @@ import { gridPanelItems } from './gridPanel.js';
  * @param {import('three').Scene}  ctx.scene
  * @param {object}                 ctx.view              SceneView instance.
  * @param {object}                 ctx.renderManager
- * @param {object}                 ctx.physics           OimoPhysics instance.
- * @param {object}                 ctx.physicsController
  * @param {object}                 ctx.ui                UI proxy (setPanelValue/invert).
  * @returns {object[]} Panel item descriptors.
  */
-export function aboutHeaderPanelItems({ scene, view, renderManager, physics, physicsController, ui }) {
+export function aboutHeaderPanelItems({ scene, view, renderManager, ui }) {
     const drawBuffers = renderManager.drawBuffers;
-
-    const vector3 = new Vector3();
-    const gravity = physics.getGravity();
 
     const sceneOptions = new Map([
         ['BG', 'BG'],
@@ -82,38 +76,6 @@ export function aboutHeaderPanelItems({ scene, view, renderManager, physics, phy
             callback: value => {
                 params.animate = value;
                 drawBuffers.saveState = params.animate;
-            }
-        },
-        {
-            type: 'toggle',
-            name: 'Physics',
-            value: physicsController.enabled,
-            callback: value => {
-                physicsController.enabled = value;
-
-                // Reset
-                vector3.set(0, 0, 0);
-
-                physics.objects.forEach(object => {
-                    const { position, quaternion } = object;
-
-                    physics.setPosition(object, position);
-                    physics.setOrientation(object, quaternion);
-                    physics.setLinearVelocity(object, vector3);
-                    physics.setAngularVelocity(object, vector3);
-                });
-            }
-        },
-        {
-            type: 'slider',
-            name: 'Gravity',
-            min: -10,
-            max: 10,
-            step: 0.1,
-            value: -gravity.y,
-            callback: value => {
-                gravity.y = -value;
-                physics.setGravity(gravity);
             }
         },
         {

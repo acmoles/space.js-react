@@ -14,8 +14,8 @@ import { AboutScene } from './AboutScene.jsx';
  *
  * A rotating dark planet, floating crystal and abstract cube over a reflective
  * floor and grid, rendered through the full post-processing stack (motion blur,
- * bloom, chromatic aberration, tone mapping and dithering) with Oimo physics
- * and a large nested control panel.
+ * bloom, chromatic aberration, tone mapping and dithering) and a large nested
+ * control panel.
  *
  * @param {object} props
  * @param {string} props.title Route title, provided by the example registry.

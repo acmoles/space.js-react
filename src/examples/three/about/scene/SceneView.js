@@ -6,10 +6,8 @@ import { FloatingCrystal } from './FloatingCrystal.js';
 import { AbstractCube } from './AbstractCube.js';
 
 export class SceneView extends Group {
-    constructor(world) {
+    constructor() {
         super();
-
-        this.world = world;
 
         this.visible = false;
 
@@ -17,25 +15,17 @@ export class SceneView extends Group {
     }
 
     initViews() {
-        this.floor = new Floor(this.world);
+        this.floor = new Floor();
         this.add(this.floor);
 
-        this.darkPlanet = new DarkPlanet(this.world);
+        this.darkPlanet = new DarkPlanet();
         this.add(this.darkPlanet);
 
-        this.floatingCrystal = new FloatingCrystal(this.world);
+        this.floatingCrystal = new FloatingCrystal();
         this.add(this.floatingCrystal);
 
-        this.abstractCube = new AbstractCube(this.world);
+        this.abstractCube = new AbstractCube();
         this.add(this.abstractCube);
-    }
-
-    addListeners() {
-        this.world.input.add(this.darkPlanet, this.floatingCrystal, this.abstractCube);
-    }
-
-    removeListeners() {
-        this.world.input.remove(this.darkPlanet, this.floatingCrystal, this.abstractCube);
     }
 
     // Public methods
@@ -54,10 +44,6 @@ export class SceneView extends Group {
         this.abstractCube.update(time);
     };
 
-    animateIn = () => {
-        this.addListeners();
-    };
-
     ready = () => Promise.all([
         this.darkPlanet.ready(),
         this.floatingCrystal.ready(),
@@ -65,8 +51,6 @@ export class SceneView extends Group {
     ]);
 
     destroy = () => {
-        this.removeListeners();
-
         this.floor.destroy();
         this.darkPlanet.destroy();
         this.floatingCrystal.destroy();

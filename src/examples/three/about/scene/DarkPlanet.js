@@ -4,10 +4,8 @@ import { getSphericalCube } from '@lib/three.js';
 import { layers } from '../config.js';
 
 export class DarkPlanet extends Group {
-    constructor(world) {
+    constructor() {
         super();
-
-        this.world = world;
 
         this.position.x = -2.5;
 
@@ -16,12 +14,10 @@ export class DarkPlanet extends Group {
     }
 
     async initMesh() {
-        const { physics } = this.world;
-
         const geometry = getSphericalCube(0.6, 20);
         geometry.computeTangents();
 
-        // For sphere geometry physics
+        // Reported as a sphere, which is what the material panel displays
         geometry.type = 'SphereGeometry';
         geometry.parameters.radius = geometry.parameters.width;
 
@@ -35,9 +31,6 @@ export class DarkPlanet extends Group {
         const mesh = new Mesh(geometry, material);
         mesh.layers.enable(layers.buffers);
         this.add(mesh);
-
-        // Physics
-        physics.add(mesh, { density: 2, autoSleep: false });
 
         this.mesh = mesh;
     }
@@ -55,10 +48,6 @@ export class DarkPlanet extends Group {
     // Public methods
 
     update = () => {
-        if (this.world.isPhysicsEnabled()) {
-            return;
-        }
-
         // Counter clockwise rotation
         this.mesh.rotation.y += 0.005;
     };

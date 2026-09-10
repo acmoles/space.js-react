@@ -1,6 +1,6 @@
 /**
  * Registers the About app's extra material sub-panels (Adjustments, Subsurface
- * Scattering, Helper, Physics) onto the shared React material option maps, and
+ * Scattering, Helper) onto the shared React material option maps, and
  * loads the shader patches (`../materials/Patches.js`) that those sub-panels
  * enable.
  *
@@ -25,7 +25,6 @@ import {
 import { materialAdjustmentsPanelItems } from './materialAdjustmentsPanel.js';
 import { materialSubsurfacePanelItems } from './materialSubsurfacePanel.js';
 import { meshHelperPanelItems } from './meshHelperPanel.js';
-import { oimoPhysicsPanelItems } from './oimoPhysicsPanel.js';
 
 function buildRegistrations() {
     return [
@@ -51,11 +50,9 @@ export function registerAboutPatches() {
 
         options.set('Adjust', materialAdjustmentsPanelItems(key));
         options.set('Helper', meshHelperPanelItems);
-        options.set('Physics', oimoPhysicsPanelItems);
 
         added.push([options, 'Adjust']);
         added.push([options, 'Helper']);
-        added.push([options, 'Physics']);
     });
 
     return function unregister() {

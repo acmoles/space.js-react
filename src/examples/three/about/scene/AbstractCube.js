@@ -3,10 +3,8 @@ import { BoxGeometry, Color, Group, MathUtils, Mesh, MeshStandardMaterial } from
 import { layers } from '../config.js';
 
 export class AbstractCube extends Group {
-    constructor(world) {
+    constructor() {
         super();
-
-        this.world = world;
 
         this.position.x = 2.5;
         this.rotation.x = MathUtils.degToRad(-45);
@@ -14,8 +12,6 @@ export class AbstractCube extends Group {
     }
 
     async initMesh() {
-        const { physics } = this.world;
-
         const geometry = new BoxGeometry();
         geometry.computeTangents();
 
@@ -30,9 +26,6 @@ export class AbstractCube extends Group {
         const mesh = new Mesh(geometry, material);
         mesh.layers.enable(layers.buffers);
         this.add(mesh);
-
-        // Physics
-        physics.add(mesh, { density: 2, autoSleep: false });
 
         this.mesh = mesh;
     }
@@ -50,10 +43,6 @@ export class AbstractCube extends Group {
     // Public methods
 
     update = () => {
-        if (this.world.isPhysicsEnabled()) {
-            return;
-        }
-
         this.rotation.y -= 0.005;
     };
 

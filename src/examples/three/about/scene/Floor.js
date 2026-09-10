@@ -1,13 +1,11 @@
-import { BoxGeometry, Color, Group, Mesh } from 'three';
+import { Color, Group } from 'three';
 import { Stage, clearTween, tween } from '@lib/three.js';
 
 import { GridHelper } from './GridHelper.js';
 
 export class Floor extends Group {
-    constructor(world) {
+    constructor() {
         super();
-
-        this.world = world;
 
         this.position.y = -1.36; // -0.86 - 1 / 2
 
@@ -15,21 +13,10 @@ export class Floor extends Group {
     }
 
     initMesh() {
-        const { physics } = this.world;
-
         this.gridHelper = new GridHelper();
         this.gridHelper.position.y = 0.494; // 1 / 2 - 0.006
         this.gridHelper.material.transparent = true;
         this.add(this.gridHelper);
-
-        // Physics mesh
-        const floor = new Mesh(new BoxGeometry(11, 1, 11));
-        floor.geometry.setDrawRange(0, 0); // Avoid rendering geometry
-        this.add(floor);
-
-        this.floor = floor;
-
-        physics.add(floor, { density: 0, autoSleep: false });
     }
 
     // Public methods
@@ -72,6 +59,5 @@ export class Floor extends Group {
 
         this.gridHelper.geometry.dispose();
         this.gridHelper.material.dispose();
-        this.floor.geometry.dispose();
     };
 }
