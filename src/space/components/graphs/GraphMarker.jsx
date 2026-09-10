@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 
 import { Vector2 } from '@lib/math/Vector2.js';
-import { clearTween } from '@lib/tween/Tween.js';
+import { clearTween } from '../../motion/tween.js';
 
 import './GraphMarker.css';
 

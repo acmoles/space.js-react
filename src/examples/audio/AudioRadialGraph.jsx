@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { WebAudio, clamp, mapLinear, median, rms, ticker, tween } from '@lib/index.js';
+import { WebAudio, clamp, mapLinear, median, rms } from '@lib/index.js';
+import { addTicker, tween } from '@/space/motion/index.js';
 
 import { Example } from '@/components';
 import { getStoredSound, setStoredSound } from '@/examples/utils/soundPreference.js';
@@ -350,8 +351,7 @@ export default function AudioRadialGraphExample({ title }) {
         document.addEventListener('click', onClick);
         document.addEventListener('dblclick', preventZoom);
 
-        ticker.add(onUpdate);
-        ticker.start();
+        const removeTicker = addTicker(onUpdate);
 
         instructionsRef.current?.animateIn();
         graphRef.current?.animateIn();
@@ -365,7 +365,7 @@ export default function AudioRadialGraphExample({ title }) {
             document.removeEventListener('click', onClick);
             document.removeEventListener('dblclick', preventZoom);
 
-            ticker.remove(onUpdate);
+            removeTicker();
 
             panelItems.forEach(item => {
                 uiRef.current?.removePanel(item);

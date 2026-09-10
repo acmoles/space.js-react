@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 
-import { clearTween, delayedCall, wait } from '@lib/three.js';
+import { clearTween, delayedCall, wait } from '@/space/motion/index.js';
 
 import { Example } from '@/components';
 import { UI } from '@/space/index.js';

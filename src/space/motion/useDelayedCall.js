@@ -1,8 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-import { clearTween, delayedCall } from '@lib/tween/Tween.js';
-
-import { startTicker } from './ticker.js';
+import { clearTween, delayedCall } from './tween.js';
 
 /**
  * Returns a function that defers a callback, cancelling any outstanding call
@@ -27,8 +25,6 @@ export function useDelayedCall() {
     }, []);
 
     return (duration, callback) => {
-        startTicker();
-
         const timeout = delayedCall(duration, () => {
             timeouts.current = timeouts.current.filter(item => item !== timeout);
 

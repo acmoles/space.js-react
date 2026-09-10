@@ -1,4 +1,4 @@
-import { clearTween, delayedCall } from '@lib/three.js';
+import { clearTween, delayedCall } from '@/space/motion/index.js';
 
 /**
  * Port of the About app's CameraController. Instead of the imperative

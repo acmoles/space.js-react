@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { clearTween, delayedCall } from '@lib/tween/Tween.js';
+import { clearTween, delayedCall } from '../../motion/tween.js';
 
 import { useAnimation } from '../../motion/index.js';
 import { ReticleInfo } from './ReticleInfo.jsx';

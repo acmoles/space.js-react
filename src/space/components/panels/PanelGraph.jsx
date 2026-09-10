@@ -3,7 +3,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { Color } from '@lib/math/Color.js';
 import { SVGPathProperties } from '@lib/path/SVGPathProperties.js';
 import { Easing } from '@lib/tween/Easing.js';
-import { clearTween, tween } from '@lib/tween/Tween.js';
+import { clearTween, tween } from '../../motion/tween.js';
 import { clamp } from '@lib/utils/Utils.js';
 import { useDelayedCall, useTicker } from '../../motion/index.js';
 

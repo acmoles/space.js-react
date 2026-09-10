@@ -1,5 +1,5 @@
 import { MathUtils } from 'three';
-import { clearTween, tween } from '@lib/three.js';
+import { clearTween, tween } from '@/space/motion/index.js';
 
 import { isDebug } from './config.js';
 

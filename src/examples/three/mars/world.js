@@ -2,7 +2,8 @@ import { Color, ColorManagement, DirectionalLight, HemisphereLight, LinearSRGBCo
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ArcballControls } from 'three/addons/controls/ArcballControls.js';
-import { TextureLoader, clearTween, getFullscreenTriangle, tween } from '@lib/three.js';
+import { TextureLoader, getFullscreenTriangle } from '@lib/three.js';
+import { clearTween, tween } from '@/space/motion/index.js';
 
 import { assetPath } from './config.js';
 

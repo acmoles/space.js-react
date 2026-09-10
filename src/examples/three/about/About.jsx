@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 
-import { Stage, tween } from '@lib/three.js';
+import { Stage } from '@lib/three.js';
+import { tween } from '@/space/motion/index.js';
 
 import { Example } from '@/components';
 import { UI } from '@/space/index.js';

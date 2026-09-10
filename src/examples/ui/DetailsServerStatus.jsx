@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { EventEmitter, average, delayedCall, median } from '@lib/index.js';
+import { EventEmitter, average, median } from '@lib/index.js';
+import { delayedCall } from '@/space/motion/index.js';
 
 import { Example } from '@/components';
 import { useClassName } from '@/hooks';

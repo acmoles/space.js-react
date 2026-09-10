@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 
-import { clearTween, tween as tweenFn } from '@lib/tween/Tween.js';
+import { clearTween, tween as tweenFn } from '../../motion/tween.js';
 
 import './GraphLabel.css';
 

@@ -11,15 +11,8 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-import {
-    EnvironmentTextureLoader,
-    Stage,
-    TextureLoader,
-    clearTween,
-    defer,
-    getFullscreenTriangle,
-    tween
-} from '@lib/three.js';
+import { EnvironmentTextureLoader, Stage, TextureLoader, getFullscreenTriangle } from '@lib/three.js';
+import { clearTween, defer, tween } from '@/space/motion/index.js';
 
 import {
     LightPanelController,

@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useRef } from 'react';
 
-import { clearTween, tween } from '@lib/tween/Tween.js';
+import { clearTween, tween } from '../../motion/tween.js';
 
 import './RadialGraphTracker.css';
 

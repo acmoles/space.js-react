@@ -1,5 +1,6 @@
 import { Color, Group } from 'three';
-import { Stage, clearTween, tween } from '@lib/three.js';
+import { Stage } from '@lib/three.js';
+import { clearTween, tween } from '@/space/motion/index.js';
 
 import { GridHelper } from './GridHelper.js';
 

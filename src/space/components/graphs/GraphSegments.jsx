@@ -4,7 +4,7 @@ import { Color } from '@lib/math/Color.js';
 import { Vector2 } from '@lib/math/Vector2.js';
 import { SVGPathProperties } from '@lib/path/SVGPathProperties.js';
 import { Easing } from '@lib/tween/Easing.js';
-import { clearTween, delayedCall, tween } from '@lib/tween/Tween.js';
+import { clearTween, delayedCall, tween } from '../../motion/tween.js';
 import { clamp, mapLinear } from '@lib/utils/Utils.js';
 
 import { useMotion, useTicker } from '../../motion/index.js';

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, 
 
 import { Color } from '@lib/math/Color.js';
 import { Easing } from '@lib/tween/Easing.js';
-import { clearTween, tween } from '@lib/tween/Tween.js';
+import { clearTween, tween } from '../../motion/tween.js';
 
 import { useAnimation, useMotion, useTicker } from '../../motion/index.js';
 

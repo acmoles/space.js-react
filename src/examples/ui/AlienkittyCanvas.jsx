@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { AssetLoader, clearTween, degToRad, headsTails, randInt, tween } from '@lib/index.js';
+import { AssetLoader, degToRad, headsTails, randInt } from '@lib/index.js';
+import { clearTween, tween } from '@/space/motion/index.js';
 
 import { Example } from '@/components';
 import { useAnimation, useDelayedCall, useTicker } from '@/space';

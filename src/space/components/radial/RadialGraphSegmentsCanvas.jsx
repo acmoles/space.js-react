@@ -2,7 +2,7 @@ import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import { Color } from '@lib/math/Color.js';
 import { Easing } from '@lib/tween/Easing.js';
-import { clearTween, delayedCall, tween } from '@lib/tween/Tween.js';
+import { clearTween, delayedCall, tween } from '../../motion/tween.js';
 import { TwoPI, degToRad, mapLinear } from '@lib/utils/Utils.js';
 
 import { useTicker } from '../../motion/useTicker.js';

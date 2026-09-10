@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useFrame, useStore, useThree } from '@react-three/fiber';
 
-import { AssetLoader, MultiLoader, defer, wait } from '@lib/three.js';
+import { AssetLoader, MultiLoader } from '@lib/three.js';
+import { defer, wait } from '@/space/motion/index.js';
 
-import { startTicker } from '@/space/motion';
 
 import { World } from './world.js';
 import { SceneView } from './scene/SceneView.js';
@@ -185,9 +185,6 @@ export function MarsScene({ onProgress, onPhase, onReady }) {
             // final progress tick (`examples/mars/src/controllers/App.js` and
             // `Preloader.js`); keep the same ordering here.
             loader.trigger(1);
-
-            // Start the space.js ticker so tweens (camera, UI, panels) run.
-            startTicker();
 
             if (!ctrl.destroyed) {
                 onReady?.(ctrl);

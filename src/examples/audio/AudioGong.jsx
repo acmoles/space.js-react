@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
-import { BufferLoader, WebAudio, clamp, delayedCall } from '@lib/index.js';
+import { BufferLoader, WebAudio, clamp } from '@lib/index.js';
+import { delayedCall } from '@/space/motion/index.js';
 
 import { Example } from '@/components';
 import { Info } from '@/space/components/nav/index.js';

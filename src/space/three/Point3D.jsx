@@ -22,7 +22,7 @@ import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.
 
 import { getBoundingSphereWorld, getScreenSpaceBox } from '@lib/three.js';
 import { Stage } from '@lib/three.js';
-import { clearTween, delayedCall } from '@lib/tween/Tween.js';
+import { clearTween, delayedCall } from '../motion/tween.js';
 
 import { LineCanvas, Point, ReticleCanvas, Tracker } from '../components/indicators/index.js';
 import { RadialGraphTracker } from '../components/radial/index.js';

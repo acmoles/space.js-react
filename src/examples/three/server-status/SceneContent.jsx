@@ -14,14 +14,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useStore, useThree } from '@react-three/fiber';
 import { MathUtils } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import {
-    Stage,
-    clearTween,
-    delayedCall,
-    lerpCameras,
-    ticker,
-    tween
-} from '@lib/three.js';
+import { Stage, lerpCameras } from '@lib/three.js';
+import { clearTween, delayedCall, tween } from '@/space/motion/index.js';
 
 import { RadialGraphSegmentsCanvas } from '../../../space/components/radial/index.js';
 import { Point3D, Point3DGraph, Point3DPanel, Points3D, usePoint3DContext } from '../../../space/three/index.js';
@@ -754,12 +748,11 @@ export function SceneContent({
         };
         ctrl.onDetailsEvent = onDetailsEvent;
 
-        // ── Start handler: registers details event and starts ticker ──────────
+        // ── Start handler: registers the details event ───────────────────────
         // Emitted after the React UI has committed and dividerTopEl is set.
 
         const onStart = () => {
             Stage.events.on('details', onDetailsEvent);
-            ticker.start();
         };
         ctrl.onStart = onStart;
         Stage.events.on('start', onStart);
@@ -800,8 +793,6 @@ export function SceneContent({
             clearTween(cameraCtrl);
             clearTween(cameraCtrl._timeout);
             clearTween(ctrl.scenePanelCtrlTimeout);
-
-            ticker.stop();
 
             Stage.events.off('start', ctrl.onStart);
             Stage.events.off('details', ctrl.onDetailsEvent);
