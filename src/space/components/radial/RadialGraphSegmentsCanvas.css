@@ -1,0 +1,52 @@
+.radial-graph-segments-canvas {
+    position: absolute;
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.radial-graph-segments-canvas .info {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    z-index: 1;
+    opacity: 0;
+    visibility: hidden;
+}
+
+.radial-graph-segments-canvas .label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    color: var(--ui-secondary-color);
+    white-space: nowrap;
+    opacity: 0;
+}
+
+.radial-graph-segments-canvas .label.hover-label {
+    z-index: 1;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.radial-graph-segments-canvas .marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    line-height: var(--ui-title-line-height);
+    white-space: nowrap;
+    z-index: 1;
+    pointer-events: auto;
+    opacity: 0;
+}
+
+.radial-graph-segments-canvas .marker.draggable {
+    cursor: move;
+}

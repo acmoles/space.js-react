@@ -1,0 +1,7 @@
+.list > .container {
+    height: 20px;
+}
+
+.list > .group {
+    position: relative;
+}

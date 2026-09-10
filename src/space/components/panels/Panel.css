@@ -1,0 +1,6 @@
+.panel {
+    width: var(--ui-panel-width);
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}

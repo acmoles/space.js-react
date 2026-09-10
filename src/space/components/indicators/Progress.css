@@ -1,0 +1,5 @@
+.progress-circle {
+    fill: none;
+    stroke: var(--ui-color);
+    stroke-width: 1.5px;
+}

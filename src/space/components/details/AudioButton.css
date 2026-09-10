@@ -1,0 +1,11 @@
+.button {
+    position: relative;
+}
+
+.button .container {
+    position: relative;
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}

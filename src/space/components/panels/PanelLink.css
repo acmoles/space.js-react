@@ -1,0 +1,19 @@
+.panel-link {
+    position: relative;
+    width: fit-content;
+    height: 18px;
+    line-height: 16px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.panel-link .line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 1px;
+    height: 1px;
+    background-color: var(--ui-color);
+    transform-origin: left center;
+}

@@ -1,0 +1,12 @@
+.audio-radial-graph-container {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+.audio-radial-graph-container > * {
+    pointer-events: auto;
+}

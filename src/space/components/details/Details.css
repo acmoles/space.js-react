@@ -1,0 +1,21 @@
+.details {
+    position: relative;
+}
+
+/* Initial padding; overridden reactively via useResize in the component */
+.details > .container {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    padding: 10vw 0 13vw 10vw;
+    pointer-events: auto;
+}
+
+.details > .bg {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+}

@@ -1,0 +1,17 @@
+.graph .marker,
+.graph-segments .marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    line-height: var(--ui-title-line-height);
+    white-space: nowrap;
+    z-index: 1;
+    pointer-events: auto;
+    opacity: 0;
+}
+
+.graph .marker.draggable,
+.graph-segments .marker.draggable {
+    cursor: move;
+}

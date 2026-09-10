@@ -1,0 +1,39 @@
+.graph-segments {
+    position: relative;
+    cursor: crosshair;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+}
+
+.graph-segments > canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+
+.graph-segments > .info {
+    position: absolute;
+    left: 0;
+    bottom: calc((var(--ui-line-height) + 3px) * -1);
+    transform: translateX(-50%);
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.graph-segments > .data-label {
+    position: absolute;
+    left: 0;
+    top: -12px;
+    transform: translate(-50%, -50%);
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    color: var(--ui-secondary-color);
+    white-space: nowrap;
+    z-index: 1;
+    opacity: 0;
+}

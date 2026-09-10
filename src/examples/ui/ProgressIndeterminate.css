@@ -1,0 +1,14 @@
+.progress-indeterminate {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin-left: -45px;
+    margin-top: -45px;
+    cursor: pointer;
+}
+
+.progress-indeterminate-circle {
+    fill: none;
+    stroke: var(--ui-color);
+    stroke-width: 1.5px;
+}

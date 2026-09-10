@@ -1,0 +1,11 @@
+.logo {
+    position: absolute;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.logo img {
+    width: 100%;
+    height: auto;
+}

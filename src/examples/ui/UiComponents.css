@@ -1,0 +1,62 @@
+/* Page-level overrides matching the original <style> block */
+.ui-components-example *,
+.ui-components-example *::before,
+.ui-components-example *::after {
+    touch-action: unset;
+}
+
+/* Components grid */
+.ui-components-example .components {
+    min-height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 55px 0 125px;
+}
+
+.ui-components-example .container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 67px;
+    max-width: 1205px;
+}
+
+/* Individual item cell */
+.ui-components-example .component-item {
+    position: relative;
+    box-sizing: border-box;
+    width: 92px;
+    height: 92px;
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid var(--ui-color-divider-line);
+    cursor: pointer;
+}
+
+.ui-components-example .component-item > .number {
+    position: absolute;
+    left: 0;
+    top: -20px;
+    white-space: nowrap;
+}
+
+.ui-components-example .component-item .type {
+    position: relative;
+    top: -1px;
+    display: inline-block;
+    margin-left: 10px;
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    color: var(--ui-secondary-color);
+}
+
+/* UI overlay info bubble */
+.ui-components-example .ui > .info {
+    background-color: var(--bg-color);
+    border-radius: 4px;
+}

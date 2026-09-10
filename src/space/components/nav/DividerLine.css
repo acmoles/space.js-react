@@ -1,0 +1,27 @@
+.divider-line {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.divider-line .line {
+    position: absolute;
+    width: 1px;
+    left: max(50vw, 250px);
+    background-color: var(--ui-color-divider-line);
+}
+
+.divider-line .line.top {
+    top: 20px;
+    height: 92px;
+    transform-origin: center top;
+}
+
+.divider-line .line.bottom {
+    bottom: 20px;
+    height: 92px;
+    transform-origin: center bottom;
+}

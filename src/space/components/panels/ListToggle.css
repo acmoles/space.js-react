@@ -1,0 +1,23 @@
+.list-toggle {
+    position: relative;
+    float: left;
+    width: calc(var(--ui-panel-width) / 2);
+    height: 20px;
+    line-height: 20px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.list-toggle .content {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.list-toggle .over {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
