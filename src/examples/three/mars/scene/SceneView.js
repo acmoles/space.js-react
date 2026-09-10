@@ -37,4 +37,10 @@ export class SceneView extends Group {
     };
 
     ready = () => this.mars.ready();
+
+    destroy = () => {
+        this.mars.destroy();
+        this.sun.destroy();
+        this.clear();
+    };
 }

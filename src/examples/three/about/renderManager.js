@@ -1,5 +1,5 @@
 import { AdditiveBlending, Color, MathUtils, Mesh, MeshBasicMaterial, MeshMatcapMaterial, NoBlending, OrthographicCamera, Vector2, WebGLRenderTarget } from 'three';
-import { BloomCompositeMaterial, CopyMaterial, DepthMaterial, LuminosityMaterial, MotionBlur, MotionBlurCompositeMaterial, NormalMaterial, UnrealBloomBlurMaterial } from '@alienkitty/alien.js/three';
+import { BloomCompositeMaterial, CopyMaterial, DepthMaterial, DrawBuffers, LuminosityMaterial, MotionBlurCompositeMaterial, NormalMaterial, UnrealBloomBlurMaterial } from '@alienkitty/alien.js/three';
 
 import { DisplayOptions } from '@/space/three/index.js';
 
@@ -12,12 +12,6 @@ const BlurDirectionY = new Vector2(0, 1);
 
 /**
  * Faithful port of the About app's RenderManager.
- *
- * The original used `DrawBuffers` (a MRT G-buffer). That class is not exported
- * by the installed `@alienkitty/alien.js@1.2.0`; the equivalent velocity pass
- * is provided by `MotionBlur`, which renders a single velocity target instead
- * of `renderTarget.textures[1]`. The property names (`interpolateGeometry`,
- * `smearIntensity`, `saveState`) match, so the panels wire up unchanged.
  */
 export class RenderManager {
     constructor(renderer, scene, camera, ui, { screenTriangle, textureLoader, getTexture }) {
@@ -82,14 +76,14 @@ export class RenderManager {
 
         this.renderTargetA.depthBuffer = true;
 
-        // Motion blur velocity buffer (replaces DrawBuffers G-buffer)
-        this.drawBuffers = new MotionBlur(this.renderer, this.scene, this.camera, layers.buffers, {
+        // G-Buffer
+        this.drawBuffers = new DrawBuffers(this.renderer, this.scene, this.camera, layers.buffers, {
             interpolateGeometry: 0
         });
 
         // Motion blur composite material
         this.motionBlurCompositeMaterial = new MotionBlurCompositeMaterial(this.textureLoader, { blueNoisePath: 'blue_noise.png' });
-        this.motionBlurCompositeMaterial.uniforms.tVelocity.value = this.drawBuffers.renderTarget.texture;
+        this.motionBlurCompositeMaterial.uniforms.tVelocity.value = this.drawBuffers.renderTarget.textures[1];
 
         // Luminosity high pass material
         this.luminosityMaterial = new LuminosityMaterial();
@@ -167,8 +161,7 @@ export class RenderManager {
     setCamera = camera => {
         this.camera = camera;
 
-        this.drawBuffers.camera = camera;
-        this.drawBuffers.initialized = false;
+        this.drawBuffers.setCamera(camera);
     };
 
     invert = isInverted => {
@@ -242,7 +235,7 @@ export class RenderManager {
 
         if (this.display === DisplayOptions.get('Velocity')) {
             // Debug pass (render to screen)
-            this.copyMaterial.uniforms.tMap.value = this.drawBuffers.renderTarget.texture;
+            this.copyMaterial.uniforms.tMap.value = this.drawBuffers.renderTarget.textures[1];
             this.screen.material = this.copyMaterial;
             renderer.setRenderTarget(null);
             renderer.clear();

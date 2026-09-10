@@ -34,14 +34,15 @@ export function Preloader({ progress, loading, onStart, ref }) {
 
     const holderRef = useRef({ value: 0 });
     const loadingRef = useRef(loading);
+    const readyRef = useRef(false);
     const startedRef = useRef(false);
 
     const addStartButton = () => {
-        if (startedRef.current) {
+        if (readyRef.current) {
             return;
         }
 
-        startedRef.current = true;
+        readyRef.current = true;
 
         if (bgRef.current) {
             bgRef.current.style.pointerEvents = 'auto';
@@ -98,7 +99,17 @@ export function Preloader({ progress, loading, onStart, ref }) {
     }), [number, title, root]);
 
     const handleClick = () => {
-        if (startedRef.current && onStart) {
+        if (!readyRef.current || startedRef.current) {
+            return;
+        }
+
+        startedRef.current = true;
+
+        if (bgRef.current) {
+            bgRef.current.style.pointerEvents = 'none';
+        }
+
+        if (onStart) {
             onStart();
         }
     };

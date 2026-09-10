@@ -20,6 +20,8 @@ npm run preview  # preview the production build
 npm run lint
 ```
 
+`@alienkitty/alien.js` is pinned to a specific `dev` commit rather than to a published version. The standalone example apps depend on `alienkitty/alien.js#dev`, which has drifted a long way from the published `1.2.0` — that release is missing `DrawBuffers` and still calls the blur uniform `uBluriness` rather than `uBlurAmount`. The current `dev` head is no good either: an upstream "Encodings upstream updates" commit dropped `linearToSRGB` from the encodings shader module and left an undefined `EPSILON` behind, which fails to compile in the examples' composite shaders. The pin is the last commit before that change, and is the only point that satisfies every API the examples use. Repointing it at `^1.2.0` or at `#dev` will break the About and Mars examples.
+
 The home page (`/`) is an index of every example. Each example lives at the route matching its original file name, for example `/examples/fps` and `/examples/three/3d_lights`.
 
 ### Usage
@@ -105,7 +107,8 @@ src/
   components/         Shared app components
   examples/           One component per example, grouped by category
     registry.js       Example metadata used by the router and index page
-    shared/           Row sets shared between examples
+    three/about/      Standalone About app, ported
+    three/mars/       Standalone Mars app, ported
   hooks/              Shared app hooks
   pages/              Index page
   space/              Declarative React implementation of the UI library
@@ -208,13 +211,15 @@ gong, stream, rhythm, audio (ui), analyser (ui, radial graph)
 
 #### 3d
 
-materials (panel tracking), materials instancing, materials instancing (custom), materials spherical cube (array of materials), lights, radial graph (graph and panel tracking), server status (details, graph and panel tracking), server status (websocket thread)
+materials (panel tracking), materials instancing, materials instancing (custom), materials spherical cube (array of materials), lights, radial graph (graph and panel tracking), server status (details, graph and panel tracking), server status (websocket thread), about (app), mars (app)
 
 #### thread
 
 canvas (noise), server status (websocket thread)
 
-The standalone `mars` and `cyberspace` demos under `examples/` are built separately with Rollup and are not part of the SPA.
+`about` and `mars` are the two standalone apps: under `examples/` they are separate Rollup projects with their own `package.json` and `public/index.html`, rather than single-file `examples/<name>.html` pages. Both are ported into the SPA as ordinary routes, and the parity harness resolves their reference URL accordingly.
+
+Mars streams its star map as a KTX2 texture and transcodes it with the Basis transcoder hosted on `gstatic.com`, exactly as the original does. Without external network access the transcoder cannot load and the Mars preloader stops at 0%; this is an environment limitation rather than a port defect.
 
 ### See also
 

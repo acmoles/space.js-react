@@ -21,6 +21,7 @@ export class Mars extends Group {
         super();
 
         this.world = world;
+        this.destroyed = false;
 
         // 25 degree tilt
         this.rotation.z = MathUtils.degToRad(-25);
@@ -58,6 +59,12 @@ export class Mars extends Group {
         });
 
         const mesh = new Mesh(geometry, material);
+
+        if (this.destroyed) {
+            this.disposeMesh(mesh);
+            return;
+        }
+
         mesh.rotation.y = MathUtils.degToRad(15); // Start rotation
         this.add(mesh);
 
@@ -148,4 +155,26 @@ export class Mars extends Group {
     };
 
     ready = () => this.initMesh();
+
+    disposeMesh(mesh) {
+        if (!mesh) {
+            return;
+        }
+
+        mesh.geometry?.dispose();
+
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+
+        materials.forEach(material => {
+            material.map?.dispose();
+            material.normalMap?.dispose();
+            material.dispose();
+        });
+    }
+
+    destroy = () => {
+        this.destroyed = true;
+        this.disposeMesh(this.mesh);
+        this.clear();
+    };
 }

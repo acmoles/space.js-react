@@ -294,6 +294,10 @@ export class World {
             this.screenTriangle.dispose();
         }
 
+        if (this.scene?.background?.isTexture) {
+            this.scene.background.dispose();
+        }
+
         // Restore globals mutated on construction
         ColorManagement.enabled = this._prevColorManagement;
         this.renderer.outputColorSpace = this._prevOutputColorSpace;

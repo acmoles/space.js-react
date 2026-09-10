@@ -178,10 +178,13 @@ export function MarsScene({ onProgress, onPhase, onReady }) {
             const panelItems = createPanelItems(ctrl);
             ctrl.panelItems = panelItems;
 
-            // Completes the loader → progress reaches 1
-            loader.trigger(1);
-
             onPhase?.('Nominal');
+
+            // Completes the loader → progress reaches 1. In the vanilla app,
+            // `store.loading` is set to `Nominal` before `Preloader` emits the
+            // final progress tick (`examples/mars/src/controllers/App.js` and
+            // `Preloader.js`); keep the same ordering here.
+            loader.trigger(1);
 
             // Start the space.js ticker so tweens (camera, UI, panels) run.
             startTicker();
@@ -210,6 +213,7 @@ export function MarsScene({ onProgress, onPhase, onReady }) {
 
             audio.destroy();
             cameraController.destroy();
+            sceneView.destroy();
             renderManager.destroy();
             world.destroy();
         };

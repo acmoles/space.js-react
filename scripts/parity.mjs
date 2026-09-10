@@ -92,6 +92,18 @@ const NOISE_PATTERNS = [
     /favicon\.ico/
 ];
 
+// `about` and `mars` are not single-file `examples/<route>.html` pages: they
+// are standalone Rollup apps under `examples/<route>/`, served from their own
+// `public/index.html`.  Their reference URL has to be resolved differently.
+const APP_EXAMPLES = new Set(['about', 'mars']);
+
+/** Reference (pre-port) URL for a route on the reference server. */
+function referenceUrl(route) {
+    return APP_EXAMPLES.has(route)
+        ? `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}/public/index.html`
+        : `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`;
+}
+
 function isNoise(text) {
     return NOISE_PATTERNS.some(re => re.test(text));
 }
@@ -237,7 +249,7 @@ async function main() {
         // console errors since the pre-port pages may use non-React patterns.
         const reference = await capture(
             browser,
-            `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`,
+            referenceUrl(route),
             path.join(OUT, `${name}-reference.png`)
         );
 
@@ -255,7 +267,7 @@ async function main() {
         // this is where panel and graph regressions actually surface.
         const referenceHover = await capture(
             browser,
-            `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`,
+            referenceUrl(route),
             path.join(OUT, `${name}-reference-hover.png`),
             { hover: true }
         );
@@ -301,13 +313,13 @@ async function main() {
         if (MEASURE_NOISE) {
             await capture(
                 browser,
-                `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`,
+                referenceUrl(route),
                 path.join(OUT, `${name}-reference-2.png`)
             );
 
             await capture(
                 browser,
-                `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`,
+                referenceUrl(route),
                 path.join(OUT, `${name}-reference-2-hover.png`),
                 { hover: true }
             );

@@ -37,7 +37,7 @@ export function DetailsLink({ title, link, target = '_blank', style, onHover, on
             onClick={onClick}
         >
             <span className="content">{title}</span>
-            <span ref={lineRef} className="line">&nbsp;&nbsp;&#8212;</span>
+            <span ref={lineRef} className="line">&nbsp;&nbsp;&#8213;</span>
         </a>
     );
 }

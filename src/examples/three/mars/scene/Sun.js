@@ -34,4 +34,23 @@ export class Sun extends Group {
 
         this.occMesh = occMesh;
     }
+
+    destroy = () => {
+        const geometries = new Set();
+        const materials = new Set();
+
+        this.traverse(object => {
+            if (object.geometry) {
+                geometries.add(object.geometry);
+            }
+
+            if (object.material) {
+                materials.add(object.material);
+            }
+        });
+
+        geometries.forEach(geometry => geometry.dispose());
+        materials.forEach(material => material.dispose());
+        this.clear();
+    };
 }

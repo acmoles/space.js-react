@@ -89,6 +89,8 @@ export class RenderManager {
     initRenderer() {
         const { screenTriangle, resolution, texelSize, textureLoader } = this.world;
 
+        this._prevAutoClear = this.renderer.autoClear;
+
         // Manually clear
         this.renderer.autoClear = false;
 
@@ -535,5 +537,10 @@ export class RenderManager {
         ];
 
         materials.forEach(material => material && material.dispose());
+
+        if (this.renderer) {
+            this.renderer.autoClear = this._prevAutoClear;
+            this.renderer.setRenderTarget(null);
+        }
     }
 }
