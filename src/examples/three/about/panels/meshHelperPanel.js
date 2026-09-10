@@ -2,10 +2,8 @@
  * Mesh helper sub-panel (normals / tangents / UV helpers). Port of
  * `MeshHelperPanel` from the About app.
  *
- * NOTE: the React `Point3D` does not implement `toggleNormalsHelper`,
- * `toggleTangentsHelper` or `toggleUVHelper`, so those calls are guarded with
- * optional chaining and no-op gracefully. The list rows still render and track
- * their state; only the debug helper geometry is not drawn.
+ * React `Point3D` exposes the same helper toggles as the vanilla singleton, so
+ * these rows draw the debug helpers rather than just tracking panel state.
  */
 
 import { getKeyByValue } from '@lib/three.js';
@@ -58,7 +56,7 @@ export function meshHelperPanelItems(mesh, ui) {
                 mesh.userData.normals = normalsHelperOptions.get(value);
 
                 if (point) {
-                    point.toggleNormalsHelper?.(mesh.userData.normals);
+                    point.toggleNormalsHelper(mesh.userData.normals);
                 }
             }
         }
@@ -75,7 +73,7 @@ export function meshHelperPanelItems(mesh, ui) {
                     mesh.userData.tangents = tangentsHelperOptions.get(value);
 
                     if (point) {
-                        point.toggleTangentsHelper?.(mesh.userData.tangents);
+                        point.toggleTangentsHelper(mesh.userData.tangents);
                     }
                 }
             }
@@ -91,7 +89,7 @@ export function meshHelperPanelItems(mesh, ui) {
                 value: getKeyByValue(uvHelperOptions, mesh.userData.uv),
                 callback: value => {
                     mesh.userData.uv = uvHelperOptions.get(value);
-                    point?.toggleUVHelper?.(mesh.userData.uv);
+                    point.toggleUVHelper(mesh.userData.uv);
                 }
             }
         );

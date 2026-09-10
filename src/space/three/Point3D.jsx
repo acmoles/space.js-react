@@ -17,6 +17,8 @@ import { createRoot } from 'react-dom/client';
 import { Children, isValidElement, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useStore } from '@react-three/fiber';
 import { MeshBasicMaterial, Vector2 } from 'three';
+import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
+import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
 
 import { getBoundingSphereWorld, getScreenSpaceBox } from '@lib/three.js';
 import { Stage } from '@lib/three.js';
@@ -133,6 +135,7 @@ function Point3DOverlay({
  *                                           panels whose rows are defined by the
  *                                           vanilla `lib/three/panels/`
  *                                           inspectors.
+ * @param {import('three').Texture|null} [props.uvTexture] Optional UV helper map.
  * @param {boolean}      [props.noLine]      Suppress the connecting line.
  * @param {boolean}      [props.noPoint]     Suppress the label overlay.
  * @param {boolean}      [props.noTracker]   Suppress tracker corners.
@@ -150,6 +153,7 @@ export function Point3D({
     type = '',
     graph = null,
     panel = null,
+    uvTexture = null,
     noLine = false,
     noPoint = false,
     noTracker = false,
@@ -166,6 +170,7 @@ export function Point3D({
     // Prop refs — always hold the latest prop so stable api closures stay fresh.
     const graphRef = useRef(graphValue);
     const panelPropRef = useRef(panelValue);
+    const uvTextureRef = useRef(uvTexture);
     const namePropRef = useRef(name);
     const typePropRef = useRef(type);
     const onHoverPropRef = useRef(onHoverProp);
@@ -173,6 +178,7 @@ export function Point3D({
 
     useEffect(() => { graphRef.current = graphValue; }, [graphValue]);
     useEffect(() => { panelPropRef.current = panelValue; }, [panelValue]);
+    useEffect(() => { uvTextureRef.current = uvTexture; }, [uvTexture]);
 
     // Handles registered by <Point3DGraph> / <Point3DPanel> children.  Each is
     // a live `{ current }` getter rather than a snapshot, because a child's
@@ -210,6 +216,10 @@ export function Point3D({
     const reticleRef = useRef(null);
     const trackerContainerRef = useRef(null);
     const trackerRef = useRef(null);
+    const normalsHelperRef = useRef(null);
+    const tangentsHelperRef = useRef(null);
+    const currentMaterialMapRef = useRef(null);
+    const uvHelperTextureRef = useRef(null);
 
     // Mutable animation / selection flags (no React state — avoid re-renders)
     const animatedInRef = useRef(false);
@@ -242,6 +252,31 @@ export function Point3D({
     const [sphereMaterial] = useState(() => new MeshBasicMaterial({ visible: false }));
 
     useEffect(() => () => sphereMaterial.dispose(), [sphereMaterial]);
+
+    useEffect(() => () => {
+        const { scene } = store.getState();
+
+        if (normalsHelperRef.current) {
+            scene.remove(normalsHelperRef.current);
+            normalsHelperRef.current.dispose?.();
+        }
+
+        if (tangentsHelperRef.current) {
+            scene.remove(tangentsHelperRef.current);
+            tangentsHelperRef.current.dispose?.();
+        }
+
+        if (uvHelperTextureRef.current) {
+            const material = Array.isArray(object.material) ? object.material[0] : object.material;
+
+            if (material && material.map === uvHelperTextureRef.current) {
+                material.map = currentMaterialMapRef.current;
+                material.needsUpdate = true;
+            }
+
+            uvHelperTextureRef.current.dispose();
+        }
+    }, [object, store]);
 
     // Sphere layer — must be on layer 31 so the shared raycaster hits it.
     useEffect(() => {
@@ -769,6 +804,7 @@ export function Point3D({
         get panel() { return resolvePanel(); },
         get point() { return pointRef.current; },
         get selected() { return selectedRef.current; },
+        get uvTexture() { return uvHelperTextureRef.current; },
         animateIn: reverse => apiRef.current?._onHover({ type: 'over', reverse }),
         animateOut: (fast, cb) => apiRef.current?._animateOut(fast, cb),
         deactivate: () => apiRef.current?._deactivate(),
@@ -786,8 +822,63 @@ export function Point3D({
                 pointRef.current.position.x = pointRef.current.target.x;
                 pointRef.current.position.y = pointRef.current.target.y;
             }
+        },
+        toggleNormalsHelper: show => {
+            const { scene } = store.getState();
+
+            if (show) {
+                if (!normalsHelperRef.current) {
+                    normalsHelperRef.current = new VertexNormalsHelper(object, sphereRadius / 5);
+                    scene.add(normalsHelperRef.current);
+                }
+
+                normalsHelperRef.current.visible = true;
+            } else if (normalsHelperRef.current) {
+                normalsHelperRef.current.visible = false;
+            }
+        },
+        toggleTangentsHelper: show => {
+            const { scene } = store.getState();
+
+            if (show) {
+                if (!tangentsHelperRef.current) {
+                    object.geometry.computeTangents();
+                    tangentsHelperRef.current = new VertexTangentsHelper(object, sphereRadius / 5);
+                    scene.add(tangentsHelperRef.current);
+                }
+
+                tangentsHelperRef.current.visible = true;
+            } else if (tangentsHelperRef.current) {
+                tangentsHelperRef.current.visible = false;
+            }
+        },
+        toggleUVHelper: show => {
+            const material = Array.isArray(object.material) ? object.material[0] : object.material;
+
+            if (show) {
+                if (uvTextureRef.current) {
+                    if (!uvHelperTextureRef.current) {
+                        uvHelperTextureRef.current = uvTextureRef.current.clone();
+                    }
+
+                    if (material.map !== uvHelperTextureRef.current) {
+                        currentMaterialMapRef.current = material.map;
+
+                        material.map = uvHelperTextureRef.current;
+                        material.needsUpdate = true;
+                    }
+                }
+            } else if (uvHelperTextureRef.current) {
+                material.map = currentMaterialMapRef.current;
+                material.needsUpdate = true;
+
+                currentMaterialMapRef.current = null;
+
+                uvHelperTextureRef.current.dispose();
+                uvHelperTextureRef.current = null;
+            }
         }
-    }), [resolvePanel]);
+    }), [object, resolvePanel, sphereRadius, store]);
 
     return (
         <group ref={groupRef}>

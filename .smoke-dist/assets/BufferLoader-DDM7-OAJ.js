@@ -1,1 +1,0 @@
-import{t}from"./Loader-B1WkGnen.js";var e=class extends t{constructor(){super(),this.cache=!0}load(t,e){const s=this.files.get(t);let h;h=s?Promise.resolve(s):fetch(this.getPath(t),this.fetchOptions).then(t=>t.arrayBuffer()),h.then(s=>{this.cache&&this.files.set(t,s),this.increment(),e&&e(s)}).catch(t=>{this.increment(),e&&e(t)}),this.total++}};export{e as t};

@@ -113,6 +113,7 @@ function AboutPoint({ mesh, name, type, uvTexture, physics, meshToPoint }) {
             object={mesh}
             name={name}
             type={type}
+            uvTexture={uvTexture}
             ref={pointRef}
         >
             <Point3DPanel items={items} />

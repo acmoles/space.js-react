@@ -345,5 +345,11 @@ export const examples = [
         title: 'About',
         group: 'three',
         Component: lazy(() => import('./three/about/About.jsx'))
+    },
+    {
+        path: '/examples/mars',
+        title: 'Mars',
+        group: 'three',
+        Component: lazy(() => import('./three/mars/Mars.jsx'))
     }
 ];
