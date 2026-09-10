@@ -94,6 +94,8 @@ Panels and graphs attached to a `Point3D` are declared as children:
 
 Animation and per-frame work go through hooks rather than imperative calls — `useAnimation` returns a `[ref, controls]` pair mirroring `Interface.css`/`Interface.tween`, and `useTicker` subscribes to the shared render loop for the lifetime of a component. Both cancel on unmount.
 
+Animation is driven by [Motion](https://motion.dev) rather than the library's own `lib/tween/Tween.js` and `lib/tween/Ticker.js`. `src/space/motion/tween.js` keeps the library's `tween`/`clearTween`/`delayedCall`/`wait`/`defer` signatures, its easing table and its slightly unusual clamped-delay behaviour, so call sites and curves are unchanged; only the clock underneath is Motion's. This also removes a first-render glitch: the library's ticker seeds `last` when its module is first evaluated but never re-seeds it in `start()`, so the first frame after a lazily-started loop reported a delta covering everything since page load. Tweens accumulated that into `elapsed` and jumped straight to their end state, which is why a graph's first render was janky while later ones were smooth. Motion measures each animation's own elapsed time, so the first frame is an ordinary one.
+
 ### Project structure
 
 ```
@@ -114,7 +116,7 @@ src/
   space/              Declarative React implementation of the UI library
     components/       Components, grouped by family
     hooks/            useEventListener, useResize, useMagnetic
-    motion/           Style engine, useAnimation, useMotion, useTicker
+    motion/           Style engine, tween engine, useAnimation, useMotion, useTicker
     three/            React Three Fiber components and hooks
   styles/             Global styles
 examples/mars/        Standalone demos (mars, about, cyberspace), built
@@ -123,7 +125,7 @@ examples/mars/        Standalone demos (mars, about, cyberspace), built
 
 The UI is re-implemented under `src/space/`, documented in [src/space/README.md](src/space/README.md).
 
-No React component in `src/` uses a UI class from `lib/`. What `src/` still imports from `lib/` is only framework-agnostic, non-UI code: the tween engine and easing functions, `Utils`, the `Color` and `Vector2` math types, `SVGPathProperties`, the loaders, `Stage`, `router`, `ticker` and `WebAudio`. Sharing these is what keeps motion identical to the vanilla version, and none of them render anything.
+No React component in `src/` uses a UI class from `lib/`. What `src/` still imports from `lib/` is only framework-agnostic, non-UI code: the easing functions, `Utils`, the `Color` and `Vector2` math types, `SVGPathProperties`, the loaders, `Stage`, `router` and `WebAudio`. Sharing these is what keeps motion identical to the vanilla version, and none of them render anything.
 
 #### Panel definitions as data
 
@@ -179,7 +181,7 @@ PARITY_NOISE=1 npm run parity -- test_radial_graph
 
 `test_radial_graph` went from a 19,845 px floor to 0, and `test_meter` from 764 to 0, so the default tolerance is 0 and a "0 differing pixels" claim now means something.
 
-**44 of the 56 routes currently pass at 0 differing pixels, idle and on hover.** The 12 that do not are described below; ten of them are blank on both sides and are counted as failures precisely so that a vacuous match is never mistaken for parity.
+**44 of the 56 `.html`-backed routes currently pass at 0 differing pixels, idle and on hover.** (The registry also has the two standalone app routes, `about` and `mars`, which parity skips.) The 12 that do not are described below; ten of them are blank on both sides and are counted as failures precisely so that a vacuous match is never mistaken for parity.
 
 #### Known gaps
 
@@ -217,7 +219,7 @@ materials (panel tracking), materials instancing, materials instancing (custom),
 
 canvas (noise), server status (websocket thread)
 
-`about` and `mars` are the two standalone apps: under `examples/` they are separate Rollup projects with their own `package.json` and `public/index.html`, rather than single-file `examples/<name>.html` pages. Both are ported into the SPA as ordinary routes, and the parity harness resolves their reference URL accordingly.
+`about` and `mars` are the two standalone apps: under `examples/` they are separate Rollup projects with their own `package.json` and `public/index.html`, rather than single-file `examples/<name>.html` pages. Both are ported into the SPA as ordinary routes. There is no checked-in reference build to screenshot them against, so the parity harness skips them and reports them as such; they are covered by `npm run smoke` instead.
 
 Mars streams its star map as a KTX2 texture and transcodes it with the Basis transcoder hosted on `gstatic.com`, exactly as the original does. Without external network access the transcoder cannot load and the Mars preloader stops at 0%; this is an environment limitation rather than a port defect.
 

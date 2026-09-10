@@ -93,15 +93,15 @@ const NOISE_PATTERNS = [
 ];
 
 // `about` and `mars` are not single-file `examples/<route>.html` pages: they
-// are standalone Rollup apps under `examples/<route>/`, served from their own
-// `public/index.html`.  Their reference URL has to be resolved differently.
+// are standalone Rollup apps under `examples/<route>/`, whose reference build
+// is produced by their own toolchain rather than checked in.  There is nothing
+// to screenshot them against, so they are skipped rather than reported as a
+// failure.  They are covered by `npm run smoke` instead.
 const APP_EXAMPLES = new Set(['about', 'mars']);
 
 /** Reference (pre-port) URL for a route on the reference server. */
 function referenceUrl(route) {
-    return APP_EXAMPLES.has(route)
-        ? `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}/public/index.html`
-        : `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`;
+    return `http://127.0.0.1:${REFERENCE_PORT}/examples/${route}.html`;
 }
 
 function isNoise(text) {
@@ -245,6 +245,21 @@ async function main() {
     for (const route of routes) {
         const name = route.replace(/\//g, '_');
 
+        if (APP_EXAMPLES.has(route)) {
+            results.push({
+                route,
+                pixels: null,
+                hoverPixels: null,
+                noise: 0,
+                hoverNoise: 0,
+                errors: [],
+                pass: true,
+                skipped: true
+            });
+
+            continue;
+        }
+
         // Capture reference (original page) — we intentionally ignore its
         // console errors since the pre-port pages may use non-React patterns.
         const reference = await capture(
@@ -375,10 +390,12 @@ async function main() {
     console.log(header);
     console.log(separator);
 
-    for (const { route, pixels, hoverPixels, noise, hoverNoise, errors, pass } of results) {
+    for (const { route, pixels, hoverPixels, noise, hoverNoise, errors, pass, skipped } of results) {
         const pixStr = pixels === null ? '     —' : String(pixels).padStart(6);
         const hoverStr = hoverPixels === null ? '     —' : String(hoverPixels).padStart(6);
-        const status = pass ? '✓ pass' : `✗ FAIL${errors.length ? ` (${errors.length} error${errors.length > 1 ? 's' : ''})` : ''}`;
+        const status = skipped
+            ? '— skipped (no reference build)'
+            : pass ? '✓ pass' : `✗ FAIL${errors.length ? ` (${errors.length} error${errors.length > 1 ? 's' : ''})` : ''}`;
         const noiseStr = MEASURE_NOISE ? `  ${String(noise).padStart(6)}  ${String(hoverNoise).padStart(6)}` : '';
 
         console.log(`${route.padEnd(colRoute)}  ${pixStr}  ${hoverStr}${noiseStr}  ${status}`);
