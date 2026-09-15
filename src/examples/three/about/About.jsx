@@ -121,13 +121,13 @@ export default function About({ title }) {
                     ref={preloaderElRef}
                     className="preloader"
                     style={{
-                        alignItems: 'center',
                         backgroundColor: 'var(--bg-color)',
-                        display: 'flex',
-                        inset: 0,
-                        justifyContent: 'center',
+                        height: '100%',
+                        left: 0,
                         pointerEvents: 'none',
                         position: 'fixed',
+                        top: 0,
+                        width: '100%',
                         zIndex: 100
                     }}
                 >
@@ -135,6 +135,13 @@ export default function About({ title }) {
                         ref={progressRef}
                         progress={progress}
                         onComplete={handlePreloaderComplete}
+                        style={{
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            marginLeft: -16,
+                            marginTop: -16
+                        }}
                     />
                 </div>
             )}

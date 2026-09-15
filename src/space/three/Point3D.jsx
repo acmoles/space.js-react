@@ -16,7 +16,7 @@
 import { createRoot } from 'react-dom/client';
 import { Children, isValidElement, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useStore } from '@react-three/fiber';
-import { MeshBasicMaterial, Vector2 } from 'three';
+import { MeshBasicMaterial, Quaternion, Vector2, Vector3 } from 'three';
 import { VertexNormalsHelper } from 'three/addons/helpers/VertexNormalsHelper.js';
 import { VertexTangentsHelper } from 'three/addons/helpers/VertexTangentsHelper.js';
 
@@ -233,6 +233,11 @@ export function Point3D({
     // Per-frame scratch vectors (avoid allocations)
     const posRef = useRef({ centerX: 0, centerY: 0, halfHeight: 6, halfWidth: 6, height: 12, width: 12 });
     const vRef = useRef(new Vector2());
+
+    // Scratch objects for syncing the tracker group to the tracked object.
+    const worldPositionRef = useRef(new Vector3());
+    const worldQuaternionRef = useRef(new Quaternion());
+    const worldScaleRef = useRef(new Vector3());
 
     // React state — only what must drive re-renders of child props.
     // Name and type are initialised from props; _setData() updates them
@@ -687,6 +692,30 @@ export function Point3D({
 
                 const hs = c.state.current.halfScreen;
                 if (!hs.x) return;
+
+                // Follow the tracked object.  The vanilla Point3D is added as a
+                // child of the object (`object.add(object.point)` in the About
+                // app's ScenePanelController), so the tracker mesh inherits the
+                // object's transform.  The React tracker group lives at the
+                // scene root instead, so copy the object's world transform onto
+                // it every frame — otherwise the tracker, reticle, bounding box
+                // and panel all stay pinned to the origin.
+                if (groupRef.current) {
+                    const group = groupRef.current;
+                    const position = worldPositionRef.current;
+                    const quaternion = worldQuaternionRef.current;
+                    const scale = worldScaleRef.current;
+
+                    object.updateWorldMatrix(true, false);
+                    object.matrixWorld.decompose(position, quaternion, scale);
+
+                    // The sphere radius is already in world units
+                    // (`getBoundingSphereWorld`), so the object's scale must not
+                    // be applied a second time.
+                    group.position.copy(position);
+                    group.quaternion.copy(quaternion);
+                    group.updateMatrixWorld(true);
+                }
 
                 // Project sphere to screen space
                 const box = getScreenSpaceBox(sphereRef.current, cam);

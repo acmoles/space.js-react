@@ -69,7 +69,14 @@ function AboutPoint({ mesh, name, type, uvTexture, meshToPoint }) {
     const pointRef = useRef(null);
 
     const panelUi = useMemo(() => ({
-        uvTexture,
+        // The vanilla `MaterialsPanel` receives the Point3D *instance* as `ui`,
+        // whose `uvTexture` is null until the UV helper is switched on — only
+        // the static `Point3D.uvTexture` holds the loaded checkerboard.  Mirror
+        // that here, otherwise rebuilding a material applies the UV map by
+        // default (`materialsPanel.js`: `if (ui.uvTexture) target.map = ...`).
+        get uvTexture() {
+            return pointRef.current?.uvTexture ?? null;
+        },
         get point() {
             return pointRef.current;
         },
@@ -79,7 +86,7 @@ function AboutPoint({ mesh, name, type, uvTexture, meshToPoint }) {
             getPoint: targetMesh => meshToPoint.get(targetMesh)?.current ?? null,
             uvHelper: true
         }
-    }), [uvTexture, meshToPoint]);
+    }), [meshToPoint]);
 
     const items = useMaterialsPanelItems(mesh, panelUi);
 

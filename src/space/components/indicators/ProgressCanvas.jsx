@@ -14,6 +14,9 @@ const CANVAS_DPR = 2;
  * @param {number} [props.size=32] Diameter in CSS pixels.
  * @param {number} [props.progress] Target progress value (0–1). Animated via tween.
  * @param {function} [props.onComplete] Called when progress reaches 1.
+ * @param {object} [props.style] Inline styles for the canvas element. Needed for
+ *                               positioning, since the global stylesheet makes
+ *                               every bare `canvas` `position: fixed` at 0,0.
  * @param {object} [props.ref] Exposes `animateIn()` and `animateOut(callback)`.
  * @example
  * <ProgressCanvas progress={loadProgress} onComplete={() => setLoaded(true)} ref={ref} />
@@ -22,6 +25,7 @@ export function ProgressCanvas({
     size = 32,
     progress: progressProp = 0,
     onComplete,
+    style,
     ref
 }) {
     const cx = size / 2;
@@ -102,5 +106,5 @@ export function ProgressCanvas({
         animateOut: callback => root.stop().animate({ scale: 1.1, opacity: 0 }, 400, 'easeInCubic', callback)
     }), [root]);
 
-    return <canvas ref={node => { rootRef.current = node; canvasRef.current = node; }} />;
+    return <canvas ref={node => { rootRef.current = node; canvasRef.current = node; }} style={style} />;
 }
