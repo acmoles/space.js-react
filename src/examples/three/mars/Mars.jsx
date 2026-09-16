@@ -357,9 +357,27 @@ export default function Mars({ title }) {
 
     return (
         <Example title={title}>
-            {/* React UI overlay — rendered outside the Canvas so it lives in the
-                normal DOM. The wrapper delegates internal-link interception and
-                UI audio (hover/click). */}
+            <Canvas
+                linear
+                flat
+                gl={{ powerPreference: 'high-performance', antialias: false }}
+                dpr={window.devicePixelRatio}
+            >
+                <MarsScene
+                    onProgress={handleProgress}
+                    onPhase={handlePhase}
+                    onReady={handleReady}
+                />
+            </Canvas>
+
+            {/* React UI overlay — rendered outside and after the Canvas so it
+                lives in the normal DOM and, crucially, stacks above the
+                fixed-position canvas. The original app relies on the same
+                ordering (`Stage.add(canvas)` then `Stage.add(ui)`): the UI keeps
+                `position: static` for the scrollable details layout, which voids
+                its `z-index`, so DOM order is what places it on top of the
+                canvas and keeps the HUD interactive. The wrapper delegates
+                internal-link interception and UI audio (hover/click). */}
             {ready && detailsData && (
                 <div onClickCapture={handleWrapperClick} onMouseOver={handleWrapperOver}>
                     <UI
@@ -376,19 +394,6 @@ export default function Mars({ title }) {
                     />
                 </div>
             )}
-
-            <Canvas
-                linear
-                flat
-                gl={{ powerPreference: 'high-performance', antialias: false }}
-                dpr={window.devicePixelRatio}
-            >
-                <MarsScene
-                    onProgress={handleProgress}
-                    onPhase={handlePhase}
-                    onReady={handleReady}
-                />
-            </Canvas>
 
             {!started && (
                 <Preloader
