@@ -1,0 +1,25 @@
+.target-number {
+    position: relative;
+    box-sizing: border-box;
+    border: 1px solid var(--ui-color);
+}
+
+@media (min-resolution: 1.5dppx) {
+    .target-number {
+        border-width: 1.5px;
+    }
+}
+
+.target-number .number {
+    position: absolute;
+    left: 5px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    letter-spacing: var(--ui-number-letter-spacing);
+}
+
+@media (min-resolution: 1.5dppx) {
+    .target-number .number {
+        left: 4px;
+    }
+}

@@ -1,0 +1,10 @@
+/* Float direction is set as inline style (matching the original cssFloat approach). */
+.title {
+    padding: 10px;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.title.title--clickable {
+    cursor: pointer;
+}

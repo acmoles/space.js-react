@@ -1,0 +1,36 @@
+.thumbnail {
+    position: absolute;
+    box-sizing: border-box;
+    border: 1px solid var(--ui-color-divider-line);
+    cursor: move;
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.thumbnail .wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.thumbnail .wrapper img,
+.thumbnail .wrapper canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.thumbnail canvas.thumb-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}

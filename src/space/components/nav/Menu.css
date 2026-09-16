@@ -1,0 +1,16 @@
+.menu {
+    position: fixed;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.menu:not(.menu--bottom) {
+    top: 20px;
+}
+
+.menu--bottom {
+    bottom: 20px;
+}

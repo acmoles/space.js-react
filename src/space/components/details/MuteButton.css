@@ -1,0 +1,8 @@
+/* Width/height set inline in JSX because they differ per button component */
+.button {
+    position: relative;
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}

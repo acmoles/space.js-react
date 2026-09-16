@@ -1,0 +1,41 @@
+.panel-graph {
+    position: relative;
+    width: var(--ui-panel-width);
+}
+
+.panel-graph > .container {
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.panel-graph .content {
+    float: left;
+    margin-right: 10px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.panel-graph .number {
+    float: right;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--ui-title-letter-spacing);
+}
+
+.panel-graph .info {
+    position: absolute;
+    left: 0;
+    bottom: 3px;
+    margin-left: 10px;
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.panel-graph canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}

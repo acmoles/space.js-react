@@ -1,0 +1,204 @@
+import { useImperativeHandle, useLayoutEffect, useRef } from 'react';
+
+import { useAnimation, useMotion, useTicker } from '../../motion/index.js';
+import { AudioButtonInfo } from './AudioButtonInfo.jsx';
+
+import './AudioButton.css';
+
+const WIDTH = 24;
+const HEIGHT = 16;
+const DPR = 2;
+
+function drawWave(ctx, canvas, values) {
+    const w = WIDTH + 2;
+    const h = HEIGHT / 2;
+    const progress = w * values.progress;
+    const increase = (90 / 180 * Math.PI) / (h / 2);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+
+    let counter = 0;
+    let x = 0;
+    let y = h;
+
+    for (let i = -4; i < w; i++) {
+        if (progress >= i) {
+            ctx.moveTo(x, y);
+
+            x = i;
+            y = h - Math.sin(counter) * (h - 1) * values.yMultiplier;
+            counter += increase;
+
+            ctx.lineTo(x, y);
+        }
+    }
+
+    ctx.stroke();
+}
+
+/**
+ * A canvas audio-wave button with an optional track-info panel.
+ * Mirrors `lib/ui/AudioButton.js`.
+ *
+ * @param {object} props
+ * @param {boolean} [props.sound=true] Initial sound-on state.
+ * @param {object} [props.info] Optional `{ name, title, image, link }` data passed to `AudioButtonInfo`.
+ * @param {function} [props.onUpdate] Called with `(sound)` when the mute state changes.
+ * @param {function} [props.onHover] Called with the `mouseenter`/`mouseleave` event.
+ * @param {function} [props.onClick] Called with the `click` event.
+ * @param {object} [props.ref] Exposes `animateIn` and `animateOut`.
+ * @example
+ * <AudioButton sound={true} info={{ name: 'Artist', title: 'Track' }} ref={audioRef} />
+ */
+export function AudioButton({ sound: initialSound = true, info, onUpdate, onHover, onClick, ref }) {
+    const [rootRef, root] = useAnimation({ opacity: 0 });
+    const canvasRef = useRef(null);
+    const ctxRef = useRef(null);
+
+    const motion = useMotion({
+        yMultiplier: initialSound ? 1 : 0,
+        progress: 0
+    });
+
+    const stateRef = useRef({
+        animatedIn: false,
+        sound: initialSound,
+        needsUpdate: false
+    });
+
+    useLayoutEffect(() => {
+        const canvas = canvasRef.current;
+
+        if (!canvas) {
+            return;
+        }
+
+        const ctx = canvas.getContext('2d');
+
+        ctxRef.current = ctx;
+        canvas.width = Math.round(WIDTH * DPR);
+        canvas.height = Math.round(HEIGHT * DPR);
+        canvas.style.width = `${WIDTH}px`;
+        canvas.style.height = `${HEIGHT}px`;
+        ctx.scale(DPR, DPR);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = getComputedStyle(document.documentElement)
+            .getPropertyValue('--ui-color').trim();
+
+        stateRef.current.needsUpdate = true;
+    }, []);
+
+    useTicker(() => {
+        if (stateRef.current.needsUpdate) {
+            drawWave(ctxRef.current, canvasRef.current, motion.values);
+        }
+    });
+
+    useImperativeHandle(ref, () => ({
+        animateIn() {
+            const st = stateRef.current;
+
+            motion.stop();
+            motion.values.yMultiplier = st.sound ? 1 : 0;
+            motion.values.progress = 0;
+            st.animatedIn = false;
+            st.needsUpdate = true;
+
+            motion.animate({ progress: 1 }, 1000, 'easeOutExpo', () => {
+                st.needsUpdate = false;
+                st.animatedIn = true;
+            });
+
+            root.stop().animate({ opacity: 1 }, 400, 'easeOutCubic');
+        },
+
+        animateOut() {
+            stateRef.current.animatedIn = false;
+            root.stop().animate({ opacity: 0 }, 400, 'easeOutCubic');
+        }
+    }), [root, motion]);
+
+    const handleHover = event => {
+        const st = stateRef.current;
+
+        if (!st.animatedIn) {
+            return;
+        }
+
+        motion.stop();
+        st.needsUpdate = true;
+
+        if (event.type === 'mouseenter') {
+            motion.animate({ yMultiplier: st.sound ? 0.7 : 0.3 }, 275, 'easeInOutCubic', () => {
+                st.needsUpdate = false;
+            });
+        } else {
+            motion.animate({ yMultiplier: st.sound ? 1 : 0 }, 275, 'easeInOutCubic', () => {
+                st.needsUpdate = false;
+            });
+        }
+
+        if (onHover) {
+            onHover(event);
+        }
+    };
+
+    const handleClick = event => {
+        const st = stateRef.current;
+
+        motion.stop();
+        st.needsUpdate = true;
+
+        if (st.sound) {
+            st.sound = false;
+
+            motion.animate({ yMultiplier: 0 }, 300, 'easeOutCubic', () => {
+                st.needsUpdate = false;
+            });
+        } else {
+            st.sound = true;
+
+            motion.animate({ yMultiplier: 1 }, 300, 'easeOutCubic', () => {
+                st.needsUpdate = false;
+            });
+        }
+
+        if (onUpdate) {
+            onUpdate(st.sound);
+        }
+
+        if (onClick) {
+            onClick(event);
+        }
+    };
+
+    return (
+        <div ref={rootRef} className="button">
+            {info && (
+                <AudioButtonInfo
+                    data={info}
+                    style={{ position: 'absolute', left: -145, top: 0 }}
+                />
+            )}
+            <div
+                className="container"
+                style={{ width: WIDTH + 20, height: HEIGHT + 20 }}
+                onMouseEnter={handleHover}
+                onMouseLeave={handleHover}
+                onClick={handleClick}
+            >
+                <canvas
+                    ref={canvasRef}
+                    style={{
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        marginLeft: -(WIDTH / 2),
+                        marginTop: -(HEIGHT / 2)
+                    }}
+                />
+            </div>
+        </div>
+    );
+}

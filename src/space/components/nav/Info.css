@@ -1,0 +1,27 @@
+/* All rules scoped to the position modifier so they don't bleed into HeaderInfo,
+   which also uses the .info class name from the original library. */
+.info.info--top,
+.info.info--bottom {
+    position: fixed;
+    left: 50%;
+    width: 300px;
+    margin-left: -150px;
+    pointer-events: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.info.info--top {
+    top: 55px;
+}
+
+.info.info--bottom {
+    bottom: 55px;
+}
+
+.info.info--top .content,
+.info.info--bottom .content {
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--ui-info-color);
+}

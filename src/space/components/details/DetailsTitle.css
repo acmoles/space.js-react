@@ -1,0 +1,12 @@
+/* Scoped under .details – global.css already covers font rules. */
+
+.details .title {
+    width: fit-content;
+    padding: 0;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.details .title .letter {
+    display: inline-block;
+}

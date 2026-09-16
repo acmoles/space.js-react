@@ -1,0 +1,21 @@
+.list-select {
+    position: relative;
+    height: 20px;
+    line-height: 20px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.list-select .content {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.list-select .over {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}

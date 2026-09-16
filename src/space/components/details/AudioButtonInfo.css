@@ -1,0 +1,24 @@
+.button > .info {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.info .wrapper {
+    position: relative;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.info .name {
+    font-variant-numeric: tabular-nums;
+    line-height: var(--ui-title-line-height);
+    letter-spacing: var(--ui-number-letter-spacing);
+    white-space: nowrap;
+}
+
+.info .title {
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    color: var(--ui-secondary-color);
+}

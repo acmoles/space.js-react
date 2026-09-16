@@ -1,0 +1,30 @@
+.slider > .container {
+    height: 25px;
+    cursor: w-resize;
+}
+
+.slider .content {
+    float: left;
+    margin-right: 10px;
+    line-height: 20px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.slider .number {
+    float: right;
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+    letter-spacing: var(--ui-number-letter-spacing);
+}
+
+.slider .line {
+    clear: both;
+    height: 1px;
+    background-color: var(--ui-color);
+    transform-origin: left center;
+}
+
+.slider > .group {
+    position: relative;
+}

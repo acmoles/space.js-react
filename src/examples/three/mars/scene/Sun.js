@@ -1,0 +1,56 @@
+import { Color, Group, IcosahedronGeometry, Mesh, MeshBasicMaterial } from 'three';
+
+import { colors, layers } from '../config.js';
+
+export class Sun extends Group {
+    constructor() {
+        super();
+
+        this.position.z = -18050; // ~230 million km / 12,742 km (Earth's diameter)
+
+        // this.visible = false;
+
+        this.initMesh();
+    }
+
+    initMesh() {
+        const geometry = new IcosahedronGeometry(109, 6); // 109 Earths
+
+        const material = new MeshBasicMaterial({
+            color: new Color(colors.lightColor).offsetHSL(0, 0, 0.25) // Increase brightness
+        });
+
+        const mesh = new Mesh(geometry, material);
+        mesh.layers.set(layers.background);
+        this.add(mesh);
+
+        // Occlusion mesh
+        const occMesh = mesh.clone();
+        occMesh.material = new MeshBasicMaterial({
+            color: new Color(colors.lightColor)
+        });
+        occMesh.layers.set(layers.occlusion);
+        this.add(occMesh);
+
+        this.occMesh = occMesh;
+    }
+
+    destroy = () => {
+        const geometries = new Set();
+        const materials = new Set();
+
+        this.traverse(object => {
+            if (object.geometry) {
+                geometries.add(object.geometry);
+            }
+
+            if (object.material) {
+                materials.add(object.material);
+            }
+        });
+
+        geometries.forEach(geometry => geometry.dispose());
+        materials.forEach(material => material.dispose());
+        this.clear();
+    };
+}

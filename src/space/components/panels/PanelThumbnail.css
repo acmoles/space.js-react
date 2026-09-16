@@ -1,0 +1,42 @@
+.panel-thumbnail {
+    position: relative;
+}
+
+.panel-thumbnail > .container {
+    position: relative;
+    box-sizing: border-box;
+    width: var(--ui-panel-width);
+    height: var(--ui-panel-width);
+    border: 1px solid var(--ui-color-divider-line);
+    cursor: pointer;
+}
+
+.panel-thumbnail .line {
+    position: absolute;
+    box-sizing: border-box;
+    transform-origin: center bottom;
+    pointer-events: none;
+}
+
+.panel-thumbnail .wrapper {
+    position: absolute;
+    left: 0;
+    top: 0;
+    cursor: move;
+    z-index: 1;
+}
+
+.panel-thumbnail .wrapper img,
+.panel-thumbnail .wrapper canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+.panel-thumbnail > .group {
+    position: relative;
+}

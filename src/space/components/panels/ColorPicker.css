@@ -1,0 +1,30 @@
+.color-picker {
+    position: relative;
+}
+
+.color-picker > .container {
+    line-height: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.color-picker .swatch {
+    float: left;
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    background-color: var(--ui-bg-color);
+    border: 1px solid var(--ui-color-divider-line);
+    cursor: pointer;
+}
+
+.color-picker .content {
+    float: right;
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+}
+
+.color-picker .color-ring {
+    position: absolute;
+    left: 0;
+}

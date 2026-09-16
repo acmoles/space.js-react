@@ -1,0 +1,40 @@
+.meter {
+    position: relative;
+}
+
+.meter > canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+}
+
+.meter > .container {
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.meter > .container > .number {
+    float: right;
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+}
+
+/* Inline (.noRange) info variant — added via class */
+.meter > .container > .info {
+    float: left;
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+}
+
+/* Absolute-positioned info variant (default, with range) */
+.meter > .info {
+    position: absolute;
+    right: 0;
+    bottom: 3px;
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    z-index: 1;
+    pointer-events: none;
+}

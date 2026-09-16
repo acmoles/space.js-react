@@ -1,0 +1,22 @@
+/* Scoped to the two components that render ReticleInfo. The bare `.info`
+   selector these rules used to carry is also the class name of the header FPS
+   counter, whose `float: right` was being cancelled by `position: absolute`. */
+.reticle > .info,
+.tracker > .info {
+    position: absolute;
+}
+
+.reticle > .info .primary,
+.tracker > .info .primary {
+    font-variant-numeric: tabular-nums;
+    line-height: var(--ui-title-line-height);
+    letter-spacing: var(--ui-number-letter-spacing);
+    white-space: nowrap;
+}
+
+.reticle > .info .secondary,
+.tracker > .info .secondary {
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    color: var(--ui-secondary-color);
+}

@@ -1,0 +1,12 @@
+.graph .label,
+.graph-segments .label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    font-size: var(--ui-secondary-font-size);
+    letter-spacing: var(--ui-secondary-letter-spacing);
+    color: var(--ui-secondary-color);
+    white-space: nowrap;
+    opacity: 0;
+}
