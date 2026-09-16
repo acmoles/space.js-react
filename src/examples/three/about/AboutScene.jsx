@@ -578,7 +578,7 @@ export function AboutScene({ overlayEl, uiRef, uiProxy, onProgress, onPanelItems
     return (
         <>
             {overlayEl && sceneData && (
-                <Points3D container={overlayEl} headerSnap debug={isDebug}>
+                <Points3D container={overlayEl} headerSnap debug={isDebug} renderPriority={2}>
                     <PointsBridge contextRef={pointsContextRef} />
                     {sceneData.objects.map(object => (
                         <AboutPoint

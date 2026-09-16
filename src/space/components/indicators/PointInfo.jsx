@@ -13,13 +13,16 @@ import './PointInfo.css';
  * @param {object} [props.data] `{ name, type }` strings.
  * @param {Array<string|number>} [props.targetNumbers] Numbers rendered as TargetNumber badges.
  * @param {function} [props.onContainerHover] Called with `mouseenter`/`mouseleave` events on the container.
+ * @param {React.ReactNode} [props.children] Rendered inside `.info`, below the label
+ *   container — this is where the per-object `<Point3DPanel>` is nested so it is
+ *   positioned exactly as the reference (`.point > .info > .panel`).
  * @param {object} [props.ref]
  *   Exposes `animateIn()`, `animateOut(fast, callback)`, `open()`, `close(fast)`,
  *   `lock()`, `unlock()`, `enable()`, `disable()`.
  * @example
  * <PointInfo data={{ name: 'Camera', type: 'PerspectiveCamera' }} ref={infoRef} />
  */
-export function PointInfo({ data, targetNumbers, onContainerHover, ref }) {
+export function PointInfo({ data, targetNumbers, onContainerHover, children, ref }) {
     const numberRefs = useRef([]);
     const stateRef = useRef({ locked: false, isOpen: false });
 
@@ -112,6 +115,7 @@ export function PointInfo({ data, targetNumbers, onContainerHover, ref }) {
                 <div className="name">{data?.name}</div>
                 <div className="type">{data?.type}</div>
             </div>
+            {children}
         </div>
     );
 }

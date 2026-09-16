@@ -542,6 +542,8 @@ export function Point3D({
                 pointRef.current.close(true);
                 pointRef.current.activate?.();
             }
+            // Reference: Point.close(true) → PointInfo.close(true) → panel.hide().
+            resolvePanel()?.animateOut?.();
         };
 
         const setInitialPosition = () => {
@@ -570,6 +572,8 @@ export function Point3D({
                     c.state.current.multiple.push(api);
                     if (!noLine) lineRef.current?.deactivate?.();
                     pointRef.current?.deactivate?.();
+                    // Reference: Point.deactivate() → PointInfo.close(true) → panel.hide().
+                    resolvePanel()?.animateOut?.();
 
                     // Update combined labels
                     if (c.state.current.multiple.length > 1) {
@@ -581,6 +585,13 @@ export function Point3D({
                     }
                 } else {
                     pointRef.current?.open?.();
+
+                    // Reference: PointInfo.open() animates in and activates the
+                    // panel, otherwise it stays hidden (`display: none`) and no
+                    // controls are visible when the object is selected.
+                    const panel = resolvePanel();
+                    panel?.animateIn?.();
+                    panel?.activate?.();
                 }
             } else {
                 if (!resolveGraph()) {
@@ -608,6 +619,12 @@ export function Point3D({
                     pointRef.current.close();
                     pointRef.current.activate?.();
                 }
+
+                // Reference: PointInfo.close() animates out and deactivates the
+                // panel so it is hidden and no longer a hit target.
+                const panel = resolvePanel();
+                panel?.animateOut?.();
+                panel?.deactivate?.();
             }
         };
 
