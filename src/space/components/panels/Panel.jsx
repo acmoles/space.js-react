@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 
 import { useAnimation } from '../../motion/index.js';
 import { PanelContext } from './PanelContext.js';
@@ -35,6 +35,11 @@ function getCSSVar(name) {
 export function Panel({ items = [], onChange, autoAnimateIn = false, ref }) {
     const [rootRef, root] = useAnimation({ display: 'none' });
 
+    // Parent panel context, so nested panels can bubble picker open/close up the
+    // ancestor chain. The reference coordinates this with a global `color_picker`
+    // event, where every Panel whose element contains the target dims its rows.
+    const parentCtx = useContext(PanelContext);
+
     // Per-item imperative handles
     const itemRefs = useRef([]);
 
@@ -56,6 +61,10 @@ export function Panel({ items = [], onChange, autoAnimateIn = false, ref }) {
                 if (el && pickerElement && el.contains(pickerElement)) return;
                 item.disable();
             });
+
+            // Bubble up so ancestor panels dim their rows too (except the branch
+            // containing the target), matching the reference global-event dimming.
+            parentCtx?.notifyOpen?.(pickerElement, closeFn);
         },
         // `element` scopes the close to the picker owning the open slot, so a
         // picker unmounting while open cannot re-enable rows another picker
@@ -64,8 +73,9 @@ export function Panel({ items = [], onChange, autoAnimateIn = false, ref }) {
             if (element && openPickerRef.current?.element !== element) return;
             openPickerRef.current = null;
             itemRefs.current.forEach(item => item?.enable());
+            parentCtx?.notifyClose?.(element);
         }
-    }), []);
+    }), [parentCtx]);
 
     const handleChange = useCallback(e => {
         if (onChange) onChange(e);
