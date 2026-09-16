@@ -251,7 +251,11 @@ export function ColorPicker({
         if (!isOpenRef.current) {
             openRing();
         } else {
-            closeRing(false);
+            // Hide the ring instantly on close — the reference `ColorPicker`
+            // always fast-closes (`fastClose` is permanently true), so the ring
+            // never lingers/fades over the controls that the collapsing
+            // fold-out has just uncovered below it.
+            closeRing(true);
             panelCtx.notifyClose();
         }
     };

@@ -35,6 +35,12 @@ import { Point3DContext } from './Point3DContext.js';
  * @param {Element|null}    [props.dividerSnap=null]  Extra snap margin from UI divider element.
  * @param {boolean}         [props.headerSnap=false]  Extra snap top margin for header bar.
  * @param {boolean}         [props.debug=false]       Show tracker-sphere wireframes.
+ * @param {number}          [props.renderPriority=0]  `useFrame` priority for the overlay
+ *   projection + canvas draw. When a scene takes over rendering with its own
+ *   positive-priority `useFrame` (e.g. the About example animates its objects and
+ *   updates the camera at priority 1), set this higher than that priority so the
+ *   2-D overlay is projected *after* the scene has been advanced and rendered —
+ *   otherwise the reticle/tracker lag one frame behind and visibly wobble.
  */
 export function Points3D({
     children,
@@ -42,7 +48,8 @@ export function Points3D({
     breakpoint = 1000,
     dividerSnap = null,
     headerSnap = false,
-    debug = false
+    debug = false,
+    renderPriority = 0
 }) {
     const store = useStore();
 
@@ -418,7 +425,7 @@ export function Points3D({
             pmoveRef.current?.();
             sRef.current.lastRaycast = t;
         }
-    });
+    }, renderPriority);
 
     // --- Context value -------------------------------------------------------
 

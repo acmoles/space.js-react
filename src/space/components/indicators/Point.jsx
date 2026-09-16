@@ -336,8 +336,9 @@ export function Point({
                 data={data}
                 targetNumbers={targetNumbers}
                 onContainerHover={handleContainerHover}
-            />
-            {children}
+            >
+                {children}
+            </PointInfo>
         </div>
     );
 }
