@@ -10,6 +10,8 @@ import { MarsScene } from './MarsScene.jsx';
 import { Preloader } from './Preloader.jsx';
 import { dataPath, isDebug, numViews } from './config.js';
 
+import './Mars.css';
+
 // Per-view captions and directional-light positions, copied verbatim from
 // `App.setView` in the original Mars app.
 const CAPTIONS = [
@@ -333,7 +335,10 @@ export default function Mars({ title }) {
         ctrl.sceneView.visible = true;
 
         if (isDebug) {
-            uiRef.current?.animateDetailsInfoIn();
+            if (!uiRef.current?.isDetailsOpen()) {
+                uiRef.current?.animateDetailsInfoIn();
+            }
+
             uiRef.current?.animateIn();
             return;
         }
@@ -344,7 +349,9 @@ export default function Mars({ title }) {
             return;
         }
 
-        uiRef.current?.animateDetailsInfoIn();
+        if (!uiRef.current?.isDetailsOpen()) {
+            uiRef.current?.animateDetailsInfoIn();
+        }
 
         await wait(3000);
 
@@ -356,7 +363,7 @@ export default function Mars({ title }) {
     }, []);
 
     return (
-        <Example title={title}>
+        <Example title={title} className="mars-example">
             <Canvas
                 linear
                 flat

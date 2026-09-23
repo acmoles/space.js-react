@@ -246,6 +246,10 @@ export function UI({
         animateOut: () => handleAnimateOut(),
         toggleDetails: show => handleToggleDetails(show),
 
+        // Whether the scrollable Details panel is currently open. Mirrors the
+        // reference guard `!this.ui.details.animatedIn` used in `App.animateIn`.
+        isDetailsOpen: () => stateRef.current.detailsOpen,
+
         // Per-overlay animate methods so callers don't need direct child refs
         animateInfoIn: delay => infoRef.current?.animateIn(delay),
         animateInstructionsIn: delay => instructionsRef.current?.animateIn(delay),

@@ -18,6 +18,10 @@
     left: 34px;
     top: 12px;
     width: max-content;
+    font-family: var(--ui-font-family);
+    font-weight: var(--ui-font-weight);
+    font-size: var(--ui-font-size);
+    line-height: var(--ui-line-height);
     font-variant-numeric: tabular-nums;
     letter-spacing: var(--ui-title-letter-spacing);
 }
