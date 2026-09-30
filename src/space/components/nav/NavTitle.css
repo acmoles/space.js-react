@@ -8,3 +8,9 @@
 .title.title--clickable {
     cursor: pointer;
 }
+
+/* Caption inherits the secondary colour, matching the reference NavTitle which
+   sets `color: var(--ui-secondary-color)` on the caption in its constructor. */
+.title .caption {
+    color: var(--ui-secondary-color);
+}

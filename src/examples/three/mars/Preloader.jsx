@@ -6,6 +6,21 @@ import { useAnimation } from '@/space/motion';
 import { isMobile } from './config.js';
 
 /**
+ * Shared `h2` typography for the preloader labels. Matches the reference
+ * `.preloader h2` rule (`--ui-info-*` family/weight/size/line-height/
+ * letter-spacing + 6px padding) which the neutral `mars-preloader-*` class
+ * names deliberately don't inherit.
+ */
+const INFO_FONT = {
+    padding: 6,
+    fontFamily: 'var(--ui-info-font-family)',
+    fontWeight: 'var(--ui-info-font-weight)',
+    fontSize: 'var(--ui-info-font-size)',
+    lineHeight: 'var(--ui-info-line-height)',
+    letterSpacing: 'var(--ui-info-letter-spacing)'
+};
+
+/**
  * Preloader overlay for the Mars example.
  *
  * Ported from `examples/mars/src/views/PreloaderView.js`. Shows a centred
@@ -170,6 +185,7 @@ export function Preloader({ progress, loading, onStart, ref }) {
                     <h2
                         ref={infoRef}
                         style={{
+                            ...INFO_FONT,
                             textAlign: 'left',
                             textTransform: 'uppercase',
                             color: 'var(--ui-info-color)',
@@ -181,6 +197,7 @@ export function Preloader({ progress, loading, onStart, ref }) {
                     <h2
                         ref={percentRef}
                         style={{
+                            ...INFO_FONT,
                             fontVariantNumeric: 'tabular-nums',
                             textAlign: 'right',
                             textTransform: 'uppercase',
@@ -195,6 +212,7 @@ export function Preloader({ progress, loading, onStart, ref }) {
                     ref={titleRef}
                     className="mars-preloader-title"
                     style={{
+                        ...INFO_FONT,
                         position: 'absolute',
                         width: '100%',
                         textAlign: 'center',

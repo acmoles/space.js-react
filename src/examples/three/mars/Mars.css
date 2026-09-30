@@ -1,0 +1,9 @@
+/* Mars-scoped details title sizing, matching the standalone reference
+   (`examples/mars/public/assets/css/style.css` h1). The shared global `h1`
+   rule carries the `about` example's smaller 23px sizing, so Mars overrides
+   it here to the reference's large thin heading. */
+.mars-example h1 {
+    margin-left: -3px;
+    font-weight: 100;
+    font-size: 46px;
+}
